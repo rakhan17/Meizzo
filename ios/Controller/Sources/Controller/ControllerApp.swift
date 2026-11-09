@@ -10,6 +10,16 @@ struct ControllerRootView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    HStack {
+                        Image("MeizzoLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 58, height: 58)
+                            .accessibilityLabel("MEIZZO logo")
+                        Text("MEIZZO Controller").font(.title2.bold())
+                    }
+                }
                 Section("Connection") {
                     TextField("wss://your-server.example", text: $model.endpoint)
                         .textInputAutocapitalization(.never).keyboardType(.URL)

@@ -10,9 +10,11 @@ struct ClientRootView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                Image(systemName: "iphone.gen3")
-                    .font(.system(size: 54))
-                    .foregroundStyle(.tint)
+                Image("MeizzoLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 92, height: 92)
+                    .accessibilityLabel("MEIZZO logo")
                 Text("MEIZZO Client").font(.largeTitle.bold())
                 Text("Keep this screen open while pairing. Approve only people you trust.")
                     .multilineTextAlignment(.center).foregroundStyle(.secondary)

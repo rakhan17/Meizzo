@@ -16,6 +16,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.meizzo.client.ios
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 2
         INFOPLIST_KEY_CFBundleDisplayName: MEIZZO Client
         INFOPLIST_KEY_NSCameraUsageDescription: MEIZZO uses the camera only after you start an authorized session.
         SWIFT_VERSION: 5.0

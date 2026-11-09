@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -34,6 +35,12 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 48, 32, 32) }
+        root.addView(ImageView(this).apply {
+            setImageResource(R.drawable.meizzo_logo)
+            contentDescription = "MEIZZO logo"
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }, LinearLayout.LayoutParams(-1, 180))
         root.addView(TextView(this).apply { text = "MEIZZO CONTROLLER"; textSize = 28f })
         root.addView(TextView(this).apply {
             text = "Pair multiple Clients, then manage each device independently."

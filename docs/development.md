@@ -65,7 +65,8 @@ are enabled.
 
 ## Releases
 
-Push a semver tag such as `v0.1.0` to run `.github/workflows/release.yml`.
+Push a semver tag such as `v0.1.0-beta.2` to run the Android release workflow
+and the iOS simulator release publishing job.
 Release signing is not configured in source. Add protected signing secrets and a
 Gradle signing configuration before distributing production APKs; never commit a
 keystore or password.

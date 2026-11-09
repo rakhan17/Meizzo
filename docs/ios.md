@@ -1,11 +1,11 @@
-# iOS beta
+# iOS beta (`v0.1.0-beta.2`)
 
 MEIZZO has two separate native SwiftUI applications:
 
 - `ios/Client` — bundle identifier `com.meizzo.client.ios`, display name **MEIZZO Client**.
 - `ios/Controller` — bundle identifier `com.meizzo.controller.ios`, display name **MEIZZO Controller**.
 
-Each app has its own XcodeGen project definition, entry point, asset catalog, scheme, and build artifact. Shared protocol and Keychain code lives in `ios/Shared/MeizzoCore.swift`.
+Each app has its own XcodeGen project definition, entry point, asset catalog, scheme, and build artifact. Shared protocol and Keychain code lives in `ios/Shared/MeizzoCore.swift`. Both applications use the official logo from `assets/branding/meizzo-logo.svg` for their AppIcon and in-app branding.
 
 ## Build on macOS
 

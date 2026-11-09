@@ -15,6 +15,7 @@ import android.content.pm.PackageManager
 import android.os.StatFs
 import android.os.SystemClock
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import okhttp3.OkHttpClient
@@ -47,6 +48,12 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(32, 48, 32, 32)
         }
+        layout.addView(ImageView(this).apply {
+            setImageResource(R.drawable.meizzo_logo)
+            contentDescription = "MEIZZO logo"
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+        }, LinearLayout.LayoutParams(-1, 180))
         layout.addView(TextView(this).apply { text = "MEIZZO CLIENT"; textSize = 28f })
         layout.addView(TextView(this).apply {
             text = "Pair this device with a Controller using the temporary code below."
