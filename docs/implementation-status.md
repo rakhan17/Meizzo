@@ -43,7 +43,11 @@ command succeeded.
 
 ## Build status
 
-The Gradle wrapper and CI configuration use JDK 17 and Android SDK 35. This
-container has JDK 17 installed, but cannot resolve the Android Gradle Plugin
-from Google's repository, so no local APK artifact was generated here. GitHub
-Actions performs the actual clean-checkout Android builds.
+The Gradle wrapper and CI configuration use JDK 17 and Android SDK 35. Local
+builds remain unavailable in this container because `dl.google.com` does not
+resolve and no Android SDK is installed. GitHub Actions run `42577957223`
+successfully built both modules independently, verified their application IDs
+with `aapt`, and uploaded named APK artifacts:
+
+- `MEIZZO-Client.apk`
+- `MEIZZO-Controller.apk`

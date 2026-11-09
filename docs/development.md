@@ -20,6 +20,13 @@ Android builds use the Gradle wrapper, JDK 17, Android SDK 35, and build tools
 ./gradlew :apps:controller:assembleDebug
 ```
 
+The Android plugin/dependency versions are intentionally not replaced to work
+around missing local connectivity. This environment can reach Maven Central but
+cannot resolve `dl.google.com`, and it has no Android SDK. The remote CI workflow
+uses the same Gradle wrapper, JDK 17, Android SDK 35, and build tools 35.0.0.
+Run `gh run download <run-id> --repo rakhan17/Meizzo` to download verified
+Client and Controller APK artifacts from a successful run.
+
 The emulator endpoint is `ws://10.0.2.2:8080`. Physical devices need the
 reachable LAN address during development, or a deployed WSS endpoint.
 
