@@ -216,7 +216,8 @@ class MainActivity : Activity() {
 
     private fun BatteryManager.isChargingCompat(): Boolean {
         val intent = this@MainActivity.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
-        return intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) in
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        return status in
             intArrayOf(BatteryManager.BATTERY_STATUS_CHARGING, BatteryManager.BATTERY_STATUS_FULL)
     }
 
