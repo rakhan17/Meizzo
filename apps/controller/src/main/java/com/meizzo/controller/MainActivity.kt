@@ -111,7 +111,7 @@ class MainActivity : Activity() {
             }
     }
 
-    private fun requestDeviceList(webSocket: WebSocket = socket ?: return) {
+    private fun requestDeviceList(webSocket: WebSocket) {
         webSocket.send(JSONObject().put("type", "controller.list_devices").toString())
     }
 
