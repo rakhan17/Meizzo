@@ -6,6 +6,8 @@ targets:
   MEIZZOController:
     type: application
     platform: iOS
+    info:
+      path: Info.plist
     sources:
       - path: Sources/Controller
       - path: ../Shared

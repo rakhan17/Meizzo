@@ -6,6 +6,8 @@ targets:
   MEIZZOClient:
     type: application
     platform: iOS
+    info:
+      path: Info.plist
     sources:
       - path: Sources/Client
       - path: ../Shared
