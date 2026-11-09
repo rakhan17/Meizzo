@@ -11,7 +11,13 @@ android { namespace = "com.meizzo.client"; compileSdk = 35
     }
     buildTypes { getByName("debug") { manifestPlaceholders["allowCleartext"] = true } }
     buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
+
+kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
