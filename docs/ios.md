@@ -20,7 +20,7 @@ xcodebuild -project MEIZZOClient.xcodeproj -scheme MEIZZOClient \
   -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 ```
 
-Use `ios/Controller` and `MEIZZOController` for the Controller app. The `iOS` GitHub Actions workflow performs both builds independently on `macos-14` and uploads unsigned Simulator ZIPs.
+Use `ios/Controller` and `MEIZZOController` for the Controller app. The `iOS` GitHub Actions workflow performs both builds independently on the current `macos-15` hosted runner and uploads unsigned Simulator ZIPs.
 
 ## Physical iPhone installation
 
