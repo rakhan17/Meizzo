@@ -76,8 +76,8 @@ MEIZZO for iOS is currently in Beta. Some features may be incomplete or unstable
 
 | Application | Status | Installation |
 |---|---|---|
-| **MEIZZO Client for iOS** | Beta simulator build | Download the `meizzo-client-ios-simulator` artifact from the [iOS Actions workflow](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml) |
-| **MEIZZO Controller for iOS** | Beta simulator build | Download the `meizzo-controller-ios-simulator` artifact from the [iOS Actions workflow](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml) |
+| **MEIZZO Client for iOS** | Beta simulator build | Download the `meizzo-client-ios-simulator` artifact from [successful iOS build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) |
+| **MEIZZO Controller for iOS** | Beta simulator build | Download the `meizzo-controller-ios-simulator` artifact from [successful iOS build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) |
 
 The iOS apps require iOS 16 or newer. Simulator ZIPs are unsigned and are for Simulator testing only; they cannot be installed on a physical iPhone. A physical iPhone build requires Apple signing credentials, a registered device, and a provisioning profile. No signed iOS build is published until those credentials are configured. The practical supported paths are TestFlight or an Xcode-installed development build signed by the team’s Apple Developer account.
 
