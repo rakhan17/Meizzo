@@ -1,4 +1,4 @@
-# iOS beta (`v0.1.0-beta.2`)
+# iOS beta (`v0.1.0-beta.3`)
 
 MEIZZO has two separate native SwiftUI applications:
 

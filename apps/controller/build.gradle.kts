@@ -5,7 +5,7 @@ plugins {
 
 android { namespace = "com.meizzo.controller"; compileSdk = 35
     defaultConfig {
-        applicationId = "com.meizzo.controller"; minSdk = 26; targetSdk = 35; versionCode = 2; versionName = "0.1.0-beta.2"
+        applicationId = "com.meizzo.controller"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "0.1.0-beta.3"
         buildConfigField("String", "SIGNALING_URL", "\"ws://10.0.2.2:8080\"")
         manifestPlaceholders["allowCleartext"] = false
     }

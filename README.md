@@ -37,16 +37,16 @@ single-use, and are protected by request rate limits.
 
 ### Android
 
-Release **v0.1.0-beta.2** is a GitHub prerelease. Client and Controller are
+Release **v0.1.0-beta.3** is a GitHub prerelease. Client and Controller are
 separate APKs with separate application IDs.
 
 | Application | APK | Compatibility |
 |---|---|---|
-| **MEIZZO Client** | [Download `MEIZZO-Client-v0.1.0-beta.2.apk`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-Client-v0.1.0-beta.2.apk) | Android 8.0+ (`com.meizzo.client`) |
-| **MEIZZO Controller** | [Download `MEIZZO-Controller-v0.1.0-beta.2.apk`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-Controller-v0.1.0-beta.2.apk) | Android 8.0+ (`com.meizzo.controller`) |
+| **MEIZZO Client** | [Download `MEIZZO-Client-v0.1.0-beta.3.apk`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) | Android 8.0+ (`com.meizzo.client`) |
+| **MEIZZO Controller** | [Download `MEIZZO-Controller-v0.1.0-beta.3.apk`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) | Android 8.0+ (`com.meizzo.controller`) |
 
-[View the Android release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.2) ·
-[Download SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/SHA256SUMS.txt) ·
+[View the Android release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3) ·
+[Download SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt) ·
 [View all releases](https://github.com/rakhan17/Meizzo/releases)
 
 ### iOS — Beta
@@ -57,8 +57,8 @@ iPhone**.
 
 | Application | Simulator artifact | Compatibility |
 |---|---|---|
-| **MEIZZO Client for iOS** | [Download `MEIZZO-client-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-client-iOS-simulator.zip) | iOS 16+ Simulator |
-| **MEIZZO Controller for iOS** | [Download `MEIZZO-controller-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-controller-iOS-simulator.zip) | iOS 16+ Simulator |
+| **MEIZZO Client for iOS** | [Download `MEIZZO-client-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip) | iOS 16+ Simulator |
+| **MEIZZO Controller for iOS** | [Download `MEIZZO-controller-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip) | iOS 16+ Simulator |
 
 Physical iPhone installation is not published yet. It requires an Apple
 Developer team, registered devices, signing certificates, provisioning

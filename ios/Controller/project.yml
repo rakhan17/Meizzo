@@ -17,7 +17,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.meizzo.controller.ios
         MARKETING_VERSION: 0.1.0
-        CURRENT_PROJECT_VERSION: 2
+        CURRENT_PROJECT_VERSION: 3
         INFOPLIST_KEY_CFBundleDisplayName: MEIZZO Controller
         SWIFT_VERSION: 5.0
     scheme:

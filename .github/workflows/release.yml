@@ -23,10 +23,22 @@ jobs:
       - run: ./gradlew :apps:client:assembleRelease :apps:controller:assembleRelease
       - run: |
           mkdir -p dist
+          keytool -genkeypair -v -keystore dist/meizzo-beta-release.jks \
+            -storepass meizzo-beta-release -keypass meizzo-beta-release \
+            -alias meizzo-beta -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=MEIZZO Beta, O=MEIZZO"
           client_apk="$(find apps/client/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           controller_apk="$(find apps/controller/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$client_apk"
           test -n "$controller_apk"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" sign \
+            --ks dist/meizzo-beta-release.jks --ks-pass pass:meizzo-beta-release \
+            --key-pass pass:meizzo-beta-release "$client_apk"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" sign \
+            --ks dist/meizzo-beta-release.jks --ks-pass pass:meizzo-beta-release \
+            --key-pass pass:meizzo-beta-release "$controller_apk"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$client_apk"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$controller_apk"
           "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$client_apk" | grep -q "package: name='com.meizzo.client'"
           "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$controller_apk" | grep -q "package: name='com.meizzo.controller'"
           cp "$client_apk" "dist/MEIZZO-Client-${GITHUB_REF_NAME}.apk"
@@ -34,6 +46,7 @@ jobs:
           cp "$client_apk" dist/MEIZZO-Client.apk
           cp "$controller_apk" dist/MEIZZO-Controller.apk
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          rm -f dist/meizzo-beta-release.jks
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
