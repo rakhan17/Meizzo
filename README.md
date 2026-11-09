@@ -57,8 +57,8 @@ iPhone**.
 
 | Application | Simulator artifact | Compatibility |
 |---|---|---|
-| **MEIZZO Client for iOS** | Available in the beta.2 release as `MEIZZO-client-iOS-simulator.zip` | iOS 16+ Simulator |
-| **MEIZZO Controller for iOS** | Available in the beta.2 release as `MEIZZO-controller-iOS-simulator.zip` | iOS 16+ Simulator |
+| **MEIZZO Client for iOS** | [Download `MEIZZO-client-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-client-iOS-simulator.zip) | iOS 16+ Simulator |
+| **MEIZZO Controller for iOS** | [Download `MEIZZO-controller-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.2/MEIZZO-controller-iOS-simulator.zip) | iOS 16+ Simulator |
 
 Physical iPhone installation is not published yet. It requires an Apple
 Developer team, registered devices, signing certificates, provisioning
