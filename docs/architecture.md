@@ -1,4 +1,4 @@
-# MEIZZO Architecture (Phase 1 Foundation)
+# MEIZZO Architecture
 
 ## 1) Technology Selection
 
@@ -93,8 +93,8 @@ Estimated early-stage monthly cost (small pilot):
 
 ## 8) Development Roadmap
 
-1. **Phase 1 (current)**: foundation architecture and signaling scaffold
-2. Phase 2: production signaling auth, reconnect, multi-client lifecycle
+1. **Phase 1 (implemented)**: Android pairing apps and signaling authorization
+2. Phase 2: production TLS deployment, reconnect, and multi-client lifecycle hardening
 3. Phase 3: device info/tools (battery/storage/network/alarm/flashlight)
 4. Phase 4: screen/camera/location/files with session isolation
 5. Phase 5: complete updater pipeline and compatibility gating

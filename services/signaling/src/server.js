@@ -1,62 +1,72 @@
 'use strict';
 
 const crypto = require('crypto');
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PORT || 8080);
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
 const PAIRING_WINDOW_MS = 60 * 1000;
 const PAIRING_MAX_ATTEMPTS_PER_WINDOW = 10;
+const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 
-/** @type {Map<string, { clientId: string, expiresAtMs: number, pairingAcceptanceEnabled: boolean, connection: import('ws'), metadata?: object }>} */
 const pairingOffersByCode = new Map();
-/** @type {Map<string, { attempts: number, windowStartMs: number }>} */
 const pairAttemptState = new Map();
-/** @type {Map<string, { controllerConnection: import('ws'), clientId: string, controllerId: string, code: string, createdAtMs: number }>} */
 const pendingPairRequests = new Map();
-
-function sendJson(ws, payload) {
-  if (ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(payload));
-  }
-}
+const pairedDevices = new Map();
+const controllerSessions = new Map();
 
 function nowMs() {
   return Date.now();
 }
 
+function sendJson(ws, payload) {
+  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
+}
+
 function isSixDigitCode(code) {
-  return /^\d{6}$/.test(code);
+  return typeof code === 'string' && /^\d{6}$/.test(code);
+}
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= 128;
+}
+
+function token() {
+  return crypto.randomBytes(32).toString('base64url');
 }
 
 function registerAttempt(controllerId) {
   const key = controllerId || 'anonymous';
-  const current = pairAttemptState.get(key);
   const now = nowMs();
-
+  const current = pairAttemptState.get(key);
   if (!current || now - current.windowStartMs > PAIRING_WINDOW_MS) {
     pairAttemptState.set(key, { attempts: 1, windowStartMs: now });
     return true;
   }
-
-  if (current.attempts >= PAIRING_MAX_ATTEMPTS_PER_WINDOW) {
-    return false;
-  }
-
+  if (current.attempts >= PAIRING_MAX_ATTEMPTS_PER_WINDOW) return false;
   current.attempts += 1;
-  pairAttemptState.set(key, current);
   return true;
 }
 
-function pruneExpiredOffers() {
+function validateExpiry(expiresAtMs) {
+  return Number.isFinite(expiresAtMs) &&
+    expiresAtMs > nowMs() &&
+    expiresAtMs - nowMs() <= PAIRING_MAX_TTL_MS;
+}
+
+function sendError(ws, code, message) {
+  sendJson(ws, { type: 'error', code, message });
+}
+
+function prune() {
   const now = nowMs();
-  for (const [code, offer] of pairingOffersByCode.entries()) {
+  for (const [code, offer] of pairingOffersByCode) {
     if (offer.expiresAtMs <= now || offer.connection.readyState !== offer.connection.OPEN) {
       pairingOffersByCode.delete(code);
     }
   }
-
-  for (const [requestId, pending] of pendingPairRequests.entries()) {
+  for (const [requestId, pending] of pendingPairRequests) {
     if (now - pending.createdAtMs > PAIRING_MAX_TTL_MS) {
       pendingPairRequests.delete(requestId);
       sendJson(pending.controllerConnection, {
@@ -67,224 +77,347 @@ function pruneExpiredOffers() {
       });
     }
   }
-}
-
-function validateExpiry(expiresAtMs) {
-  if (typeof expiresAtMs !== 'number') {
-    return false;
+  for (const [clientId, device] of pairedDevices) {
+    if (device.clientConnection && now - device.clientHeartbeat > HEARTBEAT_TIMEOUT_MS) {
+      device.clientConnection = null;
+      device.status = 'offline';
+      device.lastSeen = now;
+      broadcastDeviceStatus(clientId);
+    }
   }
-
-  const now = nowMs();
-  const ttl = expiresAtMs - now;
-  return ttl > 0 && ttl <= PAIRING_MAX_TTL_MS;
 }
 
-function onClientRegisterPairingOffer(ws, message) {
-  const { clientId, pairingCode, expiresAtMs, pairingAcceptanceEnabled, metadata } = message;
+function deviceForConnection(ws) {
+  for (const device of pairedDevices.values()) {
+    if (device.clientConnection === ws || device.controllerConnections.has(ws)) return device;
+  }
+  return null;
+}
 
-  if (typeof clientId !== 'string' || !isSixDigitCode(pairingCode) || !validateExpiry(expiresAtMs)) {
-    sendJson(ws, {
-      type: 'error',
-      code: 'invalid_offer',
-      message: 'Invalid pairing offer payload'
+function broadcastDeviceStatus(clientId) {
+  const device = pairedDevices.get(clientId);
+  if (!device) return;
+  for (const controller of device.controllerConnections) {
+    sendJson(controller, {
+      type: 'device.status',
+      clientId,
+      status: device.status,
+      lastSeen: device.lastSeen,
+      metadata: device.metadata
     });
+  }
+}
+
+function authenticate(ws, message) {
+  if (!isNonEmptyString(message.authToken)) return null;
+  if (message.role === 'controller' && !isNonEmptyString(message.clientId)) {
+    const session = controllerSessions.get(message.authToken);
+    if (!session) return null;
+    session.connection = ws;
+    ws.auth = { role: 'controller', controllerId: session.controllerId };
+    for (const device of pairedDevices.values()) {
+      if (device.controllerIds.has(session.controllerId)) device.controllerConnections.add(ws);
+    }
+    return session;
+  }
+  if (!isNonEmptyString(message.clientId)) return null;
+  const device = pairedDevices.get(message.clientId);
+  if (!device) {
+    const session = controllerSessions.get(message.authToken);
+    if (message.role === 'controller' && session) {
+      session.connection = ws;
+      ws.auth = { role: 'controller', controllerId: session.controllerId };
+      return session;
+    }
+    return null;
+  }
+  if (message.role === 'client' && message.authToken === device.clientToken) {
+    device.clientConnection = ws;
+    device.clientHeartbeat = nowMs();
+    device.lastSeen = nowMs();
+    device.status = 'online';
+    ws.auth = { role: 'client', clientId: message.clientId };
+    broadcastDeviceStatus(device.clientId);
+    return device;
+  }
+  if (message.role === 'controller' && device.controllerTokens.has(message.authToken)) {
+    const session = controllerSessions.get(message.authToken);
+    if (!session) return null;
+    session.connection = ws;
+    device.controllerConnections.add(ws);
+    ws.auth = { role: 'controller', controllerId: session.controllerId };
+    return device;
+  }
+  return null;
+}
+
+function onOffer(ws, message) {
+  if (!isNonEmptyString(message.clientId) || !isSixDigitCode(message.pairingCode) ||
+      !validateExpiry(message.expiresAtMs)) {
+    sendError(ws, 'invalid_offer', 'Invalid pairing offer payload');
     return;
   }
-
-  pairingOffersByCode.set(pairingCode, {
-    clientId,
-    expiresAtMs,
-    pairingAcceptanceEnabled: Boolean(pairingAcceptanceEnabled),
+  pairingOffersByCode.set(message.pairingCode, {
+    clientId: message.clientId,
+    expiresAtMs: message.expiresAtMs,
+    pairingAcceptanceEnabled: message.pairingAcceptanceEnabled === true,
     connection: ws,
-    metadata: typeof metadata === 'object' && metadata !== null ? metadata : undefined
+    metadata: message.metadata && typeof message.metadata === 'object' ? message.metadata : {}
   });
-
-  ws.clientId = clientId;
-  ws.currentPairingCode = pairingCode;
-
+  ws.currentPairingCode = message.pairingCode;
   sendJson(ws, {
     type: 'client.pairing_offer_registered',
-    clientId,
-    pairingCode,
-    expiresAtMs
+    clientId: message.clientId,
+    pairingCode: message.pairingCode,
+    expiresAtMs: message.expiresAtMs
   });
 }
 
-function onControllerRequestPairing(ws, message) {
-  const { controllerId, pairingCode } = message;
-
-  if (typeof controllerId !== 'string' || !isSixDigitCode(pairingCode)) {
-    sendJson(ws, {
-      type: 'error',
-      code: 'invalid_pairing_request',
-      message: 'Invalid controller pairing payload'
-    });
+function onPairingRequest(ws, message) {
+  if (!isNonEmptyString(message.controllerId) || !isSixDigitCode(message.pairingCode)) {
+    sendError(ws, 'invalid_pairing_request', 'Invalid controller pairing payload');
     return;
   }
-
-  if (!registerAttempt(controllerId)) {
-    sendJson(ws, {
-      type: 'controller.pairing_result',
-      status: 'rate_limited',
-      reason: 'Too many attempts, retry later'
-    });
+  if (!registerAttempt(message.controllerId)) {
+    sendJson(ws, { type: 'controller.pairing_result', status: 'rate_limited', reason: 'Too many attempts, retry later' });
     return;
   }
-
-  pruneExpiredOffers();
-
-  const offer = pairingOffersByCode.get(pairingCode);
-  if (!offer) {
-    sendJson(ws, {
-      type: 'controller.pairing_result',
-      status: 'failed',
-      reason: 'Pairing code invalid or expired'
-    });
+  prune();
+  const offer = pairingOffersByCode.get(message.pairingCode);
+  if (!offer || !offer.pairingAcceptanceEnabled) {
+    sendJson(ws, { type: 'controller.pairing_result', status: 'failed', reason: 'Pairing code invalid, expired, or disabled' });
     return;
   }
-
-  if (!offer.pairingAcceptanceEnabled) {
-    sendJson(ws, {
-      type: 'controller.pairing_result',
-      status: 'failed',
-      reason: 'Client has not enabled pairing acceptance'
-    });
-    return;
-  }
-
   const requestId = crypto.randomUUID();
   pendingPairRequests.set(requestId, {
     controllerConnection: ws,
     clientId: offer.clientId,
-    controllerId,
-    code: pairingCode,
+    controllerId: message.controllerId,
+    code: message.pairingCode,
     createdAtMs: nowMs()
   });
+  sendJson(offer.connection, { type: 'client.pairing_request', requestId, controllerId: message.controllerId });
+  sendJson(ws, { type: 'controller.pairing_pending', requestId, clientId: offer.clientId });
+}
 
-  sendJson(offer.connection, {
-    type: 'client.pairing_request',
-    requestId,
-    controllerId
+function onPairingDecision(ws, message) {
+  if (!isNonEmptyString(message.requestId) || typeof message.approved !== 'boolean') {
+    sendError(ws, 'invalid_pairing_decision', 'Invalid pairing decision payload');
+    return;
+  }
+  const pending = pendingPairRequests.get(message.requestId);
+  if (!pending) {
+    sendError(ws, 'pairing_request_not_found', 'Pairing request is not active');
+    return;
+  }
+  const offer = pairingOffersByCode.get(pending.code);
+  if (!offer || offer.connection !== ws) {
+    sendError(ws, 'pairing_offer_not_found', 'Pairing offer is no longer active');
+    pendingPairRequests.delete(message.requestId);
+    return;
+  }
+  pendingPairRequests.delete(message.requestId);
+  if (!message.approved) {
+    sendJson(pending.controllerConnection, { type: 'controller.pairing_result', requestId: message.requestId, status: 'rejected' });
+    return;
+  }
+  pairingOffersByCode.delete(pending.code);
+  const clientToken = token();
+  const controllerToken = token();
+  const controllerSession = {
+    controllerId: pending.controllerId,
+    token: controllerToken,
+    connection: pending.controllerConnection
+  };
+  controllerSessions.set(controllerToken, controllerSession);
+  const device = {
+    clientId: pending.clientId,
+    metadata: offer.metadata,
+    clientToken,
+    controllerTokens: new Set([controllerToken]),
+    controllerIds: new Set([pending.controllerId]),
+    clientConnection: ws,
+    controllerConnections: new Set([pending.controllerConnection]),
+    clientHeartbeat: nowMs(),
+    lastSeen: nowMs(),
+    status: 'online'
+  };
+  ws.auth = { role: 'client', clientId: device.clientId };
+  pairedDevices.set(device.clientId, device);
+  sendJson(pending.controllerConnection, {
+    type: 'controller.pairing_result',
+    requestId: message.requestId,
+    status: 'paired',
+    clientId: device.clientId,
+    authToken: controllerToken,
+    pairedAt: nowMs(),
+    metadata: device.metadata
   });
-
   sendJson(ws, {
-    type: 'controller.pairing_pending',
-    requestId,
-    clientId: offer.clientId
+    type: 'client.pairing_completed',
+    requestId: message.requestId,
+    controllerId: pending.controllerId,
+    authToken: clientToken,
+    pairedAt: nowMs()
   });
 }
 
-function onClientPairingDecision(ws, message) {
-  const { requestId, approved } = message;
-  if (typeof requestId !== 'string' || typeof approved !== 'boolean') {
-    sendJson(ws, {
-      type: 'error',
-      code: 'invalid_pairing_decision',
-      message: 'Invalid pairing decision payload'
-    });
-    return;
+function onHeartbeat(ws, message) {
+  const device = deviceForConnection(ws);
+  if (!device) return sendError(ws, 'unauthorized', 'Authenticate before sending heartbeats');
+  if (ws.auth.role === 'client') {
+    device.clientHeartbeat = nowMs();
+    device.lastSeen = nowMs();
+    device.status = 'online';
   }
+  sendJson(ws, { type: 'heartbeat.ack', timestamp: nowMs() });
+}
 
-  const pending = pendingPairRequests.get(requestId);
-  if (!pending) {
-    sendJson(ws, {
-      type: 'error',
-      code: 'pairing_request_not_found',
-      message: 'Pairing request is not active'
-    });
-    return;
+function onDeviceList(ws) {
+  const devices = [];
+  for (const device of pairedDevices.values()) {
+    if (device.controllerIds.has(ws.auth?.controllerId)) {
+      devices.push({ clientId: device.clientId, status: device.status, lastSeen: device.lastSeen, metadata: device.metadata });
+    }
   }
+  sendJson(ws, { type: 'controller.device_list', devices });
+}
 
-  pendingPairRequests.delete(requestId);
-
-  if (!approved) {
-    sendJson(pending.controllerConnection, {
-      type: 'controller.pairing_result',
-      requestId,
-      status: 'rejected'
-    });
-    return;
+function onControllerSnapshot(ws, message) {
+  const device = pairedDevices.get(message.clientId);
+  if (!device || !device.controllerIds.has(ws.auth?.controllerId)) {
+    return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
-
-  // One-time code consumption to prevent replay.
-  pairingOffersByCode.delete(pending.code);
-
-  const pairedAt = nowMs();
-  sendJson(pending.controllerConnection, {
-    type: 'controller.pairing_result',
+  if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
+  const requestId = crypto.randomUUID();
+  device.clientConnection.send(JSON.stringify({
+    type: 'client.snapshot_request',
     requestId,
-    status: 'paired',
-    clientId: pending.clientId,
-    pairedAt
-  });
+    requestedAt: nowMs()
+  }));
+  device.pendingRequests = device.pendingRequests || new Map();
+  device.pendingRequests.set(requestId, ws);
+}
 
-  sendJson(ws, {
-    type: 'client.pairing_completed',
+function onControllerCommand(ws, message) {
+  const device = pairedDevices.get(message.clientId);
+  if (!device || !device.controllerIds.has(ws.auth?.controllerId)) {
+    return sendError(ws, 'unauthorized', 'Not authorized for this device');
+  }
+  if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
+  if (!isNonEmptyString(message.command)) return sendError(ws, 'invalid_command', 'Command is required');
+  const requestId = crypto.randomUUID();
+  device.clientConnection.send(JSON.stringify({
+    type: 'client.command',
     requestId,
-    controllerId: pending.controllerId,
-    pairedAt
+    command: message.command,
+    parameters: message.parameters && typeof message.parameters === 'object' ? message.parameters : {}
+  }));
+  device.pendingRequests = device.pendingRequests || new Map();
+  device.pendingRequests.set(requestId, ws);
+}
+
+function onRenameDevice(ws, message) {
+  const device = pairedDevices.get(message.clientId);
+  if (!device || ws.auth?.role !== 'controller' || !device.controllerIds.has(ws.auth.controllerId)) {
+    return sendError(ws, 'unauthorized', 'Not authorized for this device');
+  }
+  if (!isNonEmptyString(message.alias) || message.alias.length > 64) {
+    return sendError(ws, 'invalid_alias', 'Alias must be between 1 and 64 characters');
+  }
+  device.metadata = { ...device.metadata, alias: message.alias };
+  broadcastDeviceStatus(device.clientId);
+  sendJson(ws, { type: 'device.renamed', clientId: device.clientId, alias: message.alias });
+}
+
+function onClientResult(ws, message) {
+  const device = deviceForConnection(ws);
+  if (!device || ws.auth?.role !== 'client' || !isNonEmptyString(message.requestId)) {
+    return sendError(ws, 'unauthorized', 'Invalid client response');
+  }
+  const target = device.pendingRequests?.get(message.requestId);
+  if (!target) return sendError(ws, 'request_not_found', 'Request is no longer active');
+  device.pendingRequests.delete(message.requestId);
+  sendJson(target, {
+    type: 'device.result',
+    clientId: device.clientId,
+    requestId: message.requestId,
+    result: message.result && typeof message.result === 'object' ? message.result : {},
+    error: message.error || null
   });
+}
+
+function onRevoke(ws, message) {
+  const device = pairedDevices.get(message.clientId);
+  if (!device || ws.auth?.role !== 'controller' || !device.controllerIds.has(ws.auth.controllerId)) {
+    return sendError(ws, 'unauthorized', 'Not authorized to revoke this device');
+  }
+  device.controllerIds.delete(ws.auth.controllerId);
+  device.controllerConnections.delete(ws);
+  const tokenToDelete = [...device.controllerTokens].find((value) => controllerSessions.get(value)?.controllerId === ws.auth.controllerId);
+  if (tokenToDelete) controllerSessions.delete(tokenToDelete);
+  if (device.controllerIds.size > 0) return sendJson(ws, { type: 'device.revoked', clientId: device.clientId });
+  pairedDevices.delete(device.clientId);
+  if (device.clientConnection) sendJson(device.clientConnection, { type: 'device.revoked', clientId: device.clientId });
+  for (const controller of device.controllerConnections) {
+    sendJson(controller, { type: 'device.revoked', clientId: device.clientId });
+  }
 }
 
 function routeMessage(ws, rawPayload) {
   let message;
-  try {
-    message = JSON.parse(rawPayload.toString());
-  } catch {
-    sendJson(ws, {
-      type: 'error',
-      code: 'invalid_json',
-      message: 'Payload must be JSON'
-    });
-    return;
-  }
-
-  if (!message || typeof message.type !== 'string') {
-    sendJson(ws, {
-      type: 'error',
-      code: 'invalid_message',
-      message: 'Message type is required'
-    });
-    return;
-  }
-
+  try { message = JSON.parse(rawPayload.toString()); } catch { return sendError(ws, 'invalid_json', 'Payload must be JSON'); }
+  if (!message || typeof message.type !== 'string') return sendError(ws, 'invalid_message', 'Message type is required');
   switch (message.type) {
-    case 'client.register_pairing_offer':
-      onClientRegisterPairingOffer(ws, message);
-      break;
-    case 'controller.request_pairing':
-      onControllerRequestPairing(ws, message);
-      break;
-    case 'client.pairing_decision':
-      onClientPairingDecision(ws, message);
-      break;
-    default:
-      sendJson(ws, {
-        type: 'error',
-        code: 'unknown_message_type',
-        message: 'Unsupported message type'
-      });
-      break;
+    case 'client.register_pairing_offer': return onOffer(ws, message);
+    case 'controller.request_pairing': return onPairingRequest(ws, message);
+    case 'client.pairing_decision': return onPairingDecision(ws, message);
+    case 'auth.connect': {
+      const device = authenticate(ws, message);
+      if (!device) return sendError(ws, 'unauthorized', 'Invalid authentication token');
+      sendJson(ws, { type: 'auth.connected', clientId: device.clientId, role: ws.auth.role, status: device.status });
+      return;
+    }
+    case 'heartbeat': return onHeartbeat(ws, message);
+    case 'controller.list_devices': return onDeviceList(ws);
+    case 'controller.request_snapshot': return onControllerSnapshot(ws, message);
+    case 'controller.command': return onControllerCommand(ws, message);
+    case 'controller.rename_device': return onRenameDevice(ws, message);
+    case 'client.result': return onClientResult(ws, message);
+    case 'controller.revoke_device': return onRevoke(ws, message);
+    default: return sendError(ws, 'unknown_message_type', 'Unsupported message type');
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
-
-setInterval(pruneExpiredOffers, 15 * 1000).unref();
+const healthServer = http.createServer((req, res) => {
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({ status: 'ok', uptimeSeconds: process.uptime() }));
+  }
+  res.writeHead(404);
+  res.end();
+});
+healthServer.listen(PORT, '0.0.0.0');
+const wss = new WebSocketServer({ server: healthServer });
+setInterval(prune, 15 * 1000).unref();
 
 wss.on('connection', (ws) => {
   ws.on('message', (payload) => routeMessage(ws, payload));
-
   ws.on('close', () => {
-    if (ws.currentPairingCode && pairingOffersByCode.has(ws.currentPairingCode)) {
-      pairingOffersByCode.delete(ws.currentPairingCode);
+    if (ws.currentPairingCode) pairingOffersByCode.delete(ws.currentPairingCode);
+    const device = deviceForConnection(ws);
+    if (device && ws.auth?.role === 'controller') device.controllerConnections.delete(ws);
+    for (const session of controllerSessions.values()) {
+      if (session.connection === ws) session.connection = null;
+    }
+    if (device && ws.auth?.role === 'client') {
+      device.clientConnection = null;
+      device.status = 'offline';
+      device.lastSeen = nowMs();
+      broadcastDeviceStatus(device.clientId);
     }
   });
-
-  sendJson(ws, {
-    type: 'system.hello',
-    message: 'Meizzo signaling ready'
-  });
+  sendJson(ws, { type: 'system.hello', message: 'Meizzo signaling ready' });
 });
 
 console.log(`Meizzo signaling listening on :${PORT}`);

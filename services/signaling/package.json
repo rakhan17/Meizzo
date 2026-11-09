@@ -2,12 +2,12 @@
   "name": "meizzo-signaling",
   "version": "0.1.0",
   "private": true,
-  "description": "In-memory WebSocket signaling service scaffold for Meizzo",
+  "description": "WebSocket signaling and pairing service for Meizzo",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "check": "node --check src/server.js",
-    "test": "node test/pairing-smoke.test.js"
+    "test": "node test/pairing-smoke.test.js && node test/multi-device.test.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

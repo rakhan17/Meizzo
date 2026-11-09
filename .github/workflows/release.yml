@@ -1,0 +1,33 @@
+name: MEIZZO Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - uses: android-actions/setup-android@v3
+      - run: yes | sdkmanager --licenses >/dev/null || true
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :apps:client:assembleRelease :apps:controller:assembleRelease
+      - run: |
+          mkdir -p dist
+          cp apps/client/build/outputs/apk/release/*.apk dist/MEIZZO-Client-${GITHUB_REF_NAME}.apk
+          cp apps/controller/build/outputs/apk/release/*.apk dist/MEIZZO-Controller-${GITHUB_REF_NAME}.apk
+          cp apps/client/build/outputs/apk/release/*.apk dist/MEIZZO-Client.apk
+          cp apps/controller/build/outputs/apk/release/*.apk dist/MEIZZO-Controller.apk
+          (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: dist/*

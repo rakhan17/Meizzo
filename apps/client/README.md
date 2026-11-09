@@ -1,7 +1,9 @@
-# Meizzo Client (placeholder)
+# MEIZZO Client
 
-Android app module to host managed-device functionality:
-- onboarding + permission health check
-- six-digit pairing code display
-- secure signaling connection
-- remote capability providers (camera, screen, location, files, tools)
+The managed-device Android application. The current milestone generates a secure
+local device identity, publishes a short-lived six-digit pairing offer, displays
+connection state, and requires explicit approval before authorization tokens are
+issued.
+
+The signaling endpoint defaults to `ws://10.0.2.2:8080` for an Android emulator.
+Change `SIGNALING_URL` in `build.gradle.kts` for a deployed WSS service.

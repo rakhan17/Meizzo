@@ -29,6 +29,7 @@ async function run() {
 
     let paired = false;
     let denied = false;
+    let authenticated = false;
 
     client.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
@@ -45,7 +46,14 @@ async function run() {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'controller.pairing_result' && msg.status === 'paired') {
         paired = true;
+        controller.send(JSON.stringify({
+          type: 'auth.connect',
+          role: 'controller',
+          clientId: msg.clientId,
+          authToken: msg.authToken
+        }));
       }
+      if (msg.type === 'auth.connected') authenticated = true;
       if (msg.type === 'controller.pairing_result' && msg.status === 'failed') {
         denied = true;
       }
@@ -84,6 +92,10 @@ async function run() {
 
     if (!denied) {
       throw new Error('Expected one-time code reuse attempt to fail');
+    }
+
+    if (!authenticated) {
+      throw new Error('Expected issued controller token to authenticate');
     }
 
     console.log('pairing-smoke.test: OK');
