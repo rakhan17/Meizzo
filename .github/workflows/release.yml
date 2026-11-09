@@ -23,8 +23,10 @@ jobs:
       - run: ./gradlew :apps:client:assembleRelease :apps:controller:assembleRelease
       - run: |
           mkdir -p dist
-          client_apk="apps/client/build/outputs/apk/release/client-release.apk"
-          controller_apk="apps/controller/build/outputs/apk/release/controller-release.apk"
+          client_apk="$(find apps/client/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          controller_apk="$(find apps/controller/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$client_apk"
+          test -n "$controller_apk"
           "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$client_apk" | grep -q "package: name='com.meizzo.client'"
           "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$controller_apk" | grep -q "package: name='com.meizzo.controller'"
           cp "$client_apk" "dist/MEIZZO-Client-${GITHUB_REF_NAME}.apk"
