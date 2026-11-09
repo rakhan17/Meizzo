@@ -1,0 +1,21 @@
+name: MEIZZOClient
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  MEIZZOClient:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/Client
+      - path: ../Shared
+    resources:
+      - path: Sources/Client/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.meizzo.client.ios
+        INFOPLIST_KEY_CFBundleDisplayName: MEIZZO Client
+        INFOPLIST_KEY_NSCameraUsageDescription: MEIZZO uses the camera only after you start an authorized session.
+        SWIFT_VERSION: 5.0
+    scheme:
+      testTargets: []

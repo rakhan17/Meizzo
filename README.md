@@ -69,3 +69,18 @@ The signaling service uses WebSocket for coordination and is designed to sit beh
 Pairing codes are short-lived and consumed after approval. Attempts are rate-limited, authorization tokens are generated only after explicit approval, and device state expires from memory. The product does not bypass Android permissions, hide capture indicators, or silently enable Accessibility.
 
 See [docs/architecture.md](docs/architecture.md) and [services/signaling/README.md](services/signaling/README.md) for deployment and limitations.
+
+## MEIZZO for iOS — BETA
+
+MEIZZO for iOS is currently in Beta. Some features may be incomplete or unstable. You may encounter bugs, unexpected behavior, or compatibility issues. We apologize for the inconvenience and appreciate your feedback as we continue improving the experience.
+
+| Application | Status | Installation |
+|---|---|---|
+| **MEIZZO Client for iOS** | Beta simulator build | Download the `meizzo-client-ios-simulator` artifact from the [iOS Actions workflow](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml) |
+| **MEIZZO Controller for iOS** | Beta simulator build | Download the `meizzo-controller-ios-simulator` artifact from the [iOS Actions workflow](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml) |
+
+The iOS apps require iOS 16 or newer. Simulator ZIPs are unsigned and are for Simulator testing only; they cannot be installed on a physical iPhone. A physical iPhone build requires Apple signing credentials, a registered device, and a provisioning profile. No signed iOS build is published until those credentials are configured. The practical supported paths are TestFlight or an Xcode-installed development build signed by the team’s Apple Developer account.
+
+The iOS Client displays a six-digit pairing offer and requires explicit approval of Controller requests. The iOS Controller can pair multiple Clients and displays online/offline state. Both use the existing WebSocket signaling protocol and Keychain-backed credentials. Camera capture, screen sharing, remote touch control, unrestricted files, and background monitoring are not included in this beta.
+
+To test a simulator build, download the matching workflow artifact, unzip it, and install the `.app` in an iOS Simulator with Xcode. For a physical-device beta, configure signing before attempting installation. Report bugs through [GitHub Issues](https://github.com/rakhan17/Meizzo/issues) and include the app name, iOS version, device model, workflow run, and reproduction steps. The signaling endpoint can be changed in each app; use a reachable `wss://` endpoint for an iPhone.

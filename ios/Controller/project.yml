@@ -1,0 +1,20 @@
+name: MEIZZOController
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  MEIZZOController:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/Controller
+      - path: ../Shared
+    resources:
+      - path: Sources/Controller/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.meizzo.controller.ios
+        INFOPLIST_KEY_CFBundleDisplayName: MEIZZO Controller
+        SWIFT_VERSION: 5.0
+    scheme:
+      testTargets: []

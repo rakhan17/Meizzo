@@ -1,0 +1,43 @@
+name: MEIZZO iOS
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        app: [client, controller]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}
+        run: xcodegen generate
+      - name: Build simulator app
+        working-directory: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}
+        run: |
+          scheme="${{ matrix.app == 'client' && 'MEIZZOClient' || 'MEIZZOController' }}"
+          xcodebuild -project "${scheme}.xcodeproj" -scheme "$scheme" \
+            -sdk iphonesimulator -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Package simulator build
+        working-directory: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}
+        run: |
+          scheme="${{ matrix.app == 'client' && 'MEIZZOClient' || 'MEIZZOController' }}"
+          app_path="$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' -type d -print -quit)"
+          test -n "$app_path"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "MEIZZO-${{ matrix.app }}-iOS-simulator.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meizzo-${{ matrix.app }}-ios-simulator
+          path: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}/MEIZZO-${{ matrix.app }}-iOS-simulator.zip
