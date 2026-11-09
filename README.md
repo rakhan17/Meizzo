@@ -55,8 +55,8 @@ iPhone**.
 
 | Application | Simulator artifact | Compatibility |
 |---|---|---|
-| **MEIZZO Client for iOS** | [Download from verified build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) · artifact `meizzo-client-ios-simulator` | iOS 16+ Simulator |
-| **MEIZZO Controller for iOS** | [Download from verified build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) · artifact `meizzo-controller-ios-simulator` | iOS 16+ Simulator |
+| **MEIZZO Client for iOS** | [Download artifact ZIP](https://api.github.com/repos/rakhan17/Meizzo/actions/artifacts/13656213609/zip) · [view build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) · `meizzo-client-ios-simulator` | iOS 16+ Simulator |
+| **MEIZZO Controller for iOS** | [Download artifact ZIP](https://api.github.com/repos/rakhan17/Meizzo/actions/artifacts/13656872209/zip) · [view build 42579959749](https://github.com/rakhan17/Meizzo/actions/runs/42579959749) · `meizzo-controller-ios-simulator` | iOS 16+ Simulator |
 
 Physical iPhone installation is not published yet. It requires an Apple
 Developer team, registered devices, signing certificates, provisioning
@@ -240,7 +240,7 @@ for platform icons without changing its paths or proportions.
 
 <div align="center">
 
-**MEIZZO** · Android and iOS beta
+**MEIZZO** · Android and iOS beta<br>
 [Repository](https://github.com/rakhan17/Meizzo) ·
 [Releases](https://github.com/rakhan17/Meizzo/releases) ·
 [Issues](https://github.com/rakhan17/Meizzo/issues)
