@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test release version derivation
-        run: python3 -m unittest discover -s tests -p 'test_release_version.py' -v
+        run: python3 tests/test_release_version.py -v
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: services/signaling/package-lock.json }
       - run: npm ci
