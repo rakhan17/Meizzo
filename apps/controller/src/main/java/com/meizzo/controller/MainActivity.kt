@@ -239,6 +239,7 @@ class MainActivity : Activity() {
                         "device.revoked" -> {
                             val clientId = message.optString("clientId")
                             secureStore.remove("token_$clientId")
+                            preferences.edit().remove("paired_$clientId").apply()
                             devices.remove(clientId)
                             renderDevices()
                         }
