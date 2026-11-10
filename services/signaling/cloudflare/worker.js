@@ -173,6 +173,7 @@ export class MeizzoSignaling {
         };
         const controllerToken = randomToken();
         device.metadata = offer.metadata;
+        device.clientConnId = a.connId;
         device.controllerTokens[controllerToken] = pending.controllerId;
         if (!device.controllerIds.includes(pending.controllerId)) device.controllerIds.push(pending.controllerId);
         device.status = "online"; device.lastSeen = t; device.clientHeartbeat = t;
@@ -205,7 +206,9 @@ export class MeizzoSignaling {
         if (m.role === "controller") {
           const controllerId = s.controllers[m.authToken]?.controllerId;
           if (!controllerId) return this.sendError(ws, "unauthorized", "Invalid authentication token");
-          this.setAuth(ws, { role: "controller", controllerId, token: m.authToken });
+          if (a.role === "controller" && a.controllerId !== controllerId) return this.sendError(ws, "unauthorized", "Controller identity mismatch");
+          const tokens = [...new Set([...(a.tokens || []), m.authToken])];
+          this.setAuth(ws, { role: "controller", controllerId, token: m.authToken, tokens });
           this.send(ws, { type: "controller.status", status: "connected", timestamp: t });
           const d = Object.values(s.devices).find(x => x.controllerTokens[m.authToken]);
           this.send(ws, { type: "auth.connected", protocolVersion: PROTOCOL_VERSION, capabilities: SERVER_CAPABILITIES, clientId: d?.clientId || "", role: "controller", status: "connected" });
@@ -227,8 +230,11 @@ export class MeizzoSignaling {
       }
       case "controller.list_devices": {
         if (a.role !== "controller") return this.sendError(ws, "unauthorized", "Controller authentication required");
-        const devices = Object.values(s.devices).filter(d => d.controllerTokens[a.token] === a.controllerId)
-          .map(d => ({ clientId: d.clientId, status: d.status, lastSeen: d.lastSeen, metadata: d.metadata }));
+        const devices = Object.values(s.devices).filter(d =>
+          Object.entries(d.controllerTokens).some(([token, owner]) =>
+            owner === a.controllerId && (a.tokens || [a.token]).includes(token)
+          )
+        ).map(d => ({ clientId: d.clientId, status: d.status, lastSeen: d.lastSeen, metadata: d.metadata }));
         return this.send(ws, { type: "controller.device_list", devices });
       }
       case "controller.rename_device": {
@@ -316,12 +322,20 @@ export class MeizzoSignaling {
   authorizedDevice(s, a, clientId) {
     if (a.role !== "controller" || !validString(clientId)) return null;
     const d = s.devices[clientId];
-    return d && d.controllerTokens[a.token] === a.controllerId ? d : null;
+    const tokens = a.tokens || [a.token];
+    return d && Object.entries(d.controllerTokens).some(([token, owner]) =>
+      owner === a.controllerId && tokens.includes(token)
+    ) ? d : null;
   }
 
   broadcastDevice(s, d) {
     const payload = { type: "device.status", clientId: d.clientId, status: d.status, lastSeen: d.lastSeen, metadata: d.metadata };
-    for (const controllerId of d.controllerIds) this.sendController(controllerId, payload);
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = this.attachment(ws);
+      if (a.role === "controller" && Object.entries(d.controllerTokens).some(([token, owner]) =>
+        owner === a.controllerId && (a.tokens || [a.token]).includes(token)
+      )) this.send(ws, payload);
+    }
   }
 
   async webSocketClose(ws) {
