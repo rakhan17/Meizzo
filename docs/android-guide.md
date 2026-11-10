@@ -29,8 +29,34 @@ keystore secrets are configured.
 
 ## Updates
 
-`UpdateManager.kt` queries GitHub Releases over HTTPS, selects the app-specific
-asset, verifies `SHA256SUMS.txt`, validates package ID and installed signing
-certificate, and delegates to Android Package Installer through FileProvider.
-It does not silently install, request root, accept downgrades, or bypass a
+The in-app updater checks GitHub Releases over HTTPS and follows the installed
+build's channel: beta builds receive prereleases, while stable builds receive
+stable releases. A release must include `MEIZZO-UPDATE.json` (schema version 1)
+with separate Client and Controller entries.
+
+The release manifest records each APK's package ID, asset name and size,
+version name and code, SHA-256 digest, and signing-certificate SHA-256 digest.
+The release workflow derives Android version codes from semantic version tags
+so successive prereleases can be installed as upgrades instead of being
+rejected as the same version.
+
+Before installation, the updater:
+
+1. Checks the manifest tag, channel, package ID, version, and release asset.
+2. Downloads to a temporary `.part` file and verifies the expected size.
+3. Verifies the APK SHA-256 digest.
+4. Inspects the APK package ID and version metadata.
+5. Requires the APK signing certificate to match both the installed app and
+   the release manifest.
+6. Renames the verified download into its final cache location and hands it to
+   Android Package Installer through FileProvider.
+
+Android may require the user to allow installation from MEIZZO. The final
+installer confirmation always remains under the user's control. The updater
+does not silently install, request root, accept downgrades, or bypass a
 certificate mismatch.
+
+Legacy releases without `MEIZZO-UPDATE.json` are not eligible for the new
+manifest-based updater. Do not publish a new beta until the release workflow,
+signing compatibility, and an actual upgrade from an existing install have
+been verified.
