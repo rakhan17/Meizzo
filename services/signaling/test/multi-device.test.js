@@ -204,7 +204,7 @@ async function run() {
     controller.send(JSON.stringify({
       type: 'controller.start_session',
       clientId: 'client-a',
-      sessionType: 'interaction'
+      sessionType: 'monitoring'
     }));
     await duplicateSessionError;
     const sessionApproved = nextMessage(controller, (message) =>
