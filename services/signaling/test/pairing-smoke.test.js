@@ -28,7 +28,7 @@ async function run() {
     const controller = await openSocket('ws://127.0.0.1:8100');
 
     let paired = false;
-    let denied = false;
+    let deniedCount = 0;
     let authenticated = false;
     let authProtocol = false;
 
@@ -60,7 +60,7 @@ async function run() {
           msg.capabilities.includes('telemetry');
       }
       if (msg.type === 'controller.pairing_result' && msg.status === 'failed') {
-        denied = true;
+        deniedCount += 1;
       }
     });
 
@@ -71,11 +71,29 @@ async function run() {
       expiresAtMs: Date.now() + 60_000,
       pairingAcceptanceEnabled: true
     }));
+    // Rotating a code must immediately invalidate the previous offer.
+    client.send(JSON.stringify({
+      type: 'client.register_pairing_offer',
+      clientId: 'client-test-1',
+      pairingCode: '123456',
+      expiresAtMs: Date.now() + 60_000,
+      pairingAcceptanceEnabled: true
+    }));
 
     controller.send(JSON.stringify({
       type: 'controller.request_pairing',
       controllerId: 'controller-test-1',
       pairingCode: '654321'
+    }));
+    await wait(300);
+    if (deniedCount < 1) {
+      throw new Error('Expected previous pairing code to be invalidated after rotation');
+    }
+
+    controller.send(JSON.stringify({
+      type: 'controller.request_pairing',
+      controllerId: 'controller-test-1',
+      pairingCode: '123456'
     }));
 
     await wait(800);
@@ -88,14 +106,11 @@ async function run() {
 
     await wait(500);
 
-    client.close();
-    controller.close();
-
     if (!paired) {
       throw new Error('Expected pairing success flow to complete');
     }
 
-    if (!denied) {
+    if (deniedCount < 2) {
       throw new Error('Expected one-time code reuse attempt to fail');
     }
 
@@ -107,6 +122,34 @@ async function run() {
       throw new Error('Expected protocol version and capabilities negotiation');
     }
 
+    const rateLimited = await new Promise((resolve, reject) => {
+      let received = 0;
+      let sawRateLimit = false;
+      const timeout = setTimeout(() => reject(new Error('Pairing IP rate limit was not enforced')), 2000);
+      const listener = (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type !== 'controller.pairing_result') return;
+        received += 1;
+        if (message.status === 'rate_limited') sawRateLimit = true;
+        if (received === 28) {
+          clearTimeout(timeout);
+          controller.off('message', listener);
+          resolve(sawRateLimit);
+        }
+      };
+      controller.on('message', listener);
+      for (let index = 0; index < 28; index += 1) {
+        controller.send(JSON.stringify({
+          type: 'controller.request_pairing',
+          controllerId: `rate-test-${index}`,
+          pairingCode: '000000'
+        }));
+      }
+    });
+    if (!rateLimited) throw new Error('Pairing attempts were not limited per network address');
+
+    client.close();
+    controller.close();
     console.log('pairing-smoke.test: OK');
   } finally {
     server.kill('SIGTERM');

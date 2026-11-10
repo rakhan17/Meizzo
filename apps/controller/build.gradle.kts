@@ -3,18 +3,33 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-android { namespace = "com.meizzo.controller"; compileSdk = 35
+val releaseVersionName = providers.gradleProperty("meizzo.releaseVersionName")
+    .orElse("2.0.1-beta.1").get()
+val releaseVersionCode = providers.gradleProperty("meizzo.releaseVersionCode")
+    .orElse("20001301").get().toInt()
+val debugSignalingUrl = providers.gradleProperty("meizzo.debugSignalingUrl")
+    .orElse("ws://10.0.2.2:8080").get()
+val releaseSignalingUrl = providers.gradleProperty("meizzo.releaseSignalingUrl")
+    .orElse("wss://configure-your-meizzo-endpoint.invalid").get()
+
+android {
+    namespace = "com.meizzo.controller"
+    compileSdk = 35
     defaultConfig {
-        applicationId = "com.meizzo.controller"; minSdk = 26; targetSdk = 35; versionCode = 3; versionName = "0.1.0-beta.3"
+        applicationId = "com.meizzo.controller"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
         manifestPlaceholders["allowCleartext"] = false
     }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["allowCleartext"] = true
-            buildConfigField("String", "SIGNALING_URL", "\"${providers.gradleProperty("meizzo.debugSignalingUrl").orElse("ws://10.0.2.2:8080").get()}\"")
+            buildConfigField("String", "SIGNALING_URL", "\"$debugSignalingUrl\"")
         }
         getByName("release") {
-            buildConfigField("String", "SIGNALING_URL", "\"${providers.gradleProperty("meizzo.releaseSignalingUrl").orElse("wss://configure-your-meizzo-endpoint.invalid").get()}\"")
+            buildConfigField("String", "SIGNALING_URL", "\"$releaseSignalingUrl\"")
         }
     }
     buildFeatures { buildConfig = true }
@@ -23,9 +38,7 @@ android { namespace = "com.meizzo.controller"; compileSdk = 35
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
-
 kotlin { jvmToolchain(17) }
-
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core:1.15.0")

@@ -20,6 +20,8 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.io.File
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -40,50 +42,158 @@ class MainActivity : Activity() {
     private var reconnectScheduled = false
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private val devices = linkedMapOf<String, JSONObject>()
+    private val approvedInteractionSessions = mutableMapOf<String, String>()
+    private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
+    private var pendingUpdateApk: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 48, 40, 24)
+            setPadding(dp(22), dp(24), dp(22), dp(28))
             setBackgroundColor(Color.rgb(8, 8, 10))
         }
-        root.addView(ImageView(this).apply {
+        content.addView(ImageView(this).apply {
             setImageResource(R.drawable.meizzo_logo)
             contentDescription = "MEIZZO logo"
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }, LinearLayout.LayoutParams(-1, 120))
-        root.addView(TextView(this).apply {
+        }, LinearLayout.LayoutParams(-1, dp(76)))
+        content.addView(TextView(this).apply {
             text = "MEIZZO CONTROLLER"
-            textSize = 26f
+            textSize = 24f
+            letterSpacing = 0.1f
             setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, dp(18), 0, dp(4))
         })
+        content.addView(TextView(this).apply {
+            text = "Your connected devices, at a glance."
+            textSize = 14f
+            setTextColor(Color.rgb(155, 155, 163))
+        })
+
+        val overview = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        overview.addView(uiEyebrow("CONNECTION"))
         connectionLabel = TextView(this).apply {
-            text = "● Connecting to MEIZZO"; textSize = 15f; setPadding(0, 10, 0, 8)
-            setTextColor(Color.rgb(238, 190, 100))
+            text = "● Connecting to MEIZZO"
+            textSize = 14f
+            setPadding(0, dp(8), 0, dp(8))
+            setTextColor(Color.rgb(220, 190, 120))
         }
-        root.addView(connectionLabel)
-        summaryLabel = TextView(this).apply { textSize = 15f; setTextColor(Color.LTGRAY); setPadding(0, 0, 0, 16) }
-        root.addView(summaryLabel)
+        overview.addView(connectionLabel)
+        summaryLabel = TextView(this).apply {
+            text = "Loading device inventory…"
+            textSize = 13f
+            setTextColor(Color.rgb(165, 165, 173))
+        }
+        overview.addView(summaryLabel)
+        content.addView(overview, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+
+        val pairing = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        pairing.addView(uiEyebrow("PAIR A DEVICE"))
         codeInput = EditText(this).apply {
-            hint = "Six-digit pairing code"; inputType = 2; maxLines = 1
-            setHintTextColor(Color.GRAY); setTextColor(Color.WHITE)
+            hint = "Enter six-digit pairing code"
+            inputType = 2
+            maxLines = 1
+            textSize = 16f
+            setHintTextColor(Color.rgb(115, 115, 123))
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(12), 0, dp(10))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(85, 85, 94))
         }
-        root.addView(codeInput)
-        root.addView(Button(this).apply {
-            text = "Add device"; setOnClickListener { requestPairing() }
-        })
-        root.addView(Button(this).apply {
-            text = "Check for app updates"
-            setOnClickListener { checkForUpdate() }
+        pairing.addView(codeInput)
+        pairing.addView(uiActionButton("Add device", true) { requestPairing() },
+            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
+            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
+
+        content.addView(uiEyebrow("YOUR DEVICES").apply {
+            setPadding(dp(2), dp(28), 0, dp(8))
         })
         devicesLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(this).apply { addView(devicesLayout) }, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root)
+        content.addView(devicesLayout)
+        content.addView(TextView(this).apply {
+            text = "MEIZZO  ·  SECURE DEVICE MANAGEMENT"
+            textSize = 10f
+            letterSpacing = 0.12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(105, 105, 113))
+            setPadding(0, dp(28), 0, dp(8))
+        })
+        setContentView(android.widget.ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
+            setBackgroundColor(Color.rgb(8, 8, 10))
+        })
         renderDevices()
         connect()
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun uiCard(): LinearLayout = LinearLayout(this).apply {
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(20, 20, 24))
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(42, 42, 48))
+        }
+    }
+
+    private fun uiEyebrow(value: String): TextView = TextView(this).apply {
+        text = value
+        textSize = 10f
+        letterSpacing = 0.16f
+        setTextColor(Color.rgb(145, 145, 154))
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+
+    private fun uiActionButton(label: String, primary: Boolean, action: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 14f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(if (primary) Color.rgb(12, 12, 14) else Color.WHITE)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(if (primary) Color.WHITE else Color.rgb(27, 27, 32))
+                cornerRadius = dp(14).toFloat()
+                if (!primary) setStroke(dp(1), Color.rgb(55, 55, 62))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+
+    override fun onResume() {
+        super.onResume()
+        val pending = pendingUpdateApk ?: return
+        if (updateManager.canInstallPackages()) {
+            AlertDialog.Builder(this)
+                .setTitle("Update ready to install")
+                .setMessage("MEIZZO has permission to start the Android installer. Confirm installation to continue.")
+                .setNegativeButton("Later", null)
+                .setPositiveButton("Install") { _, _ ->
+                    pendingUpdateApk = null
+                    updateManager.install(pending)
+                }
+                .show()
+        } else {
+            setConnection("Install permission is required to continue.", false)
+            AlertDialog.Builder(this)
+                .setTitle("Allow app updates")
+                .setMessage("Enable 'Allow from this source' for MEIZZO in Android settings, then return here.")
+                .setNegativeButton("Later", null)
+                .setPositiveButton("Open settings") { _, _ -> updateManager.requestInstallPermission() }
+                .show()
+        }
     }
 
     private fun connect() {
@@ -118,18 +228,36 @@ class MainActivity : Activity() {
                             } else updateDevice(message)
                             renderDevices()
                         }
+                        "session.status" -> handleSessionStatus(message)
                         "device.result" -> {
                             val id = message.optString("clientId")
-                            if (message.optJSONObject("result") != null) {
+                            val error = message.optString("error")
+                            if (error.isNotBlank() && error != "null") {
+                                setConnection("Device command failed · $error", false)
+                            } else if (message.optJSONObject("result") != null) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
-                                current.put("metadata", current.optJSONObject("metadata") ?: JSONObject())
-                                current.getJSONObject("metadata").put("telemetry", message.getJSONObject("result"))
+                                val metadata = current.optJSONObject("metadata") ?: JSONObject()
+                                val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+                                val result = message.getJSONObject("result")
+                                val keys = result.keys()
+                                while (keys.hasNext()) {
+                                    val key = keys.next()
+                                    telemetry.put(key, result.get(key))
+                                }
+                                metadata.put("telemetry", telemetry)
+                                current.put("metadata", metadata)
                                 devices[id] = current
                                 renderDevices()
                             }
                         }
                         "device.revoked" -> {
-                            devices.remove(message.optString("clientId")); renderDevices()
+                            val clientId = message.optString("clientId")
+                            secureStore.remove("token_$clientId")
+                            preferences.edit().remove("paired_$clientId").apply()
+                            devices.remove(clientId)
+                            approvedInteractionSessions.remove(clientId)
+                            pendingInteractionSessions.remove(clientId)
+                            renderDevices()
                         }
                         "error" -> runOnUiThread {
                             connectionLabel.text = "● Error · ${message.optString("message")}"
@@ -139,6 +267,11 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    runOnUiThread {
+                        approvedInteractionSessions.clear()
+                        pendingInteractionSessions.clear()
+                        renderDevices()
+                    }
                     setConnection(connectionFailureLabel(t), false)
                     scheduleReconnect()
                 }
@@ -243,9 +376,9 @@ class MainActivity : Activity() {
         val metadata = device.optJSONObject("metadata") ?: JSONObject()
         val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
         val online = device.optString("status") == "online"
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(24, 20, 24, 20)
-            setBackgroundColor(Color.rgb(25, 25, 29))
+        val card = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
         }
         val name = metadata.optString("alias").takeUnless { it.isBlank() }
             ?: metadata.optString("model").takeUnless { it.isBlank() } ?: id
@@ -261,6 +394,31 @@ class MainActivity : Activity() {
             textSize = 14f; setTextColor(Color.LTGRAY); setPadding(0, 8, 0, 8)
         })
         card.addView(Button(this).apply { text = "Open device details"; setOnClickListener { showDetails(device) } })
+        val interactionSession = approvedInteractionSessions[id]
+        val pendingInteraction = pendingInteractionSessions[id]
+        card.addView(uiActionButton(
+            when {
+                interactionSession != null -> "End interaction session"
+                pendingInteraction != null -> "Waiting for Client approval"
+                else -> "Request interaction access"
+            },
+            interactionSession == null && pendingInteraction == null
+        ) {
+            when {
+                interactionSession != null -> endInteraction(id, interactionSession)
+                pendingInteraction == null -> requestInteraction(id)
+            }
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        if (interactionSession != null) {
+            card.addView(uiActionButton("Flashlight on", false) { sendDeviceCommand(id, "flashlight", true) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+            card.addView(uiActionButton("Flashlight off", false) { sendDeviceCommand(id, "flashlight", false) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Alarm on", false) { sendDeviceCommand(id, "alarm", true) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Alarm off", false) { sendDeviceCommand(id, "alarm", false) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+        }
         devicesLayout.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 12, 0, 0) })
     }
 
@@ -268,22 +426,60 @@ class MainActivity : Activity() {
         val id = device.optString("clientId")
         val metadata = device.optJSONObject("metadata") ?: JSONObject()
         val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+        val lastSeen = device.optLong("lastSeen", 0L)
+        val battery = if (telemetry.has("batteryPercent")) {
+            "${telemetry.optInt("batteryPercent").coerceIn(0, 100)}%"
+        } else "Unavailable"
+        val storage = formatBytes(telemetry.optLong("storageAvailableBytes", -1L))
+        val uptime = formatDuration(telemetry.optLong("uptimeMs", -1L))
+        val manufacturer = metadata.optString("manufacturer").takeUnless { it.isBlank() }
+        val model = metadata.optString("model").takeUnless { it.isBlank() }
+        val deviceName = listOfNotNull(manufacturer, model).joinToString(" ").ifBlank { "Unavailable" }
         val text = buildString {
+            append("CONNECTION\n")
             append("Status: ${device.optString("status", "offline").replaceFirstChar { it.uppercase() }}\n")
-            append("Last seen: ${device.optLong("lastSeen", 0)}\n\n")
-            append("Overview\n${metadata.optString("manufacturer", "Unavailable")} ${metadata.optString("model", "")}\n")
-            append("Platform: ${metadata.optString("platform", "Android")}\n")
-            append("OS: ${metadata.optString("androidVersion", "Unavailable")}\n\n")
-            append("Battery: ${telemetry.optString("batteryPercent", "Unavailable")}%\n")
-            append("Charging: ${telemetry.optString("charging", "Unavailable")}\n")
-            append("Network: ${telemetry.optString("network", "Unavailable")}\n")
-            append("Storage available: ${telemetry.optString("storageAvailableBytes", "Unavailable")} bytes\n")
-            append("Uptime: ${telemetry.optString("uptimeMs", "Unavailable")} ms")
+            append("Last seen: ${if (lastSeen > 0L) android.text.format.DateFormat.format("dd MMM yyyy, HH:mm", lastSeen) else "Never"}\n\n")
+            append("DEVICE\n")
+            append("Model: $deviceName\n")
+            append("Platform: ${metadata.optString("platform").ifBlank { "Unavailable" }}\n")
+            append("OS version: ${metadata.optString("androidVersion").ifBlank { "Unavailable" }}\n\n")
+            append("TELEMETRY\n")
+            append("Battery: $battery\n")
+            append("Charging: ${telemetry.optString("charging").ifBlank { "Unavailable" }}\n")
+            append("Network: ${telemetry.optString("network").ifBlank { "Unavailable" }}\n")
+            append("Available storage: $storage\n")
+            append("Uptime: $uptime")
         }
         AlertDialog.Builder(this).setTitle(metadata.optString("alias").ifBlank { id }).setMessage(text)
             .setPositiveButton("Refresh telemetry") { _, _ -> sendSnapshot(id) }
             .setNeutralButton("Rename") { _, _ -> rename(id, metadata.optString("alias")) }
             .setNegativeButton("Close", null).show()
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 0L) return "Unavailable"
+        if (bytes < 1024L) return "$bytes B"
+        val units = arrayOf("KB", "MB", "GB", "TB")
+        var value = bytes.toDouble()
+        var unit = -1
+        while (value >= 1024.0 && unit < units.lastIndex) {
+            value /= 1024.0
+            unit++
+        }
+        return String.format(Locale.getDefault(), "%.1f %s", value, units[unit])
+    }
+
+    private fun formatDuration(milliseconds: Long): String {
+        if (milliseconds < 0L) return "Unavailable"
+        val totalMinutes = milliseconds / 60_000L
+        val days = totalMinutes / 1_440L
+        val hours = (totalMinutes % 1_440L) / 60L
+        val minutes = totalMinutes % 60L
+        return when {
+            days > 0L -> "${days}d ${hours}h"
+            hours > 0L -> "${hours}h ${minutes}m"
+            else -> "${minutes}m"
+        }
     }
 
     private fun rename(clientId: String, current: String) {
@@ -297,25 +493,102 @@ class MainActivity : Activity() {
             }.show()
     }
 
+    private fun handleSessionStatus(message: JSONObject) = runOnUiThread {
+        val clientId = message.optString("clientId")
+        val sessionId = message.optString("sessionId")
+        if (clientId.isBlank() || sessionId.isBlank() ||
+            message.optString("sessionType") != "interaction") return@runOnUiThread
+        when (message.optString("state")) {
+            "pending" -> {
+                pendingInteractionSessions[clientId] = sessionId
+                setConnection("Waiting for Client approval", false)
+            }
+            "approved" -> {
+                pendingInteractionSessions.remove(clientId, sessionId)
+                approvedInteractionSessions[clientId] = sessionId
+                setConnection("Interaction approved · controls unlocked", true)
+            }
+            "failed", "rejected", "ended" -> {
+                pendingInteractionSessions.remove(clientId, sessionId)
+                if (approvedInteractionSessions[clientId] == sessionId) {
+                    approvedInteractionSessions.remove(clientId)
+                }
+                setConnection("Interaction session ${message.optString("state")}", false)
+            }
+        }
+        renderDevices()
+    }
+
+    private fun requestInteraction(clientId: String) {
+        if (pendingInteractionSessions.containsKey(clientId) ||
+            approvedInteractionSessions.containsKey(clientId)) return
+        socket?.send(JSONObject().apply {
+            put("type", "controller.start_session")
+            put("clientId", clientId)
+            put("sessionType", "interaction")
+        }.toString())
+        setConnection("Waiting for Client approval", false)
+    }
+
+    private fun endInteraction(clientId: String, sessionId: String) {
+        approvedInteractionSessions.remove(clientId, sessionId)
+        renderDevices()
+        socket?.send(JSONObject().apply {
+            put("type", "controller.end_session")
+            put("sessionId", sessionId)
+            put("reason", "controller_ended")
+        }.toString())
+    }
+
+    private fun sendDeviceCommand(clientId: String, command: String, enabled: Boolean) {
+        if (approvedInteractionSessions[clientId].isNullOrBlank()) {
+            setConnection("Request Client approval before sending commands", false)
+            return
+        }
+        socket?.send(JSONObject().apply {
+            put("type", "controller.command")
+            put("clientId", clientId)
+            put("command", command)
+            put("parameters", JSONObject().put("enabled", enabled))
+        }.toString())
+        setConnection("Command sent · $command ${if (enabled) "on" else "off"}", true)
+    }
+
     private fun sendSnapshot(clientId: String) {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
     }
 
+    private fun formatUpdateSize(bytes: Long): String = when {
+        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
+        else -> "$bytes B"
+    }
+
+    private fun setUpdateStatus(message: String) { setConnection(message, false) }
+
     private fun checkForUpdate() {
-        setConnection("Checking for updates", false)
+        setUpdateStatus("Checking for updates…")
         updateManager.check { result ->
             runOnUiThread {
                 result.onFailure { error ->
-                    setConnection("Update check failed · ${error.message ?: "network error"}", false)
-                }.onSuccess { release ->
-                    val available = release ?: run {
-                        setConnection("Connected · up to date (${BuildConfig.VERSION_NAME})", true)
+                    setUpdateStatus("Update check failed · ${error.message ?: "network error"}")
+                }.onSuccess { available ->
+                    if (available == null) {
+                        setUpdateStatus("Up to date · ${BuildConfig.VERSION_NAME}")
                         return@onSuccess
                     }
+                    val details = "Installed: ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})\n" +
+                        "Available: ${available.versionName} (code ${available.versionCode})\n" +
+                        "Channel: ${if (available.prerelease) "Beta" else "Stable"}\n" +
+                        "APK size: ${formatUpdateSize(available.assetSize)}\n" +
+                        "Published: ${updateManager.formatDate(available.publishedAt)}\n\n" +
+                        available.notes
                     AlertDialog.Builder(this)
-                        .setTitle("Update ${available.tag}${if (available.prerelease) " · beta" else ""}")
-                        .setMessage("${available.notes}\n\nPublished: ${updateManager.formatDate(available.publishedAt)}")
-                        .setNegativeButton("Later") { _, _ -> setConnection("Update available · ${available.tag}", true) }
+                        .setTitle("MEIZZO update · ${available.tag}")
+                        .setMessage(details)
+                        .setNegativeButton("Later") { _, _ ->
+                            setUpdateStatus("Update available · ${available.versionName}")
+                        }
                         .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
                         .show()
                 }
@@ -324,21 +597,28 @@ class MainActivity : Activity() {
     }
 
     private fun downloadUpdate(release: ControllerReleaseInfo) {
-        setConnection("Downloading update · 0%", false)
+        setUpdateStatus("Downloading update · 0%")
         updateManager.download(release, { progress ->
-            runOnUiThread { setConnection("Downloading update · $progress%", false) }
+            runOnUiThread { setUpdateStatus("Downloading update · $progress%") }
         }) { result ->
             runOnUiThread {
                 result.onFailure { error ->
-                    setConnection("Update failed · ${error.message ?: "verification error"}", false)
+                    setUpdateStatus("Update failed · ${error.message ?: "verification error"}")
                 }.onSuccess { apk ->
+                    setUpdateStatus("Update verified · awaiting installation")
                     AlertDialog.Builder(this)
-                        .setTitle("Install ${release.tag}?")
-                        .setMessage("The APK package and SHA-256 checksum were verified. Android will show the final install confirmation.")
+                        .setTitle("Install ${release.versionName}?")
+                        .setMessage(
+                            "Package ID, version, file size, SHA-256, and signing certificate were verified. " +
+                                "Android will show the final installation confirmation."
+                        )
                         .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Install") { _, _ -> updateManager.install(apk) }
+                        .setPositiveButton("Install") { _, _ ->
+                            pendingUpdateApk = apk
+                            updateManager.install(apk)
+                            if (updateManager.canInstallPackages()) pendingUpdateApk = null
+                        }
                         .show()
-                    setConnection("Update verified · installation pending", true)
                 }
             }
         }

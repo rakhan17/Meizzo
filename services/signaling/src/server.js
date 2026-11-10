@@ -13,6 +13,7 @@ const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 
 const pairingOffersByCode = new Map();
 const pairAttemptState = new Map();
+const pairIpAttemptState = new Map();
 const pendingPairRequests = new Map();
 const pairedDevices = new Map();
 const controllerSessions = new Map();
@@ -44,17 +45,26 @@ function token() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
-function registerAttempt(controllerId) {
-  const key = controllerId || 'anonymous';
-  const now = nowMs();
-  const current = pairAttemptState.get(key);
+function consumeAttempt(map, key, limit, now) {
+  const current = map.get(key);
   if (!current || now - current.windowStartMs > PAIRING_WINDOW_MS) {
-    pairAttemptState.set(key, { attempts: 1, windowStartMs: now });
+    map.set(key, { attempts: 1, windowStartMs: now });
     return true;
   }
-  if (current.attempts >= PAIRING_MAX_ATTEMPTS_PER_WINDOW) return false;
+  if (current.attempts >= limit) return false;
   current.attempts += 1;
   return true;
+}
+
+function registerAttempt(controllerId, ws) {
+  const now = nowMs();
+  const controllerKey = controllerId || 'anonymous';
+  const addressKey = ws._socket?.remoteAddress || 'unknown';
+  const controllerAllowed = consumeAttempt(
+    pairAttemptState, controllerKey, PAIRING_MAX_ATTEMPTS_PER_WINDOW, now
+  );
+  const addressAllowed = consumeAttempt(pairIpAttemptState, addressKey, 30, now);
+  return controllerAllowed && addressAllowed;
 }
 
 function validateExpiry(expiresAtMs) {
@@ -69,6 +79,11 @@ function sendError(ws, code, message) {
 
 function prune() {
   const now = nowMs();
+  for (const map of [pairAttemptState, pairIpAttemptState]) {
+    for (const [key, state] of map) {
+      if (now - state.windowStartMs > PAIRING_WINDOW_MS) map.delete(key);
+    }
+  }
   for (const [code, offer] of pairingOffersByCode) {
     if (offer.expiresAtMs <= now || offer.connection.readyState !== offer.connection.OPEN) {
       pairingOffersByCode.delete(code);
@@ -92,6 +107,14 @@ function prune() {
       device.lastSeen = now;
       logEvent('presence.offline', { clientId });
       broadcastDeviceStatus(clientId);
+      for (const [sessionId, session] of sessions) {
+        if (session.clientId !== clientId || !['pending', 'approved'].includes(session.state)) continue;
+        session.state = 'failed';
+        session.endedAtMs = now;
+        session.terminationReason = 'client_heartbeat_timeout';
+        notifySession(session);
+        sessions.delete(sessionId);
+      }
     }
   }
   for (const [sessionId, session] of sessions) {
@@ -124,6 +147,21 @@ function notifySession(session) {
   });
 }
 
+function terminateSessionsForConnection(connection, role, identity, reason) {
+  if (!connection) return;
+  for (const [sessionId, session] of sessions) {
+    const matches = role === 'client'
+      ? session.clientConnection === connection && session.clientId === identity
+      : session.controllerConnection === connection && session.controllerId === identity;
+    if (!matches || !['pending', 'approved'].includes(session.state)) continue;
+    session.state = 'failed';
+    session.endedAtMs = nowMs();
+    session.terminationReason = reason;
+    notifySession(session);
+    sessions.delete(sessionId);
+  }
+}
+
 function deviceForConnection(ws) {
   for (const device of pairedDevices.values()) {
     if (device.clientConnection === ws || device.controllerConnections.has(ws)) return device;
@@ -135,6 +173,13 @@ function broadcastDeviceStatus(clientId) {
   const device = pairedDevices.get(clientId);
   if (!device) return;
   for (const controller of device.controllerConnections) {
+    // A token can reconnect on a new socket while the previous socket remains
+    // open. Never broadcast device metadata to a socket that no longer owns
+    // an active credential for this device.
+    if (!controllerHasDeviceAccess(controller, device)) {
+      device.controllerConnections.delete(controller);
+      continue;
+    }
     sendJson(controller, {
       type: 'device.status',
       clientId,
@@ -145,8 +190,13 @@ function broadcastDeviceStatus(clientId) {
   }
 }
 
-function controllerAuthorized(ws, controllerId) {
-  return Boolean(controllerId && ws.authenticatedControllerIds?.has(controllerId));
+function controllerHasDeviceAccess(ws, device) {
+  if (!device || ws.auth?.role !== 'controller') return false;
+  return [...device.controllerTokens].some((value) =>
+    ws.authenticatedControllerTokens?.has(value) &&
+    controllerSessions.get(value)?.controllerId === ws.auth.controllerId &&
+    controllerSessions.get(value)?.connection === ws
+  );
 }
 
 function authenticate(ws, message) {
@@ -154,27 +204,31 @@ function authenticate(ws, message) {
   if (message.role === 'controller' && !isNonEmptyString(message.clientId)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
+    if (session.connection && session.connection !== ws) {
+      terminateSessionsForConnection(
+        session.connection, 'controller', session.controllerId, 'controller_reconnected'
+      );
+    }
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
+    ws.authenticatedControllerTokens = ws.authenticatedControllerTokens || new Set();
+    ws.authenticatedControllerTokens.add(message.authToken);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     for (const device of pairedDevices.values()) {
-      if (device.controllerIds.has(session.controllerId)) device.controllerConnections.add(ws);
+      if (device.controllerTokens.has(message.authToken)) device.controllerConnections.add(ws);
     }
     return session;
   }
   if (!isNonEmptyString(message.clientId)) return null;
   const device = pairedDevices.get(message.clientId);
-  if (!device) {
-    const session = controllerSessions.get(message.authToken);
-    if (message.role === 'controller' && session) {
-      session.connection = ws;
-      ws.auth = { role: 'controller', controllerId: session.controllerId };
-      return session;
-    }
-    return null;
-  }
+  if (!device) return null;
   if (message.role === 'client' && message.authToken === device.clientToken) {
+    if (device.clientConnection && device.clientConnection !== ws) {
+      terminateSessionsForConnection(
+        device.clientConnection, 'client', message.clientId, 'client_reconnected'
+      );
+    }
     device.clientConnection = ws;
     device.clientHeartbeat = nowMs();
     device.lastSeen = nowMs();
@@ -187,9 +241,16 @@ function authenticate(ws, message) {
   if (message.role === 'controller' && device.controllerTokens.has(message.authToken)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
+    if (session.connection && session.connection !== ws) {
+      terminateSessionsForConnection(
+        session.connection, 'controller', session.controllerId, 'controller_reconnected'
+      );
+    }
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
+    ws.authenticatedControllerTokens = ws.authenticatedControllerTokens || new Set();
+    ws.authenticatedControllerTokens.add(message.authToken);
     device.controllerConnections.add(ws);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     return device;
@@ -203,6 +264,33 @@ function onOffer(ws, message) {
     sendError(ws, 'invalid_offer', 'Invalid pairing offer payload');
     return;
   }
+  const pairedDevice = pairedDevices.get(message.clientId);
+  if (pairedDevice && pairedDevice.clientConnection !== ws) {
+    sendError(ws, 'client_id_in_use', 'This Client ID is already owned by another authenticated connection');
+    return;
+  }
+  if (pairedDevice && (ws.auth?.role !== 'client' || ws.auth.clientId !== message.clientId)) {
+    sendError(ws, 'unauthorized', 'Authenticate as this Client before refreshing its pairing offer');
+    return;
+  }
+  const existingOffer = pairingOffersByCode.get(message.pairingCode);
+  if (existingOffer && existingOffer.connection !== ws &&
+      existingOffer.expiresAtMs > nowMs() &&
+      existingOffer.connection.readyState === existingOffer.connection.OPEN) {
+    sendError(ws, 'pairing_code_conflict', 'Pairing code is already in use');
+    return;
+  }
+
+  // A Client may have only one active pairing code. Remove its previous code
+  // before registering the replacement so rotated/disabled codes cannot linger.
+  if (ws.currentPairingCode) {
+    const previousOffer = pairingOffersByCode.get(ws.currentPairingCode);
+    if (previousOffer?.connection === ws) pairingOffersByCode.delete(ws.currentPairingCode);
+  }
+  if (existingOffer && existingOffer.connection !== ws) {
+    pairingOffersByCode.delete(message.pairingCode);
+  }
+
   pairingOffersByCode.set(message.pairingCode, {
     clientId: message.clientId,
     expiresAtMs: message.expiresAtMs,
@@ -224,7 +312,7 @@ function onPairingRequest(ws, message) {
     sendError(ws, 'invalid_pairing_request', 'Invalid controller pairing payload');
     return;
   }
-  if (!registerAttempt(message.controllerId)) {
+  if (!registerAttempt(message.controllerId, ws)) {
     sendJson(ws, { type: 'controller.pairing_result', status: 'rate_limited', reason: 'Too many attempts, retry later' });
     return;
   }
@@ -262,45 +350,87 @@ function onPairingDecision(ws, message) {
     pendingPairRequests.delete(message.requestId);
     return;
   }
+  const existingDevice = pairedDevices.get(pending.clientId);
+  if (existingDevice && existingDevice.clientConnection !== ws) {
+    pendingPairRequests.delete(message.requestId);
+    sendJson(pending.controllerConnection, {
+      type: 'controller.pairing_result',
+      requestId: message.requestId,
+      status: 'failed',
+      reason: 'Client connection ownership changed; restart pairing'
+    });
+    return;
+  }
   pendingPairRequests.delete(message.requestId);
   if (!message.approved) {
     sendJson(pending.controllerConnection, { type: 'controller.pairing_result', requestId: message.requestId, status: 'rejected' });
     return;
   }
   pairingOffersByCode.delete(pending.code);
-  const clientToken = token();
+  const device = existingDevice || null;
+  const clientToken = device?.clientToken || token();
   const controllerToken = token();
+  if (device) {
+    // Re-pairing the same Controller ID rotates its credential rather than
+    // leaving multiple valid tokens behind.
+    for (const oldToken of [...device.controllerTokens]) {
+      const oldSession = controllerSessions.get(oldToken);
+      if (oldSession?.controllerId !== pending.controllerId) continue;
+      controllerSessions.delete(oldToken);
+      device.controllerTokens.delete(oldToken);
+      const oldConnection = oldSession.connection;
+      if (oldConnection && oldConnection !== pending.controllerConnection) {
+        oldConnection.authenticatedControllerTokens?.delete(oldToken);
+        device.controllerConnections.delete(oldConnection);
+        sendJson(oldConnection, { type: 'device.revoked', clientId: device.clientId, reason: 'credential_rotated' });
+      } else if (oldConnection === pending.controllerConnection) {
+        oldConnection.authenticatedControllerTokens?.delete(oldToken);
+      }
+    }
+    device.metadata = offer.metadata;
+    device.controllerTokens.add(controllerToken);
+    device.controllerIds.add(pending.controllerId);
+    device.controllerConnections.add(pending.controllerConnection);
+    device.clientHeartbeat = nowMs();
+    device.lastSeen = nowMs();
+    device.status = 'online';
+  } else {
+    pairedDevices.set(pending.clientId, {
+      clientId: pending.clientId,
+      metadata: offer.metadata,
+      clientToken,
+      controllerTokens: new Set([controllerToken]),
+      controllerIds: new Set([pending.controllerId]),
+      clientConnection: ws,
+      controllerConnections: new Set([pending.controllerConnection]),
+      clientHeartbeat: nowMs(),
+      lastSeen: nowMs(),
+      status: 'online'
+    });
+  }
+  const pairedDevice = pairedDevices.get(pending.clientId);
   const controllerSession = {
     controllerId: pending.controllerId,
     token: controllerToken,
     connection: pending.controllerConnection
   };
   controllerSessions.set(controllerToken, controllerSession);
-  const device = {
-    clientId: pending.clientId,
-    metadata: offer.metadata,
-    clientToken,
-    controllerTokens: new Set([controllerToken]),
-    controllerIds: new Set([pending.controllerId]),
-    clientConnection: ws,
-    controllerConnections: new Set([pending.controllerConnection]),
-    clientHeartbeat: nowMs(),
-    lastSeen: nowMs(),
-    status: 'online'
-  };
-  ws.auth = { role: 'client', clientId: device.clientId };
+  ws.auth = { role: 'client', clientId: pairedDevice.clientId };
   pending.controllerConnection.authenticatedControllerIds =
     pending.controllerConnection.authenticatedControllerIds || new Set();
   pending.controllerConnection.authenticatedControllerIds.add(pending.controllerId);
-  pairedDevices.set(device.clientId, device);
+  pending.controllerConnection.authenticatedControllerTokens =
+    pending.controllerConnection.authenticatedControllerTokens || new Set();
+  pending.controllerConnection.authenticatedControllerTokens.add(controllerToken);
+  broadcastDeviceStatus(pairedDevice.clientId);
   sendJson(pending.controllerConnection, {
     type: 'controller.pairing_result',
     requestId: message.requestId,
     status: 'paired',
-    clientId: device.clientId,
+    clientId: pairedDevice.clientId,
     authToken: controllerToken,
     pairedAt: nowMs(),
-    metadata: device.metadata
+    metadata: pairedDevice.metadata
   });
   sendJson(ws, {
     type: 'client.pairing_completed',
@@ -329,9 +459,7 @@ function onHeartbeat(ws, message) {
 
 function authorizedDeviceForController(ws, clientId) {
   const device = pairedDevices.get(clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) return null;
+  if (!controllerHasDeviceAccess(ws, device)) return null;
   return device;
 }
 
@@ -342,6 +470,16 @@ function onSessionStart(ws, message) {
     return sendError(ws, 'invalid_session_type', 'Unsupported session type');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
+  const activeDuplicate = [...sessions.values()].some((session) =>
+    session.clientId === device.clientId &&
+    ['pending', 'approved'].includes(session.state) &&
+    (message.sessionType === 'interaction'
+      ? session.sessionType === 'interaction'
+      : session.controllerId === ws.auth.controllerId && session.sessionType === message.sessionType)
+  );
+  if (activeDuplicate) {
+    return sendError(ws, 'session_already_active', 'An equivalent session is already active for this Client');
+  }
   const session = {
     sessionId: crypto.randomUUID(),
     clientId: device.clientId,
@@ -362,6 +500,9 @@ function onClientSessionDecision(ws, message) {
       session.clientId !== ws.auth.clientId || session.clientConnection !== ws ||
       typeof message.approved !== 'boolean') {
     return sendError(ws, 'unauthorized', 'Invalid session decision');
+  }
+  if (session.state !== 'pending') {
+    return sendError(ws, 'session_not_pending', 'Session is no longer awaiting approval');
   }
   session.state = message.approved ? 'approved' : 'rejected';
   session.endedAtMs = message.approved ? undefined : nowMs();
@@ -387,8 +528,7 @@ function onSessionEnd(ws, message) {
 function onDeviceList(ws) {
   const devices = [];
   for (const device of pairedDevices.values()) {
-    const authorized = [...(ws.authenticatedControllerIds || [])]
-      .some((controllerId) => device.controllerIds.has(controllerId));
+    const authorized = controllerHasDeviceAccess(ws, device);
     if (authorized) {
       devices.push({ clientId: device.clientId, status: device.status, lastSeen: device.lastSeen, metadata: device.metadata });
     }
@@ -398,8 +538,7 @@ function onDeviceList(ws) {
 
 function onControllerSnapshot(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
@@ -415,18 +554,29 @@ function onControllerSnapshot(ws, message) {
 
 function onControllerCommand(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
   if (!isNonEmptyString(message.command)) return sendError(ws, 'invalid_command', 'Command is required');
+  const hasApprovedInteractionSession = [...sessions.values()].some((session) =>
+    session.clientId === device.clientId &&
+    session.controllerId === ws.auth.controllerId &&
+    session.controllerConnection === ws &&
+    session.clientConnection === device.clientConnection &&
+    session.state === 'approved' &&
+    session.sessionType === 'interaction'
+  );
+  if (!hasApprovedInteractionSession) {
+    return sendError(ws, 'session_required', 'An approved interaction session is required');
+  }
   const requestId = crypto.randomUUID();
   device.clientConnection.send(JSON.stringify({
     type: 'client.command',
     requestId,
     command: message.command,
-    parameters: message.parameters && typeof message.parameters === 'object' ? message.parameters : {}
+    parameters: message.parameters && typeof message.parameters === 'object' &&
+      !Array.isArray(message.parameters) ? message.parameters : {}
   }));
   device.pendingRequests = device.pendingRequests || new Map();
   device.pendingRequests.set(requestId, ws);
@@ -434,9 +584,7 @@ function onControllerCommand(ws, message) {
 
 function onRenameDevice(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!isNonEmptyString(message.alias) || message.alias.length > 64) {
@@ -455,6 +603,9 @@ function onClientResult(ws, message) {
   const target = device.pendingRequests?.get(message.requestId);
   if (!target) return sendError(ws, 'request_not_found', 'Request is no longer active');
   device.pendingRequests.delete(message.requestId);
+  if (!controllerHasDeviceAccess(target, device)) {
+    return sendError(ws, 'request_unauthorized', 'The requesting Controller no longer has device access');
+  }
   sendJson(target, {
     type: 'device.result',
     clientId: device.clientId,
@@ -466,16 +617,42 @@ function onClientResult(ws, message) {
 
 function onRevoke(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized to revoke this device');
   }
   device.controllerIds.delete(ws.auth.controllerId);
-  device.controllerConnections.delete(ws);
-  const tokenToDelete = [...device.controllerTokens].find((value) => controllerSessions.get(value)?.controllerId === ws.auth.controllerId);
-  if (tokenToDelete) controllerSessions.delete(tokenToDelete);
-  if (device.controllerIds.size > 0) return sendJson(ws, { type: 'device.revoked', clientId: device.clientId });
+  const revokedTokens = new Set();
+  for (const value of [...device.controllerTokens]) {
+    if (controllerSessions.get(value)?.controllerId === ws.auth.controllerId) {
+      controllerSessions.delete(value);
+      device.controllerTokens.delete(value);
+      revokedTokens.add(value);
+    }
+  }
+  for (const controller of [...device.controllerConnections]) {
+    const hadRevokedToken = [...revokedTokens].some((value) =>
+      controller.authenticatedControllerTokens?.has(value)
+    );
+    if (!hadRevokedToken) continue;
+    for (const value of revokedTokens) controller.authenticatedControllerTokens.delete(value);
+    device.controllerConnections.delete(controller);
+    sendJson(controller, { type: 'device.revoked', clientId: device.clientId });
+  }
+  for (const [requestId, target] of device.pendingRequests || []) {
+    if (target.auth?.role === 'controller' && target.auth.controllerId === ws.auth.controllerId) {
+      device.pendingRequests.delete(requestId);
+    }
+  }
+  for (const session of sessions.values()) {
+    if (session.clientId !== device.clientId || session.controllerId !== ws.auth.controllerId ||
+        !['pending', 'approved'].includes(session.state)) continue;
+    session.state = 'failed';
+    session.endedAtMs = nowMs();
+    session.terminationReason = 'controller_revoked';
+    notifySession(session);
+    sessions.delete(session.sessionId);
+  }
+  if (device.controllerIds.size > 0) return;
   pairedDevices.delete(device.clientId);
   if (device.clientConnection) sendJson(device.clientConnection, { type: 'device.revoked', clientId: device.clientId });
   for (const controller of device.controllerConnections) {
@@ -533,22 +710,53 @@ const healthServer = http.createServer((req, res) => {
   res.end();
 });
 healthServer.listen(PORT, '0.0.0.0');
-const wss = new WebSocketServer({ server: healthServer });
+const wss = new WebSocketServer({ server: healthServer, maxPayload: 64 * 1024 });
 setInterval(prune, 15 * 1000).unref();
 
 wss.on('connection', (ws) => {
   ws.on('message', (payload) => routeMessage(ws, payload));
   ws.on('close', () => {
-    if (ws.currentPairingCode) pairingOffersByCode.delete(ws.currentPairingCode);
+    if (ws.currentPairingCode) {
+      const currentOffer = pairingOffersByCode.get(ws.currentPairingCode);
+      if (currentOffer?.connection === ws) pairingOffersByCode.delete(ws.currentPairingCode);
+    }
     const device = deviceForConnection(ws);
     if (ws.authenticatedControllerIds) {
       for (const current of pairedDevices.values()) current.controllerConnections.delete(ws);
-      for (const session of controllerSessions.values()) {
-        if (session.connection === ws) session.connection = null;
-      }
     }
     for (const session of controllerSessions.values()) {
       if (session.connection === ws) session.connection = null;
+    }
+    for (const [sessionId, session] of sessions) {
+      if (session.controllerConnection !== ws && session.clientConnection !== ws) continue;
+      session.state = 'failed';
+      session.endedAtMs = nowMs();
+      session.terminationReason = session.clientConnection === ws
+        ? 'client_disconnected'
+        : 'controller_disconnected';
+      notifySession(session);
+      sessions.delete(sessionId);
+    }
+    for (const current of pairedDevices.values()) {
+      if (ws.auth?.role === 'controller') {
+        for (const [requestId, target] of current.pendingRequests || []) {
+          if (target === ws) current.pendingRequests.delete(requestId);
+        }
+      }
+      if (ws.auth?.role === 'client' && current.clientConnection === ws) {
+        for (const [requestId, target] of current.pendingRequests || []) {
+          if (controllerHasDeviceAccess(target, current)) {
+            sendJson(target, {
+              type: 'device.result',
+              clientId: current.clientId,
+              requestId,
+              result: {},
+              error: 'Client disconnected before responding'
+            });
+          }
+          current.pendingRequests.delete(requestId);
+        }
+      }
     }
     if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
       device.clientConnection = null;

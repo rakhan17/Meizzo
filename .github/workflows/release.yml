@@ -4,6 +4,12 @@ on:
   push:
     tags: ["v*.*.*"]
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish a GitHub Release after all validation gates pass"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -13,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test release version derivation
+        run: python3 tests/test_release_version.py -v
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: android-actions/setup-android@v3
@@ -20,7 +28,16 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
-      - run: |
+      - name: Derive Android version from release tag
+        run: python3 scripts/release_version.py "$GITHUB_REF_NAME"
+      - name: Validate release configuration and build
+        env:
+          MEIZZO_ANDROID_KEYSTORE_BASE64: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_BASE64 }}
+          MEIZZO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_PASSWORD }}
+          MEIZZO_ANDROID_KEY_ALIAS: ${{ secrets.MEIZZO_ANDROID_KEY_ALIAS }}
+          MEIZZO_ANDROID_KEY_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEY_PASSWORD }}
+          MEIZZO_SIGNALING_URL: ${{ secrets.MEIZZO_SIGNALING_URL }}
+        run: |
           for name in MEIZZO_ANDROID_KEYSTORE_BASE64 MEIZZO_ANDROID_KEYSTORE_PASSWORD MEIZZO_ANDROID_KEY_ALIAS MEIZZO_ANDROID_KEY_PASSWORD MEIZZO_SIGNALING_URL; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name must be configured before publishing an Android release."
@@ -37,39 +54,76 @@ jobs:
               exit 1
               ;;
           esac
-          ./gradlew -Pmeizzo.releaseSignalingUrl="$MEIZZO_SIGNALING_URL" \
+          ./gradlew \
+            -Pmeizzo.releaseSignalingUrl="$MEIZZO_SIGNALING_URL" \
+            -Pmeizzo.releaseVersionName="$MEIZZO_VERSION_NAME" \
+            -Pmeizzo.releaseVersionCode="$MEIZZO_VERSION_CODE" \
             :apps:client:assembleRelease :apps:controller:assembleRelease
-      - run: |
+      - name: Sign, validate, and prepare release assets
+        env:
+          MEIZZO_ANDROID_KEYSTORE_BASE64: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_BASE64 }}
+          MEIZZO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_PASSWORD }}
+          MEIZZO_ANDROID_KEY_ALIAS: ${{ secrets.MEIZZO_ANDROID_KEY_ALIAS }}
+          MEIZZO_ANDROID_KEY_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
           mkdir -p dist
           printf '%s' "$MEIZZO_ANDROID_KEYSTORE_BASE64" | base64 --decode > dist/meizzo-release.jks
           client_apk="$(find apps/client/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           controller_apk="$(find apps/controller/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
           test -n "$client_apk"
           test -n "$controller_apk"
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" sign \
-            --ks dist/meizzo-release.jks --ks-pass env:MEIZZO_ANDROID_KEYSTORE_PASSWORD \
-            --ks-key-alias "$MEIZZO_ANDROID_KEY_ALIAS" --key-pass env:MEIZZO_ANDROID_KEY_PASSWORD "$client_apk"
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" sign \
-            --ks dist/meizzo-release.jks --ks-pass env:MEIZZO_ANDROID_KEYSTORE_PASSWORD \
-            --ks-key-alias "$MEIZZO_ANDROID_KEY_ALIAS" --key-pass env:MEIZZO_ANDROID_KEY_PASSWORD "$controller_apk"
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$client_apk"
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$controller_apk"
-          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$client_apk" | grep -q "package: name='com.meizzo.client'"
-          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging "$controller_apk" | grep -q "package: name='com.meizzo.controller'"
-          cp "$client_apk" "dist/MEIZZO-Client-${GITHUB_REF_NAME}.apk"
-          cp "$controller_apk" "dist/MEIZZO-Controller-${GITHUB_REF_NAME}.apk"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$signer" sign --ks dist/meizzo-release.jks --ks-pass env:MEIZZO_ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$MEIZZO_ANDROID_KEY_ALIAS" --key-pass env:MEIZZO_ANDROID_KEY_PASSWORD "$client_apk"
+          "$signer" sign --ks dist/meizzo-release.jks --ks-pass env:MEIZZO_ANDROID_KEYSTORE_PASSWORD --ks-key-alias "$MEIZZO_ANDROID_KEY_ALIAS" --key-pass env:MEIZZO_ANDROID_KEY_PASSWORD "$controller_apk"
+          "$signer" verify --verbose "$client_apk"
+          "$signer" verify --verbose "$controller_apk"
+          "$aapt" dump badging "$client_apk" | grep -q "package: name='com.meizzo.client' versionCode='$MEIZZO_VERSION_CODE' versionName='$MEIZZO_VERSION_NAME'"
+          "$aapt" dump badging "$controller_apk" | grep -q "package: name='com.meizzo.controller' versionCode='$MEIZZO_VERSION_CODE' versionName='$MEIZZO_VERSION_NAME'"
+          cp "$client_apk" "dist/MEIZZO-Client-$GITHUB_REF_NAME.apk"
+          cp "$controller_apk" "dist/MEIZZO-Controller-$GITHUB_REF_NAME.apk"
           cp "$client_apk" dist/MEIZZO-Client.apk
           cp "$controller_apk" dist/MEIZZO-Controller.apk
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
+          client_cert="$("$signer" verify --print-certs "dist/MEIZZO-Client-$GITHUB_REF_NAME.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          controller_cert="$("$signer" verify --print-certs "dist/MEIZZO-Controller-$GITHUB_REF_NAME.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test "${#client_cert}" -eq 64
+          test "${#controller_cert}" -eq 64
+          python3 - "$GITHUB_REF_NAME" "$MEIZZO_VERSION_NAME" "$MEIZZO_VERSION_CODE" "$client_cert" "$controller_cert" <<'PY'
+          import hashlib, json, pathlib, sys
+          tag, version_name, version_code, client_cert, controller_cert = sys.argv[1:]
+          root = pathlib.Path("dist")
+          apps = {}
+          for key, package, prefix, cert in (
+              ("client", "com.meizzo.client", "MEIZZO-Client", client_cert),
+              ("controller", "com.meizzo.controller", "MEIZZO-Controller", controller_cert),
+          ):
+              name = f"{prefix}-{tag}.apk"
+              path = root / name
+              apps[key] = {
+                  "packageName": package,
+                  "assetName": name,
+                  "assetSize": path.stat().st_size,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  "signingCertificateSha256": cert,
+                  "versionName": version_name,
+                  "versionCode": int(version_code),
+              }
+          manifest = {
+              "schemaVersion": 1,
+              "tag": tag,
+              "versionName": version_name,
+              "versionCode": int(version_code),
+              "channel": "beta" if "-" in tag else "stable",
+              "apps": apps,
+          }
+          (root / "MEIZZO-UPDATE.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
           rm -f dist/meizzo-release.jks
       - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' || inputs.publish_release == true
         with:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: dist/*
-    env:
-      MEIZZO_ANDROID_KEYSTORE_BASE64: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_BASE64 }}
-      MEIZZO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_PASSWORD }}
-      MEIZZO_ANDROID_KEY_ALIAS: ${{ secrets.MEIZZO_ANDROID_KEY_ALIAS }}
-      MEIZZO_ANDROID_KEY_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEY_PASSWORD }}
-      MEIZZO_SIGNALING_URL: ${{ secrets.MEIZZO_SIGNALING_URL }}

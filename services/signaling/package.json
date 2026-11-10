@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "check": "node --check src/server.js",
-    "test": "node test/pairing-smoke.test.js && node test/multi-device.test.js"
+    "test": "node test/pairing-smoke.test.js && node test/multi-device.test.js && node test/revocation.test.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

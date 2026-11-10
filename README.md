@@ -19,11 +19,11 @@ consent, isolated sessions, and real-time device status.
 
 </div>
 
-> **Beta status:** Android pairing, authorization, presence, telemetry, and
-> selected commands are implemented. iOS Simulator builds are validated.
-> Media streaming, unrestricted remote control, production TLS deployment,
-> persistence, and signed iOS distribution remain outside the verified beta
-> boundary.
+> **Beta status:** Android is the active testing platform for this release.
+> iOS is still under development and is not part of the current downloadable
+> build. Media streaming, unrestricted remote control, production TLS
+> deployment, persistence, and signed iOS distribution remain outside the
+> verified beta boundary.
 
 ## Product
 
@@ -40,16 +40,39 @@ Client until the Client approves the request.
 
 ## Downloads
 
-### Android
+### Version catalogue
 
-The latest published Android beta is **v0.1.0-beta.3**. Client and Controller
-are separate packages and must not be interchanged.
+MEIZZO keeps **Stable** and **Beta** release histories separate. A beta that
+graduates to stable is retained in the Beta archive, while its stable release
+is also listed in Stable. Promotion never erases the testing history.
 
-Beta.3 is the previous published build and contains the legacy local
-`10.0.2.2` debug endpoint behavior. For BlueStacks Air testing, use a current
-debug build configured with the Mac's reachable LAN address; beta.4 is not
-published until a production WSS endpoint and compatible signing key are
-available.
+#### Stable releases
+
+_No stable release has been published yet._
+
+#### Beta releases
+
+<details open>
+<summary><strong>v2.0.1-beta.1</strong> · Android beta testing build</summary>
+
+The Android Client and Controller debug APKs have been built by GitHub Actions.
+These are **testing artifacts**, not production-signed release APKs. They use
+the default emulator endpoint `ws://10.0.2.2:8080`, so they are intended for
+emulator/BlueStacks testing with a reachable local signaling service. They are
+not ready for normal physical-device use.
+
+- [Download MEIZZO Client + Controller build artifacts](https://github.com/rakhan17/Meizzo/actions/runs/42767340017)
+- On the Actions page, open **Artifacts** and download `meizzo-client-debug`
+  and `meizzo-controller-debug`.
+
+A public GitHub Release with direct APK assets will be published after the
+production WSS endpoint and Android release-signing secrets are configured
+and the signed APKs pass validation.
+
+</details>
+
+<details>
+<summary><strong>v0.1.0-beta.3</strong> · Previously published beta</summary>
 
 <table>
 <tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
@@ -57,23 +80,25 @@ available.
 <tr><td>MEIZZO Controller</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.controller</code></td><td>Android 8.0+</td></tr>
 </table>
 
-[Latest Release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3) ·
-[All Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt) ·
+- [Client iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
+- [Controller iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
+- [Release notes and all assets](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
+- [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt)
+
+</details>
+
+[Browse all GitHub Releases](https://github.com/rakhan17/Meizzo/releases) ·
 [Installation guide](docs/getting-started.md)
 
-### iOS
+### iOS status
 
-The published iOS artifacts are **Simulator ZIP files**, not IPAs. They
-contain unsigned `.app` bundles for iOS Simulator and cannot be installed on a
-physical iPhone or iPad. A signed device IPA is shown as a download only after
-the manual Apple-signing workflow has produced and validated it.
+<badge>Under development</badge>
 
-- [MEIZZO Client Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
-- [MEIZZO Controller Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
-
-See [iOS distribution](docs/ios-guide.md) for `.app`, `.zip`, `.ipa`,
-provisioning, TestFlight, and physical-device requirements.
+iOS is intentionally deferred while the Android beta is prepared and tested.
+There are no current iOS downloads in this release. Simulator builds,
+physical-device signing, and iOS feature validation will be addressed in a
+later milestone. See [iOS development notes](docs/ios-guide.md) for platform
+requirements.
 
 ## Feature overview
 
@@ -83,11 +108,10 @@ network type, storage, RAM where exposed, device metadata, flashlight and
 alarm commands where supported, Android Keystore credentials, and isolated
 command routing.
 
-**iOS beta:** native SwiftUI Client and Controller targets, pairing and
-approval, Keychain-backed tokens, multi-device presence, reconnect state,
-heartbeat telemetry exposed by public APIs, and verified Simulator
-install/launch smoke tests. iOS does not claim Android-equivalent remote
-control, screen capture, file access, or background monitoring.
+**iOS (under development):** native SwiftUI Client and Controller targets are
+in the repository, but iOS is not included in this Android-focused beta
+milestone. Feature parity, distribution, and runtime validation remain
+pending.
 
 ## Screenshots
 
