@@ -130,6 +130,15 @@ async function run() {
     clientAReconnect.send(JSON.stringify({ type: 'heartbeat' }));
     const online = await onlinePromise;
     if (online.status !== 'online') throw new Error('Client A did not recover online');
+    const telemetryPromise = nextMessage(controller, (message) =>
+      message.type === 'device.status' && message.clientId === 'client-a' &&
+      message.metadata?.telemetry?.batteryPercent === 81
+    );
+    clientAReconnect.send(JSON.stringify({
+      type: 'heartbeat',
+      telemetry: { batteryPercent: 81, network: 'wifi', timestamp: Date.now() }
+    }));
+    await telemetryPromise;
 
     controller.close();
     const replacementController = await openSocket('ws://127.0.0.1:8101');

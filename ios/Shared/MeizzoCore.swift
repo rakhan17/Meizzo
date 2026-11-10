@@ -46,10 +46,18 @@ public final class SecureStore {
 
 public final class SignalingClient: NSObject, ObservableObject, URLSessionWebSocketDelegate {
     @Published public private(set) var connected = false
+    @Published public private(set) var connectionState = "Disconnected"
     @Published public private(set) var lastError: String?
     public var onMessage: (([String: Any]) -> Void)?
+    public var onConnected: (() -> Void)?
+    public var onStateChange: ((String) -> Void)?
+    public var heartbeatPayload: (() -> [String: Any])?
     private var task: URLSessionWebSocketTask?
     private var url: URL?
+    private var session: URLSession?
+    private var reconnectWorkItem: DispatchWorkItem?
+    private var reconnectAttempt = 0
+    private var intentionalDisconnect = false
 
     public func connect(endpoint: String) {
         guard let endpointURL = URL(string: endpoint) else {
@@ -57,15 +65,26 @@ public final class SignalingClient: NSObject, ObservableObject, URLSessionWebSoc
             return
         }
         url = endpointURL
+        intentionalDisconnect = false
+        reconnectWorkItem?.cancel()
+        connectionState = "Connecting"
+        onStateChange?("Connecting")
         let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        self.session = session
         task = session.webSocketTask(with: endpointURL)
         task?.resume()
         receive()
     }
 
     public func disconnect() {
+        intentionalDisconnect = true
+        reconnectWorkItem?.cancel()
         task?.cancel(with: .normalClosure, reason: nil)
-        connected = false
+        DispatchQueue.main.async {
+            self.connected = false
+            self.connectionState = "Disconnected"
+            self.onStateChange?("Disconnected")
+        }
     }
 
     public func send(_ payload: [String: Any]) {
@@ -91,20 +110,68 @@ public final class SignalingClient: NSObject, ObservableObject, URLSessionWebSoc
             case .failure(let error):
                 DispatchQueue.main.async {
                     self.connected = false
+                    self.connectionState = "Reconnecting"
+                    self.onStateChange?("Reconnecting")
                     self.lastError = error.localizedDescription
                 }
+                self.scheduleReconnect()
+            }
+        }
+    }
+
+    private func scheduleReconnect() {
+        guard !intentionalDisconnect, let url else { return }
+        reconnectAttempt = min(reconnectAttempt + 1, 6)
+        let delay = pow(2.0, Double(reconnectAttempt))
+        let work = DispatchWorkItem { [weak self] in self?.connect(endpoint: url.absoluteString) }
+        reconnectWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func startHeartbeat() {
+        guard let task else { return }
+        task.sendPing { [weak self] error in
+            if let error {
+                DispatchQueue.main.async {
+                    self?.connected = false
+                    self?.connectionState = "Reconnecting"
+                    self?.lastError = error.localizedDescription
+                }
+                self?.scheduleReconnect()
+                return
+            }
+            self?.send(["type": "heartbeat", "telemetry": self?.heartbeatPayload?() ?? [:]])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+                guard let self, self.task === task else { return }
+                self.startHeartbeat()
             }
         }
     }
 
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
                            didOpenWithProtocol protocol: String?) {
-        DispatchQueue.main.async { self.connected = true; self.lastError = nil }
+        DispatchQueue.main.async {
+            self.connected = true
+            self.connectionState = "Connected"
+            self.onStateChange?("Connected")
+            self.reconnectAttempt = 0
+            self.lastError = nil
+            self.startHeartbeat()
+            self.onConnected?()
+        }
     }
 
     public func urlSession(_ session: URLSession, task: URLSessionTask,
                            didCompleteWithError error: Error?) {
-        if let error { DispatchQueue.main.async { self.connected = false; self.lastError = error.localizedDescription } }
+        if let error {
+            DispatchQueue.main.async {
+                self.connected = false
+                self.connectionState = "Reconnecting"
+                self.onStateChange?("Reconnecting")
+                self.lastError = error.localizedDescription
+            }
+            scheduleReconnect()
+        }
     }
 }
 

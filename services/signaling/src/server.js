@@ -20,6 +20,10 @@ function nowMs() {
   return Date.now();
 }
 
+function logEvent(event, details = {}) {
+  console.log(JSON.stringify({ event, at: nowMs(), ...details }));
+}
+
 function sendJson(ws, payload) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload));
 }
@@ -82,6 +86,7 @@ function prune() {
       device.clientConnection = null;
       device.status = 'offline';
       device.lastSeen = now;
+      logEvent('presence.offline', { clientId });
       broadcastDeviceStatus(clientId);
     }
   }
@@ -108,12 +113,18 @@ function broadcastDeviceStatus(clientId) {
   }
 }
 
+function controllerAuthorized(ws, controllerId) {
+  return Boolean(controllerId && ws.authenticatedControllerIds?.has(controllerId));
+}
+
 function authenticate(ws, message) {
   if (!isNonEmptyString(message.authToken)) return null;
   if (message.role === 'controller' && !isNonEmptyString(message.clientId)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
     session.connection = ws;
+    ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
+    ws.authenticatedControllerIds.add(session.controllerId);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     for (const device of pairedDevices.values()) {
       if (device.controllerIds.has(session.controllerId)) device.controllerConnections.add(ws);
@@ -138,12 +149,15 @@ function authenticate(ws, message) {
     device.status = 'online';
     ws.auth = { role: 'client', clientId: message.clientId };
     broadcastDeviceStatus(device.clientId);
+    logEvent('presence.heartbeat', { clientId: device.clientId });
     return device;
   }
   if (message.role === 'controller' && device.controllerTokens.has(message.authToken)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
     session.connection = ws;
+    ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
+    ws.authenticatedControllerIds.add(session.controllerId);
     device.controllerConnections.add(ws);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     return device;
@@ -243,6 +257,9 @@ function onPairingDecision(ws, message) {
     status: 'online'
   };
   ws.auth = { role: 'client', clientId: device.clientId };
+  pending.controllerConnection.authenticatedControllerIds =
+    pending.controllerConnection.authenticatedControllerIds || new Set();
+  pending.controllerConnection.authenticatedControllerIds.add(pending.controllerId);
   pairedDevices.set(device.clientId, device);
   sendJson(pending.controllerConnection, {
     type: 'controller.pairing_result',
@@ -269,6 +286,10 @@ function onHeartbeat(ws, message) {
     device.clientHeartbeat = nowMs();
     device.lastSeen = nowMs();
     device.status = 'online';
+    if (message.telemetry && typeof message.telemetry === 'object') {
+      device.metadata = { ...device.metadata, telemetry: message.telemetry };
+    }
+    broadcastDeviceStatus(device.clientId);
   }
   sendJson(ws, { type: 'heartbeat.ack', timestamp: nowMs() });
 }
@@ -276,7 +297,9 @@ function onHeartbeat(ws, message) {
 function onDeviceList(ws) {
   const devices = [];
   for (const device of pairedDevices.values()) {
-    if (device.controllerIds.has(ws.auth?.controllerId)) {
+    const authorized = [...(ws.authenticatedControllerIds || [])]
+      .some((controllerId) => device.controllerIds.has(controllerId));
+    if (authorized) {
       devices.push({ clientId: device.clientId, status: device.status, lastSeen: device.lastSeen, metadata: device.metadata });
     }
   }
@@ -285,7 +308,8 @@ function onDeviceList(ws) {
 
 function onControllerSnapshot(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !device.controllerIds.has(ws.auth?.controllerId)) {
+  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
+      !device.controllerIds.has(ws.auth.controllerId)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
@@ -301,7 +325,8 @@ function onControllerSnapshot(ws, message) {
 
 function onControllerCommand(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !device.controllerIds.has(ws.auth?.controllerId)) {
+  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
+      !device.controllerIds.has(ws.auth.controllerId)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
@@ -319,7 +344,9 @@ function onControllerCommand(ws, message) {
 
 function onRenameDevice(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' || !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!device || ws.auth?.role !== 'controller' ||
+      !controllerAuthorized(ws, ws.auth.controllerId) ||
+      !device.controllerIds.has(ws.auth.controllerId)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!isNonEmptyString(message.alias) || message.alias.length > 64) {
@@ -349,7 +376,9 @@ function onClientResult(ws, message) {
 
 function onRevoke(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' || !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!device || ws.auth?.role !== 'controller' ||
+      !controllerAuthorized(ws, ws.auth.controllerId) ||
+      !device.controllerIds.has(ws.auth.controllerId)) {
     return sendError(ws, 'unauthorized', 'Not authorized to revoke this device');
   }
   device.controllerIds.delete(ws.auth.controllerId);
@@ -375,6 +404,12 @@ function routeMessage(ws, rawPayload) {
     case 'auth.connect': {
       const device = authenticate(ws, message);
       if (!device) return sendError(ws, 'unauthorized', 'Invalid authentication token');
+      if (ws.auth.role === 'controller') {
+        logEvent('auth.success', { role: ws.auth.role, controllerId: ws.auth.controllerId });
+        sendJson(ws, { type: 'controller.status', status: 'connected', timestamp: nowMs() });
+      } else {
+        logEvent('auth.success', { role: ws.auth.role, clientId: ws.auth.clientId });
+      }
       sendJson(ws, { type: 'auth.connected', clientId: device.clientId, role: ws.auth.role, status: device.status });
       return;
     }
@@ -406,14 +441,20 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (ws.currentPairingCode) pairingOffersByCode.delete(ws.currentPairingCode);
     const device = deviceForConnection(ws);
-    if (device && ws.auth?.role === 'controller') device.controllerConnections.delete(ws);
+    if (ws.authenticatedControllerIds) {
+      for (const current of pairedDevices.values()) current.controllerConnections.delete(ws);
+      for (const session of controllerSessions.values()) {
+        if (session.connection === ws) session.connection = null;
+      }
+    }
     for (const session of controllerSessions.values()) {
       if (session.connection === ws) session.connection = null;
     }
-    if (device && ws.auth?.role === 'client') {
+    if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
       device.clientConnection = null;
       device.status = 'offline';
       device.lastSeen = nowMs();
+      logEvent('presence.disconnect', { clientId: device.clientId });
       broadcastDeviceStatus(device.clientId);
     }
   });
