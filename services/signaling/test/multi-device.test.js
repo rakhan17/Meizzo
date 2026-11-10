@@ -308,6 +308,56 @@ async function run() {
     }));
     await Promise.all([reconnectA, reconnectB]);
 
+    // A same-token Client reconnect must not inherit approval from the old socket.
+    const reconnectSessionPendingClient = nextMessage(clientB, (message) =>
+      message.type === 'client.session_status' && message.state === 'pending', 2000, 'reconnect session pending at Client');
+    const reconnectSessionPendingController = nextMessage(replacementController, (message) =>
+      message.type === 'session.status' && message.state === 'pending', 2000, 'reconnect session pending at Controller');
+    replacementController.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-b',
+      sessionType: 'interaction'
+    }));
+    const reconnectSession = await reconnectSessionPendingController;
+    await reconnectSessionPendingClient;
+    const reconnectSessionApproved = nextMessage(replacementController, (message) =>
+      message.type === 'session.status' && message.sessionId === reconnectSession.sessionId &&
+      message.state === 'approved', 2000, 'reconnect session approved');
+    clientB.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: reconnectSession.sessionId,
+      approved: true
+    }));
+    await reconnectSessionApproved;
+
+    const clientBReplacement = await openSocket('ws://127.0.0.1:8101');
+    sockets.push(clientBReplacement);
+    const clientBAuthenticated = nextMessage(clientBReplacement, (message) =>
+      message.type === 'auth.connected' && message.clientId === 'client-b', 2000, 'Client B same-token reconnect');
+    const reconnectSessionFailed = nextMessage(replacementController, (message) =>
+      message.type === 'session.status' && message.sessionId === reconnectSession.sessionId &&
+      message.state === 'failed', 2000, 'approved session invalidated on Client reconnect');
+    clientBReplacement.send(JSON.stringify({
+      type: 'auth.connect',
+      role: 'client',
+      clientId: 'client-b',
+      authToken: pairedB.clientToken
+    }));
+    await clientBAuthenticated;
+    const failedOnReconnect = await reconnectSessionFailed;
+    if (failedOnReconnect.terminationReason !== 'client_reconnected') {
+      throw new Error('Client reconnect did not invalidate the approved session');
+    }
+    const commandDenied = nextMessage(replacementController, (message) =>
+      message.type === 'error' && message.code === 'session_required', 2000, 'command denied after Client reconnect');
+    replacementController.send(JSON.stringify({
+      type: 'controller.command',
+      clientId: 'client-b',
+      command: 'flashlight',
+      parameters: { enabled: true }
+    }));
+    await commandDenied;
+
     console.log('multi-device.test: OK');
   } finally {
     sockets.forEach((socket) => socket.close());
