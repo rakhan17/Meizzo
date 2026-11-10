@@ -15,6 +15,12 @@ pending requests, and session records from process memory to a durable store.
 The current implementation must remain single-instance until that migration is
 complete.
 
+The current protocol now includes an authorization-only session lifecycle:
+`controller.start_session`, Client approval through
+`client.session_decision`, `session.status`/`client.session_status`, and
+`controller.end_session`. An `approved` session is not a media connection;
+WebRTC and OS permission flows remain separate future capabilities.
+
 ## Media plane
 
 Screen and camera media are intentionally not represented as working features

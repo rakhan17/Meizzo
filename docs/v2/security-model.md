@@ -22,3 +22,8 @@
 The current beta implements the first four controls in prototype form but
 stores server state in memory. Durable storage, token rotation, and production
 operational controls are prerequisites for V2 production deployment.
+
+Session requests are now scoped to one authorized Client and Controller. The
+Client must approve a request before it reaches `approved`; ending a session
+does not grant permission to start another session silently. Media and input
+capabilities still require their own Android permission and consent flows.

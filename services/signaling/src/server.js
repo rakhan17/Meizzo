@@ -16,6 +16,9 @@ const pairAttemptState = new Map();
 const pendingPairRequests = new Map();
 const pairedDevices = new Map();
 const controllerSessions = new Map();
+const sessions = new Map();
+const SESSION_TYPES = new Set(['monitoring', 'screen', 'camera', 'interaction', 'files']);
+const SESSION_PENDING_TTL_MS = 10 * 60 * 1000;
 
 function nowMs() {
   return Date.now();
@@ -91,6 +94,34 @@ function prune() {
       broadcastDeviceStatus(clientId);
     }
   }
+  for (const [sessionId, session] of sessions) {
+    if (session.state === 'pending' && now - session.createdAtMs > SESSION_PENDING_TTL_MS) {
+      session.state = 'failed';
+      session.endedAtMs = now;
+      session.terminationReason = 'approval_timeout';
+      notifySession(session);
+      sessions.delete(sessionId);
+    }
+  }
+}
+
+function notifySession(session) {
+  const payload = {
+    type: 'session.status',
+    sessionId: session.sessionId,
+    clientId: session.clientId,
+    controllerId: session.controllerId,
+    sessionType: session.sessionType,
+    state: session.state,
+    createdAtMs: session.createdAtMs,
+    endedAtMs: session.endedAtMs || null,
+    terminationReason: session.terminationReason || null
+  };
+  sendJson(session.controllerConnection, payload);
+  sendJson(session.clientConnection, {
+    ...payload,
+    type: 'client.session_status'
+  });
 }
 
 function deviceForConnection(ws) {
@@ -290,9 +321,67 @@ function onHeartbeat(ws, message) {
     if (message.telemetry && typeof message.telemetry === 'object') {
       device.metadata = { ...device.metadata, telemetry: message.telemetry };
     }
+
     broadcastDeviceStatus(device.clientId);
   }
   sendJson(ws, { type: 'heartbeat.ack', timestamp: nowMs() });
+}
+
+function authorizedDeviceForController(ws, clientId) {
+  const device = pairedDevices.get(clientId);
+  if (!device || ws.auth?.role !== 'controller' ||
+      !controllerAuthorized(ws, ws.auth.controllerId) ||
+      !device.controllerIds.has(ws.auth.controllerId)) return null;
+  return device;
+}
+
+function onSessionStart(ws, message) {
+  const device = authorizedDeviceForController(ws, message.clientId);
+  if (!device) return sendError(ws, 'unauthorized', 'Not authorized for this device');
+  if (!SESSION_TYPES.has(message.sessionType)) {
+    return sendError(ws, 'invalid_session_type', 'Unsupported session type');
+  }
+  if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
+  const session = {
+    sessionId: crypto.randomUUID(),
+    clientId: device.clientId,
+    controllerId: ws.auth.controllerId,
+    sessionType: message.sessionType,
+    state: 'pending',
+    createdAtMs: nowMs(),
+    controllerConnection: ws,
+    clientConnection: device.clientConnection
+  };
+  sessions.set(session.sessionId, session);
+  notifySession(session);
+}
+
+function onClientSessionDecision(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || ws.auth?.role !== 'client' ||
+      session.clientId !== ws.auth.clientId || session.clientConnection !== ws ||
+      typeof message.approved !== 'boolean') {
+    return sendError(ws, 'unauthorized', 'Invalid session decision');
+  }
+  session.state = message.approved ? 'approved' : 'rejected';
+  session.endedAtMs = message.approved ? undefined : nowMs();
+  session.terminationReason = message.approved ? undefined : 'client_rejected';
+  notifySession(session);
+  if (!message.approved) sessions.delete(session.sessionId);
+}
+
+function onSessionEnd(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || ws.auth?.role !== 'controller' ||
+      session.controllerId !== ws.auth.controllerId ||
+      session.controllerConnection !== ws) {
+    return sendError(ws, 'unauthorized', 'Invalid session termination');
+  }
+  session.state = 'ended';
+  session.endedAtMs = nowMs();
+  session.terminationReason = isNonEmptyString(message.reason) ? message.reason : 'controller_ended';
+  notifySession(session);
+  sessions.delete(session.sessionId);
 }
 
 function onDeviceList(ws) {
@@ -422,6 +511,9 @@ function routeMessage(ws, rawPayload) {
       return;
     }
     case 'heartbeat': return onHeartbeat(ws, message);
+    case 'controller.start_session': return onSessionStart(ws, message);
+    case 'client.session_decision': return onClientSessionDecision(ws, message);
+    case 'controller.end_session': return onSessionEnd(ws, message);
     case 'controller.list_devices': return onDeviceList(ws);
     case 'controller.request_snapshot': return onControllerSnapshot(ws, message);
     case 'controller.command': return onControllerCommand(ws, message);

@@ -13,9 +13,9 @@ function openSocket(url) {
   });
 }
 
-function nextMessage(socket, predicate, timeoutMs = 2000) {
+function nextMessage(socket, predicate, timeoutMs = 2000, label = 'message') {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for message')), timeoutMs);
+    const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${label}`)), timeoutMs);
     const onMessage = (raw) => {
       const message = JSON.parse(raw.toString());
       if (predicate(message)) {
@@ -139,6 +139,39 @@ async function run() {
       telemetry: { batteryPercent: 81, network: 'wifi', timestamp: Date.now() }
     }));
     await telemetryPromise;
+
+    const sessionRequest = nextMessage(clientAReconnect, (message) =>
+      message.type === 'client.session_status' && message.state === 'pending', 2000, 'client session pending');
+    const sessionPending = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.state === 'pending', 2000, 'controller session pending');
+    controller.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-a',
+      sessionType: 'monitoring'
+    }));
+    const pending = await sessionPending;
+    await sessionRequest;
+    const sessionApproved = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === pending.sessionId &&
+      message.state === 'approved', 2000, 'session approved');
+    clientAReconnect.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: pending.sessionId,
+      approved: true
+    }));
+    await sessionApproved;
+    const sessionEnded = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === pending.sessionId &&
+      message.state === 'ended', 2000, 'session ended');
+    controller.send(JSON.stringify({
+      type: 'controller.end_session',
+      sessionId: pending.sessionId,
+      reason: 'test_complete'
+    }));
+    const ended = await sessionEnded;
+    if (ended.terminationReason !== 'test_complete') {
+      throw new Error('Session termination reason was not preserved');
+    }
 
     controller.close();
     const replacementController = await openSocket('ws://127.0.0.1:8101');
