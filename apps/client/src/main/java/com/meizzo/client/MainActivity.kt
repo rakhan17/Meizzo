@@ -291,7 +291,11 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    runOnUiThread { status.text = connectionFailureMessage(t) }
+                    runOnUiThread {
+                        pendingSessionDialogs.values.forEach { it.dismiss() }
+                        pendingSessionDialogs.clear()
+                        status.text = connectionFailureMessage(t)
+                    }
                     scheduleReconnect()
                 }
             })
