@@ -40,7 +40,7 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
             release_tag="${{ inputs.release_tag }}"
           else
-            release_tag="$MEIZZO_RELEASE_TAG"
+            release_tag="$GITHUB_REF_NAME"
           fi
           if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|rc)\.[1-9][0-9]{0,2}))?$ ]]; then
             echo "::error::Invalid release tag: $release_tag"
