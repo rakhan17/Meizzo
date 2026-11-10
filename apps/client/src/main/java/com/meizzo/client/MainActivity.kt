@@ -53,6 +53,7 @@ class MainActivity : Activity() {
     private var reconnectScheduled = false
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
+    private val pendingSessionDialogs = mutableSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -228,6 +229,37 @@ class MainActivity : Activity() {
                                 .setOnCancelListener { decide(webSocket, message, false) }
                                 .show()
                         }
+                        "client.session_status" -> {
+                            val sessionId = message.optString("sessionId")
+                            val state = message.optString("state")
+                            val sessionType = message.optString("sessionType").ifBlank { "device" }
+                            when (state) {
+                                "pending" -> runOnUiThread {
+                                    if (sessionId.isBlank() || !pendingSessionDialogs.add(sessionId)) return@runOnUiThread
+                                    AlertDialog.Builder(this@MainActivity)
+                                        .setTitle("Allow $sessionType session?")
+                                        .setMessage("A paired Controller is requesting permission to start a $sessionType session. Nothing starts until you approve.")
+                                        .setNegativeButton("Deny") { _, _ ->
+                                            pendingSessionDialogs.remove(sessionId)
+                                            decideSession(webSocket, sessionId, false)
+                                        }
+                                        .setPositiveButton("Allow") { _, _ ->
+                                            pendingSessionDialogs.remove(sessionId)
+                                            decideSession(webSocket, sessionId, true)
+                                        }
+                                        .setOnCancelListener {
+                                            pendingSessionDialogs.remove(sessionId)
+                                            decideSession(webSocket, sessionId, false)
+                                        }
+                                        .show()
+                                }
+                                "approved" -> runOnUiThread { status.text = "$sessionType session approved" }
+                                "rejected", "failed", "ended" -> runOnUiThread {
+                                    pendingSessionDialogs.remove(sessionId)
+                                    status.text = if (state == "rejected") "Session request declined" else "Session $state"
+                                }
+                            }
+                        }
                         "client.pairing_completed" -> {
                             val token = message.optString("authToken")
                             secureStore.put("auth_token", token)
@@ -322,6 +354,14 @@ class MainActivity : Activity() {
         webSocket.send(JSONObject().apply {
             put("type", "client.pairing_decision")
             put("requestId", request.optString("requestId"))
+            put("approved", approved)
+        }.toString())
+    }
+
+    private fun decideSession(webSocket: WebSocket, sessionId: String, approved: Boolean) {
+        webSocket.send(JSONObject().apply {
+            put("type", "client.session_decision")
+            put("sessionId", sessionId)
             put("approved", approved)
         }.toString())
     }
