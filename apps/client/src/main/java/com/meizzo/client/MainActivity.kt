@@ -46,6 +46,7 @@ class MainActivity : Activity() {
     private val pairingCode by lazy { "%06d".format(SecureRandom().nextInt(1_000_000)) }
     private lateinit var status: TextView
     private var socket: WebSocket? = null
+    private var heartbeatSocket: WebSocket? = null
     private var torchEnabled = false
     private var alarm: ToneGenerator? = null
     private val reconnectHandler = Handler(Looper.getMainLooper())
@@ -214,14 +215,16 @@ class MainActivity : Activity() {
                     // Re-authenticate before refreshing an offer for an already-paired Client.
                     secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
                     registerPairingOffer(webSocket)
-                    startHeartbeat(webSocket)
                     runOnUiThread { status.text = "Connected · registering device" }
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     val message = JSONObject(text)
                     when (message.optString("type")) {
-                        "auth.connected" -> runOnUiThread { status.text = "Online · waiting for Controller" }
+                        "auth.connected" -> {
+                            startHeartbeat(webSocket)
+                            runOnUiThread { status.text = "Online · waiting for Controller" }
+                        }
                         "client.pairing_request" -> runOnUiThread {
                             AlertDialog.Builder(this@MainActivity)
                                 .setTitle("Approve Controller?")
@@ -292,6 +295,7 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    if (heartbeatSocket === webSocket) heartbeatSocket = null
                     runOnUiThread {
                         pendingSessionDialogs.values.forEach { it.dismiss() }
                         pendingSessionDialogs.clear()
@@ -319,10 +323,16 @@ class MainActivity : Activity() {
     }
 
     private fun startHeartbeat(webSocket: WebSocket) {
+        if (heartbeatSocket === webSocket) return
+        heartbeatSocket = webSocket
         Thread {
-            while (socket === webSocket) {
-                Thread.sleep(15_000)
-                if (socket === webSocket) {
+            while (socket === webSocket && heartbeatSocket === webSocket) {
+                try {
+                    Thread.sleep(15_000)
+                } catch (_: InterruptedException) {
+                    return@Thread
+                }
+                if (socket === webSocket && heartbeatSocket === webSocket) {
                     webSocket.send(JSONObject().apply {
                         put("type", "heartbeat")
                         put("telemetry", deviceMetrics())
