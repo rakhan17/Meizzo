@@ -47,47 +47,128 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 48, 40, 24)
+            setPadding(dp(22), dp(24), dp(22), dp(28))
             setBackgroundColor(Color.rgb(8, 8, 10))
         }
-        root.addView(ImageView(this).apply {
+        content.addView(ImageView(this).apply {
             setImageResource(R.drawable.meizzo_logo)
             contentDescription = "MEIZZO logo"
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }, LinearLayout.LayoutParams(-1, 120))
-        root.addView(TextView(this).apply {
+        }, LinearLayout.LayoutParams(-1, dp(76)))
+        content.addView(TextView(this).apply {
             text = "MEIZZO CONTROLLER"
-            textSize = 26f
+            textSize = 24f
+            letterSpacing = 0.1f
             setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, dp(18), 0, dp(4))
         })
+        content.addView(TextView(this).apply {
+            text = "Your connected devices, at a glance."
+            textSize = 14f
+            setTextColor(Color.rgb(155, 155, 163))
+        })
+
+        val overview = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        overview.addView(uiEyebrow("CONNECTION"))
         connectionLabel = TextView(this).apply {
-            text = "● Connecting to MEIZZO"; textSize = 15f; setPadding(0, 10, 0, 8)
-            setTextColor(Color.rgb(238, 190, 100))
+            text = "● Connecting to MEIZZO"
+            textSize = 14f
+            setPadding(0, dp(8), 0, dp(8))
+            setTextColor(Color.rgb(220, 190, 120))
         }
-        root.addView(connectionLabel)
-        summaryLabel = TextView(this).apply { textSize = 15f; setTextColor(Color.LTGRAY); setPadding(0, 0, 0, 16) }
-        root.addView(summaryLabel)
+        overview.addView(connectionLabel)
+        summaryLabel = TextView(this).apply {
+            text = "Loading device inventory…"
+            textSize = 13f
+            setTextColor(Color.rgb(165, 165, 173))
+        }
+        overview.addView(summaryLabel)
+        content.addView(overview, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
+
+        val pairing = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        pairing.addView(uiEyebrow("PAIR A DEVICE"))
         codeInput = EditText(this).apply {
-            hint = "Six-digit pairing code"; inputType = 2; maxLines = 1
-            setHintTextColor(Color.GRAY); setTextColor(Color.WHITE)
+            hint = "Enter six-digit pairing code"
+            inputType = 2
+            maxLines = 1
+            textSize = 16f
+            setHintTextColor(Color.rgb(115, 115, 123))
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(12), 0, dp(10))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(85, 85, 94))
         }
-        root.addView(codeInput)
-        root.addView(Button(this).apply {
-            text = "Add device"; setOnClickListener { requestPairing() }
-        })
-        root.addView(Button(this).apply {
-            text = "Check for app updates"
-            setOnClickListener { checkForUpdate() }
+        pairing.addView(codeInput)
+        pairing.addView(uiActionButton("Add device", true) { requestPairing() },
+            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+        content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
+            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
+
+        content.addView(uiEyebrow("YOUR DEVICES").apply {
+            setPadding(dp(2), dp(28), 0, dp(8))
         })
         devicesLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(this).apply { addView(devicesLayout) }, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root)
+        content.addView(devicesLayout)
+        content.addView(TextView(this).apply {
+            text = "MEIZZO  ·  SECURE DEVICE MANAGEMENT"
+            textSize = 10f
+            letterSpacing = 0.12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(105, 105, 113))
+            setPadding(0, dp(28), 0, dp(8))
+        })
+        setContentView(android.widget.ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
+            setBackgroundColor(Color.rgb(8, 8, 10))
+        })
         renderDevices()
         connect()
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun uiCard(): LinearLayout = LinearLayout(this).apply {
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(20, 20, 24))
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(42, 42, 48))
+        }
+    }
+
+    private fun uiEyebrow(value: String): TextView = TextView(this).apply {
+        text = value
+        textSize = 10f
+        letterSpacing = 0.16f
+        setTextColor(Color.rgb(145, 145, 154))
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+
+    private fun uiActionButton(label: String, primary: Boolean, action: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 14f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(if (primary) Color.rgb(12, 12, 14) else Color.WHITE)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(if (primary) Color.WHITE else Color.rgb(27, 27, 32))
+                cornerRadius = dp(14).toFloat()
+                if (!primary) setStroke(dp(1), Color.rgb(55, 55, 62))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
 
     override fun onResume() {
         super.onResume()
@@ -264,9 +345,9 @@ class MainActivity : Activity() {
         val metadata = device.optJSONObject("metadata") ?: JSONObject()
         val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
         val online = device.optString("status") == "online"
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(24, 20, 24, 20)
-            setBackgroundColor(Color.rgb(25, 25, 29))
+        val card = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
         }
         val name = metadata.optString("alias").takeUnless { it.isBlank() }
             ?: metadata.optString("model").takeUnless { it.isBlank() } ?: id
