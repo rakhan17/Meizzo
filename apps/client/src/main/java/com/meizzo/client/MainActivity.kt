@@ -210,14 +210,7 @@ class MainActivity : Activity() {
                     reconnectScheduled = false
                     // Re-authenticate before refreshing an offer for an already-paired Client.
                     secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
-                    webSocket.send(JSONObject().apply {
-                        put("type", "client.register_pairing_offer")
-                        put("clientId", clientId)
-                        put("pairingCode", pairingCode)
-                        put("expiresAtMs", System.currentTimeMillis() + 600_000)
-                        put("pairingAcceptanceEnabled", true)
-                        put("metadata", deviceMetadata())
-                    }.toString())
+                    registerPairingOffer(webSocket)
                     startHeartbeat(webSocket)
                     runOnUiThread { status.text = "Connected · registering device" }
                 }
@@ -251,7 +244,8 @@ class MainActivity : Activity() {
                         "client.command" -> handleCommand(webSocket, message)
                         "device.revoked" -> runOnUiThread {
                             secureStore.remove("auth_token")
-                            status.text = "Access revoked · pair this Client again to reconnect"
+                            registerPairingOffer(webSocket)
+                            status.text = "Access revoked · ready for a new Controller pairing"
                         }
                         "error" -> runOnUiThread {
                             if (message.optString("code") == "unauthorized") secureStore.remove("auth_token")
@@ -302,6 +296,17 @@ class MainActivity : Activity() {
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
         val delay = (1L shl reconnectAttempt) * 1000L
         reconnectHandler.postDelayed({ connect() }, delay)
+    }
+
+    private fun registerPairingOffer(webSocket: WebSocket) {
+        webSocket.send(JSONObject().apply {
+            put("type", "client.register_pairing_offer")
+            put("clientId", clientId)
+            put("pairingCode", pairingCode)
+            put("expiresAtMs", System.currentTimeMillis() + 600_000)
+            put("pairingAcceptanceEnabled", true)
+            put("metadata", deviceMetadata())
+        }.toString())
     }
 
     private fun authenticate(webSocket: WebSocket, token: String) {
