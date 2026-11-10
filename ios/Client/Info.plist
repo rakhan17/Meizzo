@@ -14,6 +14,8 @@
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
 	<string>3</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>MEIZZO uses the local network only when you configure a local signaling endpoint.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIApplicationSceneManifest</key>

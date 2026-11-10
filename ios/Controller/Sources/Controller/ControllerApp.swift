@@ -41,6 +41,8 @@ struct ControllerRootView: View {
                         if let message = model.pairingMessage { Text(message).font(.footnote).foregroundStyle(.gray) }
                     }.padding(18).background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20))
                     Text("Your devices").font(.title2.bold()).foregroundStyle(.white)
+                    Text("iOS beta: device telemetry is limited by public iOS APIs. Remote touch control, file access, camera streaming, and background monitoring are unavailable.")
+                        .font(.footnote).foregroundStyle(.gray)
                     if model.devices.isEmpty {
                         Text("No Clients paired yet.").foregroundStyle(.gray)
                     } else {
@@ -133,7 +135,22 @@ final class ControllerModel: ObservableObject {
                 if !ids.contains(id) { ids.append(id); UserDefaults.standard.set(ids, forKey: "paired-client-ids") }
             }
             if let id = message["clientId"] as? String {
-                devices.append(MeizzoDevice(clientId: id, status: "online", lastSeen: nil, metadata: ["platform": "iOS"]))
+                let metadata = message["metadata"] as? [String: Any] ?? ["platform": "iOS"]
+                let device = MeizzoDevice(
+                    clientId: id,
+                    status: "online",
+                    lastSeen: nil,
+                    metadata: metadata.compactMapValues { $0 as? String }
+                )
+                if let index = devices.firstIndex(where: { $0.clientId == id }) {
+                    devices[index] = device
+                } else {
+                    devices.append(device)
+                }
+                if let token = message["authToken"] as? String {
+                    socket.send(["type": "auth.connect", "role": "controller",
+                                 "clientId": id, "authToken": token])
+                }
             }
         } else if type == "controller.device_list", let raw = message["devices"] as? [[String: Any]] {
             devices = raw.compactMap { item in

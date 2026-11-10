@@ -1,0 +1,169 @@
+name: MEIZZO iOS Device IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      distribution:
+        description: "Provisioning profile type"
+        required: true
+        type: choice
+        options:
+          - development
+          - ad-hoc
+          - app-store
+        default: development
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    name: Archive ${{ matrix.app }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: client
+            directory: Client
+            scheme: MEIZZOClient
+            bundle_id: com.meizzo.client.ios
+            output: MEIZZO-Client.ipa
+          - app: controller
+            directory: Controller
+            scheme: MEIZZOController
+            bundle_id: com.meizzo.controller.ios
+            output: MEIZZO-Controller.ipa
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_PROFILE_CLIENT_BASE64: ${{ secrets.APPLE_PROFILE_CLIENT_BASE64 }}
+      APPLE_PROFILE_CONTROLLER_BASE64: ${{ secrets.APPLE_PROFILE_CONTROLLER_BASE64 }}
+      KEYCHAIN_PASSWORD: ${{ secrets.MEIZZO_KEYCHAIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Apple signing secrets
+        run: |
+          set -euo pipefail
+          for name in APPLE_TEAM_ID APPLE_SIGNING_IDENTITY APPLE_CERTIFICATE_BASE64 \
+            APPLE_CERTIFICATE_PASSWORD KEYCHAIN_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name is not configured. This workflow does not create unsigned or fake IPAs."
+              exit 1
+            fi
+          done
+          if [ "${{ matrix.app }}" = "client" ]; then
+            test -n "${APPLE_PROFILE_CLIENT_BASE64:-}" || {
+              echo "::error::APPLE_PROFILE_CLIENT_BASE64 is not configured."; exit 1;
+            }
+          else
+            test -n "${APPLE_PROFILE_CONTROLLER_BASE64:-}" || {
+              echo "::error::APPLE_PROFILE_CONTROLLER_BASE64 is not configured."; exit 1;
+            }
+          fi
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Install signing certificate and provisioning profile
+        id: signing
+        working-directory: ios/${{ matrix.directory }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/meizzo-signing.keychain-db"
+          certificate="$RUNNER_TEMP/meizzo-signing.p12"
+          profile="$RUNNER_TEMP/${{ matrix.app }}.mobileprovision"
+          printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$certificate"
+          if [ "${{ matrix.app }}" = "client" ]; then
+            printf '%s' "$APPLE_PROFILE_CLIENT_BASE64" | base64 --decode > "$profile"
+          else
+            printf '%s' "$APPLE_PROFILE_CONTROLLER_BASE64" | base64 --decode > "$profile"
+          fi
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security import "$certificate" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -s "$keychain"
+          profile_plist="$RUNNER_TEMP/${{ matrix.app }}-profile.plist"
+          security cms -D -i "$profile" > "$profile_plist"
+          profile_uuid="$(/usr/libexec/PlistBuddy -c 'Print:UUID' "$profile_plist")"
+          profile_name="$(/usr/libexec/PlistBuddy -c 'Print:Name' "$profile_plist")"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$profile" "$HOME/Library/MobileDevice/Provisioning Profiles/$profile_uuid.mobileprovision"
+          echo "profile_name=$profile_name" >> "$GITHUB_OUTPUT"
+
+      - name: Generate project
+        working-directory: ios/${{ matrix.directory }}
+        run: xcodegen generate
+
+      - name: Archive signed device app
+        working-directory: ios/${{ matrix.directory }}
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project "${{ matrix.scheme }}.xcodeproj" \
+            -scheme "${{ matrix.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$RUNNER_TEMP/${{ matrix.app }}.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$APPLE_SIGNING_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ steps.signing.outputs.profile_name }}" \
+            CODE_SIGNING_ALLOWED=YES
+
+      - name: Export and validate IPA
+        working-directory: ios/${{ matrix.directory }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/export-options.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>${{ inputs.distribution }}</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>${{ matrix.bundle_id }}</key><string>${{ steps.signing.outputs.profile_name }}</string>
+            </dict>
+          </dict></plist>
+          PLIST
+          mkdir -p dist
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/${{ matrix.app }}.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export-options.plist" \
+            -exportPath dist
+          ipa="$(find dist -maxdepth 1 -name '*.ipa' -print -quit)"
+          test -n "$ipa"
+          mv "$ipa" "dist/${{ matrix.output }}"
+          unzip -q "dist/${{ matrix.output }}" -d "$RUNNER_TEMP/${{ matrix.app }}-ipa"
+          app_path="$(find "$RUNNER_TEMP/${{ matrix.app }}-ipa/Payload" -maxdepth 1 -name '*.app' -type d -print -quit)"
+          test -n "$app_path"
+          actual_bundle="$(/usr/libexec/PlistBuddy -c 'Print:CFBundleIdentifier' "$app_path/Info.plist")"
+          test "$actual_bundle" = "${{ matrix.bundle_id }}"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          test -f "$app_path/embedded.mobileprovision"
+          security cms -D -i "$app_path/embedded.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          profile_bundle="$(/usr/libexec/PlistBuddy -c 'Print:Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")"
+          case "$profile_bundle" in
+            "$APPLE_TEAM_ID.${{ matrix.bundle_id }}") ;;
+            *) echo "::error::Provisioning profile does not authorize ${actual_bundle}"; exit 1 ;;
+          esac
+
+      - name: Remove temporary signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/meizzo-signing.keychain-db" >/dev/null 2>&1 || true
+          rm -f "$RUNNER_TEMP/meizzo-signing.p12" \
+            "$RUNNER_TEMP/${{ matrix.app }}.mobileprovision" \
+            "$RUNNER_TEMP/${{ matrix.app }}-profile.plist" \
+            "$RUNNER_TEMP/export-options.plist"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meizzo-${{ matrix.app }}-device-ipa
+          path: ios/${{ matrix.directory }}/dist/${{ matrix.output }}

@@ -60,10 +60,12 @@ iPhone**.
 | **MEIZZO Client for iOS** | [Download `MEIZZO-client-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip) | iOS 16+ Simulator |
 | **MEIZZO Controller for iOS** | [Download `MEIZZO-controller-iOS-simulator.zip`](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip) | iOS 16+ Simulator |
 
-Physical iPhone installation is not published yet. It requires an Apple
-Developer team, registered devices, signing certificates, provisioning
-profiles, and either an Xcode development build or TestFlight distribution.
-See [the iOS build guide](docs/ios.md) for the exact setup boundary.
+Physical iPhone installation is not published yet because this repository does
+not contain Apple signing credentials. A manual device IPA workflow is
+available after configuring repository secrets; it produces separate signed
+Client and Controller IPAs only when Apple credentials and matching profiles
+are valid. See [the iOS build guide](docs/ios.md) for setup, validation, and
+the Development/Ad Hoc/App Store differences.
 
 ## Implemented capabilities
 
@@ -89,6 +91,8 @@ See [the iOS build guide](docs/ios.md) for the exact setup boundary.
 - Explicit Client approval.
 - Controller multi-device list and online/offline state.
 - Keychain-backed Controller token storage.
+- Real-time presence, reconnect state, heartbeat telemetry, and Simulator
+  install/launch smoke validation.
 
 ## Not yet available
 

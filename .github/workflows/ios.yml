@@ -18,6 +18,9 @@ jobs:
         app: [client, controller]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate project
@@ -31,6 +34,25 @@ jobs:
             -sdk iphonesimulator -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+      - name: Run Simulator smoke test
+        working-directory: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}
+        run: |
+          npm --prefix ../../services/signaling ci
+          node ../../services/signaling/src/server.js > "$RUNNER_TEMP/meizzo-signaling.log" 2>&1 &
+          signaling_pid=$!
+          trap 'kill "$signaling_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            curl --fail --silent http://127.0.0.1:8080/healthz >/dev/null && break
+            sleep 1
+          done
+          if ! curl --fail --silent http://127.0.0.1:8080/healthz >/dev/null; then
+            cat "$RUNNER_TEMP/meizzo-signaling.log"
+            exit 1
+          fi
+          app_path="$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' -type d -print -quit)"
+          test -n "$app_path"
+          if [ "${{ matrix.app }}" = "client" ]; then bundle_id="com.meizzo.client.ios"; else bundle_id="com.meizzo.controller.ios"; fi
+          bash ../../ios/scripts/simulator-smoke.sh "$app_path" "$bundle_id"
       - name: Package simulator build
         working-directory: ios/${{ matrix.app == 'client' && 'Client' || 'Controller' }}
         run: |

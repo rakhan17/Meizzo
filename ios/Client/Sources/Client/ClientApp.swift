@@ -28,6 +28,8 @@ struct ClientRootView: View {
                         .foregroundStyle(.white)
                     Text("Share this code only with a trusted Controller. It expires automatically.")
                         .font(.footnote).foregroundStyle(.gray)
+                    Text("iOS limitation: remote touch control, file access, camera streaming, and background monitoring are not available in this beta.")
+                        .font(.footnote).foregroundStyle(.gray)
                 }.padding(22).background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
                 if let request = model.pendingRequest {
                     VStack(alignment: .leading, spacing: 12) {
@@ -111,7 +113,10 @@ final class ClientModel: ObservableObject {
             requestId = message["requestId"] as? String
             pendingRequest = message["controllerId"] as? String ?? "Unknown"
         case "client.pairing_completed":
-            if let token = message["authToken"] as? String { try? store.save(token, key: "auth-token") }
+            if let token = message["authToken"] as? String {
+                try? store.save(token, key: "auth-token")
+                socket.send(["type": "auth.connect", "role": "client", "clientId": id, "authToken": token])
+            }
             status = "Paired successfully"
         case "error": error = message["message"] as? String
         default: break
