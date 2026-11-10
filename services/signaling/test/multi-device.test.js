@@ -199,6 +199,14 @@ async function run() {
     }));
     const pending = await sessionPending;
     await sessionRequest;
+    const duplicateSessionError = nextMessage(controller, (message) =>
+      message.type === 'error' && message.code === 'session_already_active', 2000, 'duplicate interaction session rejected');
+    controller.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-a',
+      sessionType: 'interaction'
+    }));
+    await duplicateSessionError;
     const sessionApproved = nextMessage(controller, (message) =>
       message.type === 'session.status' && message.sessionId === pending.sessionId &&
       message.state === 'approved', 2000, 'session approved');
