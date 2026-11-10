@@ -54,6 +54,8 @@ class MainActivity : Activity() {
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
+    private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
+    private val cameraPermissionRequestCode = 4102
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -368,7 +370,63 @@ class MainActivity : Activity() {
         }.toString())
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != cameraPermissionRequestCode) return
+        val pending = pendingTorchCommand
+        pendingTorchCommand = null
+        if (pending == null) return
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            handleCommand(pending.first, pending.second)
+        } else {
+            sendCommandFailure(pending.first, pending.second, "Camera permission was denied; flashlight control is unavailable")
+        }
+    }
+
+    private fun sendCommandFailure(webSocket: WebSocket, message: JSONObject, reason: String) {
+        webSocket.send(JSONObject().apply {
+            put("type", "client.result")
+            put("requestId", message.optString("requestId"))
+            put("result", JSONObject())
+            put("error", reason)
+        }.toString())
+    }
+
     private fun handleCommand(webSocket: WebSocket, message: JSONObject) {
+        if (message.optString("command") == "flashlight" &&
+            checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+        ) {
+            runOnUiThread {
+                if (pendingTorchCommand != null) {
+                    sendCommandFailure(webSocket, message, "Another flashlight permission request is already pending")
+                    return@runOnUiThread
+                }
+                pendingTorchCommand = webSocket to message
+                AlertDialog.Builder(this)
+                    .setTitle("Allow flashlight control?")
+                    .setMessage("MEIZZO needs Android's camera permission to operate the flashlight. This permission is used for the torch only, not to capture photos or video.")
+                    .setNegativeButton("Not now") { _, _ ->
+                        pendingTorchCommand = null
+                        sendCommandFailure(webSocket, message, "Flashlight permission was not granted")
+                    }
+                    .setPositiveButton("Continue") { _, _ ->
+                        requestPermissions(
+                            arrayOf(android.Manifest.permission.CAMERA),
+                            cameraPermissionRequestCode
+                        )
+                    }
+                    .setOnCancelListener {
+                        pendingTorchCommand = null
+                        sendCommandFailure(webSocket, message, "Flashlight permission request was cancelled")
+                    }
+                    .show()
+            }
+            return
+        }
         val result = JSONObject()
         val parameters = message.optJSONObject("parameters") ?: JSONObject()
         var error: String? = null
