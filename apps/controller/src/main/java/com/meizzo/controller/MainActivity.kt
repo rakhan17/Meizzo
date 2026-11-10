@@ -230,10 +230,21 @@ class MainActivity : Activity() {
                         "session.status" -> handleSessionStatus(message)
                         "device.result" -> {
                             val id = message.optString("clientId")
-                            if (message.optJSONObject("result") != null) {
+                            val error = message.optString("error")
+                            if (error.isNotBlank() && error != "null") {
+                                setConnection("Device command failed · $error", false)
+                            } else if (message.optJSONObject("result") != null) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
-                                current.put("metadata", current.optJSONObject("metadata") ?: JSONObject())
-                                current.getJSONObject("metadata").put("telemetry", message.getJSONObject("result"))
+                                val metadata = current.optJSONObject("metadata") ?: JSONObject()
+                                val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+                                val result = message.getJSONObject("result")
+                                val keys = result.keys()
+                                while (keys.hasNext()) {
+                                    val key = keys.next()
+                                    telemetry.put(key, result.get(key))
+                                }
+                                metadata.put("telemetry", telemetry)
+                                current.put("metadata", metadata)
                                 devices[id] = current
                                 renderDevices()
                             }
