@@ -265,6 +265,10 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    runOnUiThread {
+                        approvedInteractionSessions.clear()
+                        renderDevices()
+                    }
                     setConnection(connectionFailureLabel(t), false)
                     scheduleReconnect()
                 }
