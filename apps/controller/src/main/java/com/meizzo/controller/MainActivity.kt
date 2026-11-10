@@ -21,6 +21,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.io.File
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -321,7 +322,7 @@ class MainActivity : Activity() {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
     }
 
-    private fun formatUpdateSize(bytes: Long): String = when {\n        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))\n        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)\n        else -> "$bytes B"\n    }\n\n    private fun formatUpdateSize(bytes: Long): String = when {
+    private fun formatUpdateSize(bytes: Long): String = when {
         bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
         bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
         else -> "$bytes B"
