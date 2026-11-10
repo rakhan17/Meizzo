@@ -42,6 +42,7 @@ class MainActivity : Activity() {
     private var reconnectScheduled = false
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private val devices = linkedMapOf<String, JSONObject>()
+    private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private var pendingUpdateApk: File? = null
 
@@ -226,6 +227,7 @@ class MainActivity : Activity() {
                             } else updateDevice(message)
                             renderDevices()
                         }
+                        "session.status" -> handleSessionStatus(message)
                         "device.result" -> {
                             val id = message.optString("clientId")
                             if (message.optJSONObject("result") != null) {
@@ -241,6 +243,7 @@ class MainActivity : Activity() {
                             secureStore.remove("token_$clientId")
                             preferences.edit().remove("paired_$clientId").apply()
                             devices.remove(clientId)
+                            approvedInteractionSessions.remove(clientId)
                             renderDevices()
                         }
                         "error" -> runOnUiThread {
@@ -373,6 +376,23 @@ class MainActivity : Activity() {
             textSize = 14f; setTextColor(Color.LTGRAY); setPadding(0, 8, 0, 8)
         })
         card.addView(Button(this).apply { text = "Open device details"; setOnClickListener { showDetails(device) } })
+        val interactionSession = approvedInteractionSessions[id]
+        card.addView(uiActionButton(
+            if (interactionSession == null) "Request interaction access" else "End interaction session",
+            interactionSession == null
+        ) {
+            if (interactionSession == null) requestInteraction(id) else endInteraction(id, interactionSession)
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
+        if (interactionSession != null) {
+            card.addView(uiActionButton("Flashlight on", false) { sendDeviceCommand(id, "flashlight", true) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+            card.addView(uiActionButton("Flashlight off", false) { sendDeviceCommand(id, "flashlight", false) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Alarm on", false) { sendDeviceCommand(id, "alarm", true) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Alarm off", false) { sendDeviceCommand(id, "alarm", false) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+        }
         devicesLayout.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 12, 0, 0) })
     }
 
@@ -445,6 +465,58 @@ class MainActivity : Activity() {
                     put("alias", input.text.toString().trim())
                 }.toString())
             }.show()
+    }
+
+    private fun handleSessionStatus(message: JSONObject) = runOnUiThread {
+        val clientId = message.optString("clientId")
+        val sessionId = message.optString("sessionId")
+        if (clientId.isBlank() || sessionId.isBlank() ||
+            message.optString("sessionType") != "interaction") return@runOnUiThread
+        when (message.optString("state")) {
+            "pending" -> setConnection("Waiting for Client approval", false)
+            "approved" -> {
+                approvedInteractionSessions[clientId] = sessionId
+                setConnection("Interaction approved · controls unlocked", true)
+            }
+            "failed", "rejected", "ended" -> {
+                if (approvedInteractionSessions[clientId] == sessionId) {
+                    approvedInteractionSessions.remove(clientId)
+                }
+                setConnection("Interaction session ${message.optString("state")}", false)
+            }
+        }
+        renderDevices()
+    }
+
+    private fun requestInteraction(clientId: String) {
+        socket?.send(JSONObject().apply {
+            put("type", "controller.start_session")
+            put("clientId", clientId)
+            put("sessionType", "interaction")
+        }.toString())
+        setConnection("Waiting for Client approval", false)
+    }
+
+    private fun endInteraction(clientId: String, sessionId: String) {
+        socket?.send(JSONObject().apply {
+            put("type", "controller.end_session")
+            put("sessionId", sessionId)
+            put("reason", "controller_ended")
+        }.toString())
+    }
+
+    private fun sendDeviceCommand(clientId: String, command: String, enabled: Boolean) {
+        if (approvedInteractionSessions[clientId].isNullOrBlank()) {
+            setConnection("Request Client approval before sending commands", false)
+            return
+        }
+        socket?.send(JSONObject().apply {
+            put("type", "controller.command")
+            put("clientId", clientId)
+            put("command", command)
+            put("parameters", JSONObject().put("enabled", enabled))
+        }.toString())
+        setConnection("Command sent · $command ${if (enabled) "on" else "off"}", true)
     }
 
     private fun sendSnapshot(clientId: String) {
