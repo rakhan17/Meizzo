@@ -71,7 +71,8 @@ class ClientUpdateManager(private val context: Context) {
                     }
                 }
                 null
-            }.fold(onResult, { onResult(Result.failure(it)) })
+            }.onSuccess { onResult(Result.success(it)) }
+                .onFailure { onResult(Result.failure(it)) }
         }.start()
     }
 
@@ -118,7 +119,8 @@ class ClientUpdateManager(private val context: Context) {
                 val installedSignatures = signatures(installed)
                 if (archiveSignatures != installedSignatures) error("APK signing certificate does not match the installed app")
                 apk
-            }.fold(onResult, { onResult(Result.failure(it)) })
+            }.onSuccess { onResult(Result.success(it)) }
+                .onFailure { onResult(Result.failure(it)) }
         }.start()
     }
 
