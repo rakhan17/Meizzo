@@ -47,24 +47,10 @@ separate Android applications.
 
 <sub>**LATEST BETA** &nbsp; `v0.1.0-beta.3`</sub>
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <strong>MEIZZO Client</strong><br>
-      <sub>For the device receiving assistance</sub><br><br>
-      <a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk">
-        <img src="assets/branding/download-client.svg" width="260" alt="Download MEIZZO Client for Android">
-      </a>
-    </td>
-    <td align="center" width="50%">
-      <strong>MEIZZO Controller</strong><br>
-      <sub>For the device managing connected Clients</sub><br><br>
-      <a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">
-        <img src="assets/branding/download-controller.svg" width="260" alt="Download MEIZZO Controller for Android">
-      </a>
-    </td>
-  </tr>
-</table>
+| App | Purpose | Download |
+|:--|:--|:--|
+| **MEIZZO Client** | Device receiving assistance | [Download Client APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [Download Controller APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
 
 > **Beta software:** bugs may occur. Install Client on the device being
 > assisted and Controller on the operator's device.
