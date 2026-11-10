@@ -132,6 +132,26 @@ async function run() {
     }));
     await replacementAuthenticated;
 
+    // Re-authenticating the same token on a new socket transfers ownership.
+    // The previous still-open socket must no longer receive device metadata.
+    const duplicate = await openSocket('ws://127.0.0.1:8102');
+    sockets.push(duplicate);
+    const duplicateAuthenticated = nextMessage(duplicate, (m) => m.type === 'auth.connected', 'duplicate Controller authentication');
+    duplicate.send(JSON.stringify({
+      type: 'auth.connect',
+      role: 'controller',
+      clientId: 'revocation-client',
+      authToken: second.authToken
+    }));
+    await duplicateAuthenticated;
+    const staleSocketStatus = nextMessage(replacement, (m) => m.type === 'device.status', 'no metadata on stale Controller socket', 300)
+      .then(() => true)
+      .catch(() => false);
+    const activeSocketStatus = nextMessage(duplicate, (m) => m.type === 'device.status', 'metadata on current Controller socket');
+    client.send(JSON.stringify({ type: 'heartbeat' }));
+    const [staleReceived] = await Promise.all([staleSocketStatus, activeSocketStatus]);
+    if (staleReceived) throw new Error('Stale Controller socket received device metadata after token reconnect');
+
     // A second Controller can be paired to the same Client without replacing
     // the first Controller's grant or the Client's own credential.
     const otherController = await openSocket('ws://127.0.0.1:8102');
@@ -171,8 +191,8 @@ async function run() {
     }));
     await otherAuthenticated;
 
-    const controllerRevoked = nextMessage(replacement, (m) => m.type === 'device.revoked', 'first Controller credential revocation');
-    replacement.send(JSON.stringify({
+    const controllerRevoked = nextMessage(duplicate, (m) => m.type === 'device.revoked', 'first Controller credential revocation');
+    duplicate.send(JSON.stringify({
       type: 'controller.revoke_device',
       clientId: 'revocation-client'
     }));
