@@ -160,8 +160,12 @@ function broadcastDeviceStatus(clientId) {
   }
 }
 
-function controllerAuthorized(ws, controllerId) {
-  return Boolean(controllerId && ws.authenticatedControllerIds?.has(controllerId));
+function controllerHasDeviceAccess(ws, device) {
+  if (!device || ws.auth?.role !== 'controller') return false;
+  return [...device.controllerTokens].some((value) =>
+    ws.authenticatedControllerTokens?.has(value) &&
+    controllerSessions.get(value)?.controllerId === ws.auth.controllerId
+  );
 }
 
 function authenticate(ws, message) {
@@ -172,23 +176,17 @@ function authenticate(ws, message) {
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
+    ws.authenticatedControllerTokens = ws.authenticatedControllerTokens || new Set();
+    ws.authenticatedControllerTokens.add(message.authToken);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     for (const device of pairedDevices.values()) {
-      if (device.controllerIds.has(session.controllerId)) device.controllerConnections.add(ws);
+      if (device.controllerTokens.has(message.authToken)) device.controllerConnections.add(ws);
     }
     return session;
   }
   if (!isNonEmptyString(message.clientId)) return null;
   const device = pairedDevices.get(message.clientId);
-  if (!device) {
-    const session = controllerSessions.get(message.authToken);
-    if (message.role === 'controller' && session) {
-      session.connection = ws;
-      ws.auth = { role: 'controller', controllerId: session.controllerId };
-      return session;
-    }
-    return null;
-  }
+  if (!device) return null;
   if (message.role === 'client' && message.authToken === device.clientToken) {
     device.clientConnection = ws;
     device.clientHeartbeat = nowMs();
@@ -205,6 +203,8 @@ function authenticate(ws, message) {
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
+    ws.authenticatedControllerTokens = ws.authenticatedControllerTokens || new Set();
+    ws.authenticatedControllerTokens.add(message.authToken);
     device.controllerConnections.add(ws);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
     return device;
@@ -328,9 +328,17 @@ function onPairingDecision(ws, message) {
     // Re-pairing the same Controller ID rotates its credential rather than
     // leaving multiple valid tokens behind.
     for (const oldToken of [...device.controllerTokens]) {
-      if (controllerSessions.get(oldToken)?.controllerId === pending.controllerId) {
-        controllerSessions.delete(oldToken);
-        device.controllerTokens.delete(oldToken);
+      const oldSession = controllerSessions.get(oldToken);
+      if (oldSession?.controllerId !== pending.controllerId) continue;
+      controllerSessions.delete(oldToken);
+      device.controllerTokens.delete(oldToken);
+      const oldConnection = oldSession.connection;
+      if (oldConnection && oldConnection !== pending.controllerConnection) {
+        oldConnection.authenticatedControllerTokens?.delete(oldToken);
+        device.controllerConnections.delete(oldConnection);
+        sendJson(oldConnection, { type: 'device.revoked', clientId: device.clientId, reason: 'credential_rotated' });
+      } else if (oldConnection === pending.controllerConnection) {
+        oldConnection.authenticatedControllerTokens?.delete(oldToken);
       }
     }
     device.metadata = offer.metadata;
@@ -365,6 +373,9 @@ function onPairingDecision(ws, message) {
   pending.controllerConnection.authenticatedControllerIds =
     pending.controllerConnection.authenticatedControllerIds || new Set();
   pending.controllerConnection.authenticatedControllerIds.add(pending.controllerId);
+  pending.controllerConnection.authenticatedControllerTokens =
+    pending.controllerConnection.authenticatedControllerTokens || new Set();
+  pending.controllerConnection.authenticatedControllerTokens.add(controllerToken);
   broadcastDeviceStatus(pairedDevice.clientId);
   sendJson(pending.controllerConnection, {
     type: 'controller.pairing_result',
@@ -402,9 +413,7 @@ function onHeartbeat(ws, message) {
 
 function authorizedDeviceForController(ws, clientId) {
   const device = pairedDevices.get(clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) return null;
+  if (!controllerHasDeviceAccess(ws, device)) return null;
   return device;
 }
 
@@ -463,8 +472,7 @@ function onSessionEnd(ws, message) {
 function onDeviceList(ws) {
   const devices = [];
   for (const device of pairedDevices.values()) {
-    const authorized = [...(ws.authenticatedControllerIds || [])]
-      .some((controllerId) => device.controllerIds.has(controllerId));
+    const authorized = controllerHasDeviceAccess(ws, device);
     if (authorized) {
       devices.push({ clientId: device.clientId, status: device.status, lastSeen: device.lastSeen, metadata: device.metadata });
     }
@@ -474,8 +482,7 @@ function onDeviceList(ws) {
 
 function onControllerSnapshot(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
@@ -491,8 +498,7 @@ function onControllerSnapshot(ws, message) {
 
 function onControllerCommand(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || !controllerAuthorized(ws, ws.auth?.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
@@ -520,9 +526,7 @@ function onControllerCommand(ws, message) {
 
 function onRenameDevice(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized for this device');
   }
   if (!isNonEmptyString(message.alias) || message.alias.length > 64) {
@@ -552,18 +556,26 @@ function onClientResult(ws, message) {
 
 function onRevoke(ws, message) {
   const device = pairedDevices.get(message.clientId);
-  if (!device || ws.auth?.role !== 'controller' ||
-      !controllerAuthorized(ws, ws.auth.controllerId) ||
-      !device.controllerIds.has(ws.auth.controllerId)) {
+  if (!controllerHasDeviceAccess(ws, device)) {
     return sendError(ws, 'unauthorized', 'Not authorized to revoke this device');
   }
   device.controllerIds.delete(ws.auth.controllerId);
-  device.controllerConnections.delete(ws);
+  const revokedTokens = new Set();
   for (const value of [...device.controllerTokens]) {
     if (controllerSessions.get(value)?.controllerId === ws.auth.controllerId) {
       controllerSessions.delete(value);
       device.controllerTokens.delete(value);
+      revokedTokens.add(value);
     }
+  }
+  for (const controller of [...device.controllerConnections]) {
+    const hadRevokedToken = [...revokedTokens].some((value) =>
+      controller.authenticatedControllerTokens?.has(value)
+    );
+    if (!hadRevokedToken) continue;
+    for (const value of revokedTokens) controller.authenticatedControllerTokens.delete(value);
+    device.controllerConnections.delete(controller);
+    sendJson(controller, { type: 'device.revoked', clientId: device.clientId });
   }
   for (const session of sessions.values()) {
     if (session.clientId !== device.clientId || session.controllerId !== ws.auth.controllerId ||
