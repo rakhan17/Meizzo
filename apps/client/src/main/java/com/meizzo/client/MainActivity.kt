@@ -208,6 +208,8 @@ class MainActivity : Activity() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     reconnectAttempt = 0
                     reconnectScheduled = false
+                    // Re-authenticate before refreshing an offer for an already-paired Client.
+                    secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
                     webSocket.send(JSONObject().apply {
                         put("type", "client.register_pairing_offer")
                         put("clientId", clientId)
@@ -216,7 +218,6 @@ class MainActivity : Activity() {
                         put("pairingAcceptanceEnabled", true)
                         put("metadata", deviceMetadata())
                     }.toString())
-                    secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
                     startHeartbeat(webSocket)
                     runOnUiThread { status.text = "Connected · registering device" }
                 }
@@ -248,8 +249,14 @@ class MainActivity : Activity() {
                             }.toString())
                         }
                         "client.command" -> handleCommand(webSocket, message)
-                        "device.revoked" -> runOnUiThread { status.text = "Access revoked by Controller" }
-                        "error" -> runOnUiThread { status.text = "Error: ${message.optString("message")}" }
+                        "device.revoked" -> runOnUiThread {
+                            secureStore.remove("auth_token")
+                            status.text = "Access revoked · pair this Client again to reconnect"
+                        }
+                        "error" -> runOnUiThread {
+                            if (message.optString("code") == "unauthorized") secureStore.remove("auth_token")
+                            status.text = "Error: ${message.optString("message")}"
+                        }
                     }
                 }
 
