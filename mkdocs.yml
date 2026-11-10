@@ -83,9 +83,6 @@ nav:
       - Security policy: security-policy.md
       - Pairing protocol: pairing-protocol.md
       - Screenshot contribution: assets/screenshots/README.md
-      - Code of Conduct: ../CODE_OF_CONDUCT.md
-      - Contributing policy: ../CONTRIBUTING.md
-      - Security policy: ../SECURITY.md
-      - Support: ../SUPPORT.md
+      - Community policies: community.md
 extra:
   generator: false
