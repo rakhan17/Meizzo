@@ -565,7 +565,8 @@ function onControllerCommand(ws, message) {
     type: 'client.command',
     requestId,
     command: message.command,
-    parameters: message.parameters && typeof message.parameters === 'object' ? message.parameters : {}
+    parameters: message.parameters && typeof message.parameters === 'object' &&
+      !Array.isArray(message.parameters) ? message.parameters : {}
   }));
   device.pendingRequests = device.pendingRequests || new Map();
   device.pendingRequests.set(requestId, ws);
