@@ -27,31 +27,7 @@ jobs:
       - run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
       - name: Derive Android version from release tag
-        run: |
-          python3 - "$GITHUB_REF_NAME" <<'PY'
-          import os, re, sys
-          tag = sys.argv[1]
-          match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?", tag)
-          if not match:
-              raise SystemExit(f"Unsupported release tag: {tag}")
-          major, minor, patch = map(int, match.group(1, 2, 3))
-          phase, serial = match.group(4), int(match.group(5) or 0)
-          if minor > 99 or patch > 99:
-              raise SystemExit("Minor and patch components must be between 0 and 99")
-          if phase is None:
-              qualifier = 999
-          else:
-              if not 1 <= serial <= 299:
-                  raise SystemExit("Prerelease serial must be between 1 and 299")
-              qualifier = {"alpha": 0, "beta": 300, "rc": 600}[phase] + serial
-          code = major * 10_000_000 + minor * 100_000 + patch * 1_000 + qualifier
-          if code < 1 or code > 2_100_000_000:
-              raise SystemExit(f"Derived Android versionCode is out of range: {code}")
-          with open(os.environ["GITHUB_ENV"], "a") as env:
-              env.write(f"MEIZZO_VERSION_NAME={tag.removeprefix('v')}\n")
-              env.write(f"MEIZZO_VERSION_CODE={code}\n")
-          print(f"Release {tag}: versionName={tag.removeprefix('v')} versionCode={code}")
-          PY
+        run: python3 scripts/release_version.py "$GITHUB_REF_NAME"
       - name: Validate release configuration and build
         env:
           MEIZZO_ANDROID_KEYSTORE_BASE64: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_BASE64 }}
