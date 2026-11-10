@@ -218,6 +218,24 @@ function onOffer(ws, message) {
     sendError(ws, 'invalid_offer', 'Invalid pairing offer payload');
     return;
   }
+  const existingOffer = pairingOffersByCode.get(message.pairingCode);
+  if (existingOffer && existingOffer.connection !== ws &&
+      existingOffer.expiresAtMs > nowMs() &&
+      existingOffer.connection.readyState === existingOffer.connection.OPEN) {
+    sendError(ws, 'pairing_code_conflict', 'Pairing code is already in use');
+    return;
+  }
+
+  // A Client may have only one active pairing code. Remove its previous code
+  // before registering the replacement so rotated/disabled codes cannot linger.
+  if (ws.currentPairingCode) {
+    const previousOffer = pairingOffersByCode.get(ws.currentPairingCode);
+    if (previousOffer?.connection === ws) pairingOffersByCode.delete(ws.currentPairingCode);
+  }
+  if (existingOffer && existingOffer.connection !== ws) {
+    pairingOffersByCode.delete(message.pairingCode);
+  }
+
   pairingOffersByCode.set(message.pairingCode, {
     clientId: message.clientId,
     expiresAtMs: message.expiresAtMs,
