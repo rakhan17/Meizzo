@@ -13,6 +13,7 @@ const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 
 const pairingOffersByCode = new Map();
 const pairAttemptState = new Map();
+const pairIpAttemptState = new Map();
 const pendingPairRequests = new Map();
 const pairedDevices = new Map();
 const controllerSessions = new Map();
@@ -44,17 +45,26 @@ function token() {
   return crypto.randomBytes(32).toString('base64url');
 }
 
-function registerAttempt(controllerId) {
-  const key = controllerId || 'anonymous';
-  const now = nowMs();
-  const current = pairAttemptState.get(key);
+function consumeAttempt(map, key, limit, now) {
+  const current = map.get(key);
   if (!current || now - current.windowStartMs > PAIRING_WINDOW_MS) {
-    pairAttemptState.set(key, { attempts: 1, windowStartMs: now });
+    map.set(key, { attempts: 1, windowStartMs: now });
     return true;
   }
-  if (current.attempts >= PAIRING_MAX_ATTEMPTS_PER_WINDOW) return false;
+  if (current.attempts >= limit) return false;
   current.attempts += 1;
   return true;
+}
+
+function registerAttempt(controllerId, ws) {
+  const now = nowMs();
+  const controllerKey = controllerId || 'anonymous';
+  const addressKey = ws._socket?.remoteAddress || 'unknown';
+  const controllerAllowed = consumeAttempt(
+    pairAttemptState, controllerKey, PAIRING_MAX_ATTEMPTS_PER_WINDOW, now
+  );
+  const addressAllowed = consumeAttempt(pairIpAttemptState, addressKey, 30, now);
+  return controllerAllowed && addressAllowed;
 }
 
 function validateExpiry(expiresAtMs) {
@@ -69,6 +79,11 @@ function sendError(ws, code, message) {
 
 function prune() {
   const now = nowMs();
+  for (const map of [pairAttemptState, pairIpAttemptState]) {
+    for (const [key, state] of map) {
+      if (now - state.windowStartMs > PAIRING_WINDOW_MS) map.delete(key);
+    }
+  }
   for (const [code, offer] of pairingOffersByCode) {
     if (offer.expiresAtMs <= now || offer.connection.readyState !== offer.connection.OPEN) {
       pairingOffersByCode.delete(code);
@@ -224,7 +239,7 @@ function onPairingRequest(ws, message) {
     sendError(ws, 'invalid_pairing_request', 'Invalid controller pairing payload');
     return;
   }
-  if (!registerAttempt(message.controllerId)) {
+  if (!registerAttempt(message.controllerId, ws)) {
     sendJson(ws, { type: 'controller.pairing_result', status: 'rate_limited', reason: 'Too many attempts, retry later' });
     return;
   }
