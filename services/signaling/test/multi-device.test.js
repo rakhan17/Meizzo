@@ -90,6 +90,54 @@ async function run() {
     const renamed = await renamedPromise;
     if (renamed.alias !== 'Living room') throw new Error('Device rename was not acknowledged');
 
+    const commandBlocked = nextMessage(controller, (message) =>
+      message.type === 'error' && message.code === 'session_required', 2000, 'command blocked without interaction approval');
+    controller.send(JSON.stringify({
+      type: 'controller.command',
+      clientId: 'client-a',
+      command: 'flashlight',
+      parameters: { enabled: true }
+    }));
+    await commandBlocked;
+
+    const interactionPendingClient = nextMessage(clientA, (message) =>
+      message.type === 'client.session_status' && message.sessionType === 'interaction' && message.state === 'pending');
+    const interactionPendingController = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionType === 'interaction' && message.state === 'pending');
+    controller.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-a',
+      sessionType: 'interaction'
+    }));
+    const interactionPending = await interactionPendingController;
+    await interactionPendingClient;
+    const interactionApproved = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === interactionPending.sessionId && message.state === 'approved');
+    clientA.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: interactionPending.sessionId,
+      approved: true
+    }));
+    await interactionApproved;
+    const commandForwarded = nextMessage(clientA, (message) =>
+      message.type === 'client.command' && message.command === 'flashlight');
+    controller.send(JSON.stringify({
+      type: 'controller.command',
+      clientId: 'client-a',
+      command: 'flashlight',
+      parameters: { enabled: true }
+    }));
+    const forwarded = await commandForwarded;
+    if (forwarded.parameters.enabled !== true) throw new Error('Approved interaction command parameters were not forwarded');
+    const interactionEnded = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === interactionPending.sessionId && message.state === 'ended');
+    controller.send(JSON.stringify({
+      type: 'controller.end_session',
+      sessionId: interactionPending.sessionId,
+      reason: 'interaction_test_complete'
+    }));
+    await interactionEnded;
+
     const commandPromise = nextMessage(clientA, (message) => message.type === 'client.snapshot_request');
     controller.send(JSON.stringify({
       type: 'controller.request_snapshot',
