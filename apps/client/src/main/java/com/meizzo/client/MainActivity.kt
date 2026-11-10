@@ -146,10 +146,25 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    runOnUiThread { status.text = "Disconnected · reconnecting" }
+                    runOnUiThread { status.text = connectionFailureMessage(t) }
                     scheduleReconnect()
                 }
             })
+    }
+
+    private fun connectionFailureMessage(error: Throwable): String {
+        val detail = error.message.orEmpty().lowercase()
+        return when {
+            detail.contains("cleartext") ->
+                "Backend rejected cleartext · install a debug build or use WSS"
+            detail.contains("unable to resolve") || detail.contains("unknownhost") ->
+                "Backend host not found · check the configured endpoint"
+            detail.contains("failed to connect") || detail.contains("refused") ->
+                "Backend unreachable · check host, port, and server status"
+            detail.contains("ssl") || detail.contains("certificate") ->
+                "TLS validation failed · check the WSS certificate"
+            else -> "Backend connection failed · retrying"
+        }
     }
 
     private fun startHeartbeat(webSocket: WebSocket) {

@@ -2,10 +2,11 @@
 
 ## `CLEARTEXT communication ... not permitted`
 
-This means a release build attempted `ws://` while release cleartext is
-disabled. Use a debug build for local emulator/BlueStacks development, where
-only `10.0.2.2` and loopback are allowlisted. For release builds, pass a real
-TLS endpoint:
+This means the installed APK attempted `ws://` while its release cleartext
+policy is disabled, or it is an older APK with an incompatible network
+configuration. Use a current debug build for local emulator/BlueStacks
+development. Debug builds permit local HTTP only; release builds require a
+real TLS endpoint:
 
 ```bash
 ./gradlew -Pmeizzo.releaseSignalingUrl=wss://signal.example \
@@ -13,6 +14,10 @@ TLS endpoint:
 ```
 
 Do not disable certificate validation or enable unrestricted cleartext.
+
+If `10.0.2.2` is not reachable in BlueStacks Air, it is a routing problem,
+not an Android cleartext-policy problem. Use the Mac's reachable LAN address
+and follow the [BlueStacks Air checklist](bluestacks-air.md).
 
 ## Offline status
 

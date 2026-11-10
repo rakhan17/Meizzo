@@ -45,6 +45,12 @@ Client until the Client approves the request.
 The latest published Android beta is **v0.1.0-beta.3**. Client and Controller
 are separate packages and must not be interchanged.
 
+Beta.3 is the previous published build and contains the legacy local
+`10.0.2.2` debug endpoint behavior. For BlueStacks Air testing, use a current
+debug build configured with the Mac's reachable LAN address; beta.4 is not
+published until a production WSS endpoint and compatible signing key are
+available.
+
 <table>
 <tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
 <tr><td>MEIZZO Client</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.client</code></td><td>Android 8.0+</td></tr>

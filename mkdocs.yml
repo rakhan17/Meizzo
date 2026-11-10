@@ -44,6 +44,7 @@ nav:
       - FAQ: faq.md
   - Platform Guides:
       - Android: android-guide.md
+      - BlueStacks Air: bluestacks-air.md
       - iOS: ios-guide.md
       - iOS implementation status: ios.md
   - Developer Guide:

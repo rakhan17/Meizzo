@@ -7,16 +7,17 @@ credential storage.
 
 ## Endpoint configuration
 
-Debug builds default to `ws://10.0.2.2:8080`; the network security config
-allowlists only emulator loopback addresses for debug use. Override with:
+Debug builds default to `ws://10.0.2.2:8080`. That address is not guaranteed
+to work in BlueStacks Air; override it with the Mac LAN address when
+necessary:
 
 ```bash
 ./gradlew -Pmeizzo.debugSignalingUrl=ws://192.168.1.20:8080 \
-  :apps:client:assembleDebug
+  :apps:client:assembleDebug :apps:controller:assembleDebug
 ```
 
-Release builds default to an invalid placeholder and must be built with a
-real TLS endpoint:
+The debug network policy is isolated to debug resources. Release resources
+deny cleartext traffic. Release builds must be built with a real TLS endpoint:
 
 ```bash
 ./gradlew -Pmeizzo.releaseSignalingUrl=wss://signal.example \

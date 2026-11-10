@@ -31,6 +31,12 @@ jobs:
             wss://*) ;;
             *) echo "::error::MEIZZO_SIGNALING_URL must use wss:// for release builds."; exit 1 ;;
           esac
+          case "$MEIZZO_SIGNALING_URL" in
+            *".invalid"*|wss://localhost*|wss://127.0.0.1*|wss://10.0.2.2*)
+              echo "::error::MEIZZO_SIGNALING_URL must be a reachable production endpoint."
+              exit 1
+              ;;
+          esac
           ./gradlew -Pmeizzo.releaseSignalingUrl="$MEIZZO_SIGNALING_URL" \
             :apps:client:assembleRelease :apps:controller:assembleRelease
       - run: |

@@ -139,10 +139,24 @@ class MainActivity : Activity() {
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    setConnection("Reconnecting", false)
+                    setConnection(connectionFailureLabel(t), false)
                     scheduleReconnect()
                 }
             })
+    }
+
+    private fun connectionFailureLabel(error: Throwable): String {
+        val detail = error.message.orEmpty().lowercase()
+        return when {
+            detail.contains("cleartext") -> "Cleartext blocked · use debug or WSS"
+            detail.contains("unable to resolve") || detail.contains("unknownhost") ->
+                "Backend host not found"
+            detail.contains("failed to connect") || detail.contains("refused") ->
+                "Backend unreachable"
+            detail.contains("ssl") || detail.contains("certificate") ->
+                "TLS validation failed"
+            else -> "Backend connection failed · retrying"
+        }
     }
 
     private fun setConnection(label: String, connected: Boolean) = runOnUiThread {
