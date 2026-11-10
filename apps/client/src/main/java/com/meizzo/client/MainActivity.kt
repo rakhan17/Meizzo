@@ -192,7 +192,13 @@ class MainActivity : Activity() {
                 }
                 .show()
         } else {
-            status.text = "Allow MEIZZO to install updates, then return here."
+            status.text = "Install permission is required to continue."
+            AlertDialog.Builder(this)
+                .setTitle("Allow app updates")
+                .setMessage("Enable 'Allow from this source' for MEIZZO in Android settings, then return here.")
+                .setNegativeButton("Later", null)
+                .setPositiveButton("Open settings") { _, _ -> updateManager.requestInstallPermission() }
+                .show()
         }
     }
 
