@@ -147,6 +147,21 @@ function notifySession(session) {
   });
 }
 
+function terminateSessionsForConnection(connection, role, identity, reason) {
+  if (!connection) return;
+  for (const [sessionId, session] of sessions) {
+    const matches = role === 'client'
+      ? session.clientConnection === connection && session.clientId === identity
+      : session.controllerConnection === connection && session.controllerId === identity;
+    if (!matches || !['pending', 'approved'].includes(session.state)) continue;
+    session.state = 'failed';
+    session.endedAtMs = nowMs();
+    session.terminationReason = reason;
+    notifySession(session);
+    sessions.delete(sessionId);
+  }
+}
+
 function deviceForConnection(ws) {
   for (const device of pairedDevices.values()) {
     if (device.clientConnection === ws || device.controllerConnections.has(ws)) return device;
@@ -189,6 +204,11 @@ function authenticate(ws, message) {
   if (message.role === 'controller' && !isNonEmptyString(message.clientId)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
+    if (session.connection && session.connection !== ws) {
+      terminateSessionsForConnection(
+        session.connection, 'controller', session.controllerId, 'controller_reconnected'
+      );
+    }
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
@@ -204,6 +224,11 @@ function authenticate(ws, message) {
   const device = pairedDevices.get(message.clientId);
   if (!device) return null;
   if (message.role === 'client' && message.authToken === device.clientToken) {
+    if (device.clientConnection && device.clientConnection !== ws) {
+      terminateSessionsForConnection(
+        device.clientConnection, 'client', message.clientId, 'client_reconnected'
+      );
+    }
     device.clientConnection = ws;
     device.clientHeartbeat = nowMs();
     device.lastSeen = nowMs();
@@ -216,6 +241,11 @@ function authenticate(ws, message) {
   if (message.role === 'controller' && device.controllerTokens.has(message.authToken)) {
     const session = controllerSessions.get(message.authToken);
     if (!session) return null;
+    if (session.connection && session.connection !== ws) {
+      terminateSessionsForConnection(
+        session.connection, 'controller', session.controllerId, 'controller_reconnected'
+      );
+    }
     session.connection = ws;
     ws.authenticatedControllerIds = ws.authenticatedControllerIds || new Set();
     ws.authenticatedControllerIds.add(session.controllerId);
