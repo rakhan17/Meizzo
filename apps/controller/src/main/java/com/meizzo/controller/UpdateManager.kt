@@ -279,9 +279,20 @@ class ControllerUpdateManager(private val context: Context) {
                 error("GitHub update request failed (${response.code})")
             }
             val body = response.body ?: error("GitHub returned an empty response")
-            val bytes = body.source().readByteArray(maxBytes + 1L)
+            val bytes = body.byteStream().use { input ->
+                val output = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(8 * 1024)
+                var total = 0L
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= maxBytes) { "GitHub update response exceeded the allowed size" }
+                    output.write(buffer, 0, count)
+                }
+                output.toByteArray()
+            }
             require(bytes.isNotEmpty()) { "GitHub returned an empty response" }
-            require(bytes.size.toLong() <= maxBytes) { "GitHub update response exceeded the allowed size" }
             bytes.toString(Charsets.UTF_8)
         }
     }
