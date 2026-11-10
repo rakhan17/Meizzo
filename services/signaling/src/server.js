@@ -158,6 +158,13 @@ function broadcastDeviceStatus(clientId) {
   const device = pairedDevices.get(clientId);
   if (!device) return;
   for (const controller of device.controllerConnections) {
+    // A token can reconnect on a new socket while the previous socket remains
+    // open. Never broadcast device metadata to a socket that no longer owns
+    // an active credential for this device.
+    if (!controllerHasDeviceAccess(controller, device)) {
+      device.controllerConnections.delete(controller);
+      continue;
+    }
     sendJson(controller, {
       type: 'device.status',
       clientId,
