@@ -92,7 +92,7 @@ class ControllerUpdateManager(private val context: Context) {
                     }
                     val metadataUrl = manifestUrl ?: continue
                     requireHttps(metadataUrl)
-                    val manifest = JSONObject(executeText(metadataUrl))
+                    val manifest = JSONObject(executeText(metadataUrl, maxBytes = 128L * 1024L))
                     require(manifest.optInt("schemaVersion") == 1) { "Unsupported update manifest schema" }
                     require(manifest.optString("tag") == tag) { "Release tag does not match update manifest" }
                     val expectedChannel = if (prerelease) "beta" else "stable"
@@ -114,7 +114,7 @@ class ControllerUpdateManager(private val context: Context) {
                     }
 
                     val assetName = app.optString("assetName")
-                    require(assetName.isNotBlank() && !assetName.contains('/') && !assetName.contains('\\')) {
+                    require(Regex("[A-Za-z0-9][A-Za-z0-9._-]*\\.apk").matches(assetName)) {
                         "Invalid APK asset name"
                     }
                     val asset = assetUrls[assetName] ?: error("Release is missing $assetName")
@@ -262,7 +262,11 @@ class ControllerUpdateManager(private val context: Context) {
         } ?: value
     }.getOrDefault(value)
 
-    private fun executeText(url: String, accept: String? = null): String {
+    private fun executeText(
+        url: String,
+        accept: String? = null,
+        maxBytes: Long = 2L * 1024L * 1024L
+    ): String {
         requireHttps(url)
         val request = Request.Builder().url(url).apply {
             if (accept != null) header("Accept", accept)
@@ -274,7 +278,11 @@ class ControllerUpdateManager(private val context: Context) {
                 }
                 error("GitHub update request failed (${response.code})")
             }
-            response.body?.string() ?: error("GitHub returned an empty response")
+            val body = response.body ?: error("GitHub returned an empty response")
+            val bytes = body.source().readByteArray(maxBytes + 1L)
+            require(bytes.isNotEmpty()) { "GitHub returned an empty response" }
+            require(bytes.size.toLong() <= maxBytes) { "GitHub update response exceeded the allowed size" }
+            bytes.toString(Charsets.UTF_8)
         }
     }
 
