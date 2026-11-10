@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test release version derivation
-        run: python3 -m unittest tests.test_release_version -v
+        run: python3 -m unittest discover -s tests -p 'test_release_version.py' -v
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: android-actions/setup-android@v3
