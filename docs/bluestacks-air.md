@@ -39,6 +39,10 @@ permit cleartext only because they are explicitly intended for local
 development. Release builds must use a real `wss://` endpoint and must not
 use this local HTTP configuration.
 
+Alternatively, run the **MEIZZO CI** workflow manually and set its
+`debug_signaling_url` input to the same `ws://<Mac-LAN-IP>:8080` value. The
+workflow artifacts contain separate Client and Controller debug APKs.
+
 ## Two-instance checklist
 
 1. Install the freshly built `client-debug.apk` in BlueStacks instance A.

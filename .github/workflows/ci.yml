@@ -5,6 +5,12 @@ on:
     branches: ["**"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      debug_signaling_url:
+        description: "Debug WebSocket URL for a manually generated Android artifact"
+        required: false
+        default: "ws://10.0.2.2:8080"
+        type: string
 
 permissions:
   contents: read
@@ -34,7 +40,7 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: yes | sdkmanager --licenses >/dev/null || true
-      - run: ./gradlew :apps:${{ matrix.module }}:assembleDebug
+      - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'ws://10.0.2.2:8080' }}" :apps:${{ matrix.module }}:assembleDebug
       - run: |
           mkdir -p dist
           if [ "${{ matrix.module }}" = "client" ]; then
