@@ -1,0 +1,31 @@
+name: MEIZZO Cloudflare Worker Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wrangler.toml"
+      - "services/signaling/cloudflare/**"
+      - ".github/workflows/meizzo-cloudflare.yml"
+  pull_request:
+    paths:
+      - "wrangler.toml"
+      - "services/signaling/cloudflare/**"
+      - ".github/workflows/meizzo-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Worker bundle with Wrangler
+        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.toml
