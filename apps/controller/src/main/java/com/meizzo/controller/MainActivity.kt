@@ -20,6 +20,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -41,6 +42,7 @@ class MainActivity : Activity() {
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private val devices = linkedMapOf<String, JSONObject>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
+    private var pendingUpdateApk: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +86,24 @@ class MainActivity : Activity() {
         setContentView(root)
         renderDevices()
         connect()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val pending = pendingUpdateApk ?: return
+        if (updateManager.canInstallPackages()) {
+            AlertDialog.Builder(this)
+                .setTitle("Update ready to install")
+                .setMessage("MEIZZO has permission to start the Android installer. Confirm installation to continue.")
+                .setNegativeButton("Later", null)
+                .setPositiveButton("Install") { _, _ ->
+                    pendingUpdateApk = null
+                    updateManager.install(pending)
+                }
+                .show()
+        } else {
+            setConnection("Allow MEIZZO to install updates, then return here.", false)
+        }
     }
 
     private fun connect() {
@@ -301,7 +321,7 @@ class MainActivity : Activity() {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
     }
 
-    private fun checkForUpdate() {
+    private fun formatUpdateSize(bytes: Long): String = when {\n        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))\n        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)\n        else -> "$bytes B"\n    }\n\n    private fun checkForUpdate() {
         setConnection("Checking for updates", false)
         updateManager.check { result ->
             runOnUiThread {
@@ -336,7 +356,7 @@ class MainActivity : Activity() {
                         .setTitle("Install ${release.tag}?")
                         .setMessage("The APK package and SHA-256 checksum were verified. Android will show the final install confirmation.")
                         .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Install") { _, _ -> updateManager.install(apk) }
+                        .setPositiveButton("Install") { _, _ ->\n                            pendingUpdateApk = apk\n                            updateManager.install(apk)\n                            if (updateManager.canInstallPackages()) pendingUpdateApk = null\n                        }
                         .show()
                     setConnection("Update verified · installation pending", true)
                 }
