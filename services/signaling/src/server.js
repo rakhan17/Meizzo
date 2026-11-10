@@ -457,6 +457,16 @@ function onControllerCommand(ws, message) {
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
   if (!isNonEmptyString(message.command)) return sendError(ws, 'invalid_command', 'Command is required');
+  const hasApprovedInteractionSession = [...sessions.values()].some((session) =>
+    session.clientId === device.clientId &&
+    session.controllerId === ws.auth.controllerId &&
+    session.controllerConnection === ws &&
+    session.state === 'approved' &&
+    session.sessionType === 'interaction'
+  );
+  if (!hasApprovedInteractionSession) {
+    return sendError(ws, 'session_required', 'An approved interaction session is required');
+  }
   const requestId = crypto.randomUUID();
   device.clientConnection.send(JSON.stringify({
     type: 'client.command',
