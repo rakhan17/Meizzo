@@ -132,13 +132,62 @@ async function run() {
     }));
     await replacementAuthenticated;
 
-    const controllerRevoked = nextMessage(replacement, (m) => m.type === 'device.revoked', 'Controller credential revocation');
-    const clientRevoked = nextMessage(client, (m) => m.type === 'device.revoked', 'Client revocation notice');
+    // A second Controller can be paired to the same Client without replacing
+    // the first Controller's grant or the Client's own credential.
+    const otherController = await openSocket('ws://127.0.0.1:8102');
+    sockets.push(otherController);
+    const thirdOffer = nextMessage(client, (m) => m.type === 'client.pairing_offer_registered', 'second Controller pairing offer');
+    client.send(JSON.stringify({
+      type: 'client.register_pairing_offer',
+      clientId: 'revocation-client',
+      pairingCode: '161803',
+      expiresAtMs: Date.now() + 60_000,
+      pairingAcceptanceEnabled: true
+    }));
+    await thirdOffer;
+    const thirdRequest = nextMessage(client, (m) => m.type === 'client.pairing_request', 'second Controller pairing request');
+    otherController.send(JSON.stringify({
+      type: 'controller.request_pairing',
+      controllerId: 'second-controller',
+      pairingCode: '161803'
+    }));
+    const request3 = await thirdRequest;
+    const thirdPaired = nextMessage(otherController, (m) => m.type === 'controller.pairing_result' && m.status === 'paired', 'second Controller pairing result');
+    const thirdClientCompleted = nextMessage(client, (m) => m.type === 'client.pairing_completed', 'Client credential remains stable');
+    client.send(JSON.stringify({
+      type: 'client.pairing_decision',
+      requestId: request3.requestId,
+      approved: true
+    }));
+    const third = await thirdPaired;
+    const thirdClient = await thirdClientCompleted;
+    if (thirdClient.authToken !== firstClient.authToken) throw new Error('Adding another Controller changed the Client credential');
+    const otherAuthenticated = nextMessage(otherController, (m) => m.type === 'auth.connected', 'second Controller authentication');
+    otherController.send(JSON.stringify({
+      type: 'auth.connect',
+      role: 'controller',
+      clientId: 'revocation-client',
+      authToken: third.authToken
+    }));
+    await otherAuthenticated;
+
+    const controllerRevoked = nextMessage(replacement, (m) => m.type === 'device.revoked', 'first Controller credential revocation');
     replacement.send(JSON.stringify({
       type: 'controller.revoke_device',
       clientId: 'revocation-client'
     }));
-    await Promise.all([controllerRevoked, clientRevoked]);
+    await controllerRevoked;
+    const clientStillPaired = nextMessage(client, (m) => m.type === 'heartbeat.ack', 'Client remains paired to second Controller');
+    client.send(JSON.stringify({ type: 'heartbeat' }));
+    await clientStillPaired;
+
+    const secondControllerRevoked = nextMessage(otherController, (m) => m.type === 'device.revoked', 'second Controller revocation');
+    const clientRevoked = nextMessage(client, (m) => m.type === 'device.revoked', 'Client revocation notice after last Controller');
+    otherController.send(JSON.stringify({
+      type: 'controller.revoke_device',
+      clientId: 'revocation-client'
+    }));
+    await Promise.all([secondControllerRevoked, clientRevoked]);
 
     const revokedRejected = nextMessage(staleSocket, (m) => m.type === 'error' && m.code === 'unauthorized', 'rejection after device revocation');
     staleSocket.send(JSON.stringify({
