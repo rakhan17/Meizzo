@@ -328,10 +328,11 @@ class MainActivity : Activity() {
 
     private fun handleCommand(webSocket: WebSocket, message: JSONObject) {
         val result = JSONObject()
+        val parameters = message.optJSONObject("parameters") ?: JSONObject()
         var error: String? = null
         when (message.optString("command")) {
             "flashlight" -> {
-                val enabled = message.optBoolean("enabled")
+                val enabled = parameters.optBoolean("enabled")
                 try {
                     if (checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                         throw SecurityException("Camera permission is required for flashlight control")
@@ -348,7 +349,7 @@ class MainActivity : Activity() {
                 }
             }
             "alarm" -> {
-                val enabled = message.optBoolean("enabled")
+                val enabled = parameters.optBoolean("enabled")
                 if (enabled) {
                     alarm?.release()
                     alarm = ToneGenerator(AudioManager.STREAM_ALARM, 100)
