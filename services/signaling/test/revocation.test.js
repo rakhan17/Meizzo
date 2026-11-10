@@ -191,12 +191,30 @@ async function run() {
     }));
     await otherAuthenticated;
 
+    // Revocation must also discard pending results, not deliver them to a
+    // Controller that has just lost access to the Client.
+    const pendingSnapshot = nextMessage(client, (m) => m.type === 'client.snapshot_request', 'pending snapshot request');
+    duplicate.send(JSON.stringify({
+      type: 'controller.request_snapshot',
+      clientId: 'revocation-client'
+    }));
+    const snapshot = await pendingSnapshot;
     const controllerRevoked = nextMessage(duplicate, (m) => m.type === 'device.revoked', 'first Controller credential revocation');
+    const leakedResult = nextMessage(duplicate, (m) => m.type === 'device.result', 'no result after Controller revocation', 300)
+      .then(() => true)
+      .catch(() => false);
     duplicate.send(JSON.stringify({
       type: 'controller.revoke_device',
       clientId: 'revocation-client'
     }));
     await controllerRevoked;
+    client.send(JSON.stringify({
+      type: 'client.result',
+      requestId: snapshot.requestId,
+      result: { batteryPercent: 42 }
+    }));
+    if (await leakedResult) throw new Error('A revoked Controller received a pending Client result');
+
     const clientStillPaired = nextMessage(client, (m) => m.type === 'heartbeat.ack', 'Client remains paired to second Controller');
     client.send(JSON.stringify({ type: 'heartbeat' }));
     await clientStillPaired;
