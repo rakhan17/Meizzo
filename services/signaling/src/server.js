@@ -737,6 +737,27 @@ wss.on('connection', (ws) => {
       notifySession(session);
       sessions.delete(sessionId);
     }
+    for (const current of pairedDevices.values()) {
+      if (ws.auth?.role === 'controller') {
+        for (const [requestId, target] of current.pendingRequests || []) {
+          if (target === ws) current.pendingRequests.delete(requestId);
+        }
+      }
+      if (ws.auth?.role === 'client' && current.clientConnection === ws) {
+        for (const [requestId, target] of current.pendingRequests || []) {
+          if (controllerHasDeviceAccess(target, current)) {
+            sendJson(target, {
+              type: 'device.result',
+              clientId: current.clientId,
+              requestId,
+              result: {},
+              error: 'Client disconnected before responding'
+            });
+          }
+          current.pendingRequests.delete(requestId);
+        }
+      }
+    }
     if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
       device.clientConnection = null;
       device.status = 'offline';
