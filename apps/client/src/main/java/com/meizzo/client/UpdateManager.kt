@@ -100,7 +100,7 @@ class ClientUpdateManager(private val context: Context) {
                     }
 
                     val assetName = app.optString("assetName")
-                    require(assetName.isNotBlank() && !assetName.contains("/") && !assetName.contains("\\\\")) {
+                    require(assetName.isNotBlank() && !assetName.contains('/') && !assetName.contains('\\\\')) {
                         "Invalid APK asset name"
                     }
                     val asset = assetUrls[assetName] ?: error("Release is missing $assetName")
