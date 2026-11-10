@@ -575,7 +575,10 @@ setInterval(prune, 15 * 1000).unref();
 wss.on('connection', (ws) => {
   ws.on('message', (payload) => routeMessage(ws, payload));
   ws.on('close', () => {
-    if (ws.currentPairingCode) pairingOffersByCode.delete(ws.currentPairingCode);
+    if (ws.currentPairingCode) {
+      const currentOffer = pairingOffersByCode.get(ws.currentPairingCode);
+      if (currentOffer?.connection === ws) pairingOffersByCode.delete(ws.currentPairingCode);
+    }
     const device = deviceForConnection(ws);
     if (ws.authenticatedControllerIds) {
       for (const current of pairedDevices.values()) current.controllerConnections.delete(ws);
