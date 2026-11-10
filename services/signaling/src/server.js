@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const http = require('http');
 const { WebSocketServer } = require('ws');
+const { PROTOCOL_VERSION, SERVER_CAPABILITIES } = require('./protocol');
 
 const PORT = Number(process.env.PORT || 8080);
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
@@ -410,7 +411,14 @@ function routeMessage(ws, rawPayload) {
       } else {
         logEvent('auth.success', { role: ws.auth.role, clientId: ws.auth.clientId });
       }
-      sendJson(ws, { type: 'auth.connected', clientId: device.clientId, role: ws.auth.role, status: device.status });
+      sendJson(ws, {
+        type: 'auth.connected',
+        protocolVersion: PROTOCOL_VERSION,
+        capabilities: SERVER_CAPABILITIES,
+        clientId: device.clientId,
+        role: ws.auth.role,
+        status: device.status
+      });
       return;
     }
     case 'heartbeat': return onHeartbeat(ws, message);
@@ -458,7 +466,12 @@ wss.on('connection', (ws) => {
       broadcastDeviceStatus(device.clientId);
     }
   });
-  sendJson(ws, { type: 'system.hello', message: 'Meizzo signaling ready' });
+  sendJson(ws, {
+    type: 'system.hello',
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities: SERVER_CAPABILITIES,
+    message: 'Meizzo signaling ready'
+  });
 });
 
 console.log(`Meizzo signaling listening on :${PORT}`);

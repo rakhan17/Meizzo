@@ -30,6 +30,7 @@ async function run() {
     let paired = false;
     let denied = false;
     let authenticated = false;
+    let authProtocol = false;
 
     client.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
@@ -53,7 +54,11 @@ async function run() {
           authToken: msg.authToken
         }));
       }
-      if (msg.type === 'auth.connected') authenticated = true;
+      if (msg.type === 'auth.connected') {
+        authenticated = true;
+        authProtocol = msg.protocolVersion === 2 &&
+          msg.capabilities.includes('telemetry');
+      }
       if (msg.type === 'controller.pairing_result' && msg.status === 'failed') {
         denied = true;
       }
@@ -96,6 +101,10 @@ async function run() {
 
     if (!authenticated) {
       throw new Error('Expected issued controller token to authenticate');
+    }
+
+    if (!authProtocol) {
+      throw new Error('Expected protocol version and capabilities negotiation');
     }
 
     console.log('pairing-smoke.test: OK');

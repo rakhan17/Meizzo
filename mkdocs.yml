@@ -62,5 +62,16 @@ nav:
       - Security policy: security-policy.md
       - Pairing protocol: pairing-protocol.md
       - Screenshot contribution: assets/screenshots/README.md
+  - V2 Architecture:
+      - Audit: v2/architecture-audit.md
+      - Architecture: v2/architecture.md
+      - Security model: v2/security-model.md
+      - Android permissions: v2/android-permissions.md
+      - Standard Mode: v2/standard-mode.md
+      - Managed Mode: v2/managed-mode.md
+      - Networking: v2/networking.md
+      - Deployment: v2/deployment.md
+      - Testing: v2/testing.md
+      - Migration: v2/migration.md
 extra:
   generator: false
