@@ -5,11 +5,16 @@ on:
     tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: "Release tag to build (for example v0.1.0-beta.4)"
+        required: true
+        type: string
+        default: "v0.1.0-beta.4"
       publish_release:
         description: "Publish a GitHub Release after all validation gates pass"
         required: true
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
@@ -28,8 +33,21 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
-      - name: Derive Android version from release tag
-        run: python3 scripts/release_version.py "$GITHUB_REF_NAME"
+      - name: Resolve and validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            release_tag="${{ inputs.release_tag }}"
+          else
+            release_tag="$MEIZZO_RELEASE_TAG"
+          fi
+          if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|rc)\.[1-9][0-9]{0,2}))?$ ]]; then
+            echo "::error::Invalid release tag: $release_tag"
+            exit 1
+          fi
+          echo "MEIZZO_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+          python3 scripts/release_version.py "$release_tag"
       - name: Validate release configuration and build
         env:
           MEIZZO_ANDROID_KEYSTORE_BASE64: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_BASE64 }}
@@ -81,16 +99,16 @@ jobs:
           "$signer" verify --verbose "$controller_apk"
           "$aapt" dump badging "$client_apk" | grep -q "package: name='com.meizzo.client' versionCode='$MEIZZO_VERSION_CODE' versionName='$MEIZZO_VERSION_NAME'"
           "$aapt" dump badging "$controller_apk" | grep -q "package: name='com.meizzo.controller' versionCode='$MEIZZO_VERSION_CODE' versionName='$MEIZZO_VERSION_NAME'"
-          cp "$client_apk" "dist/MEIZZO-Client-$GITHUB_REF_NAME.apk"
-          cp "$controller_apk" "dist/MEIZZO-Controller-$GITHUB_REF_NAME.apk"
+          cp "$client_apk" "dist/MEIZZO-Client-$MEIZZO_RELEASE_TAG.apk"
+          cp "$controller_apk" "dist/MEIZZO-Controller-$MEIZZO_RELEASE_TAG.apk"
           cp "$client_apk" dist/MEIZZO-Client.apk
           cp "$controller_apk" dist/MEIZZO-Controller.apk
           (cd dist && sha256sum *.apk > SHA256SUMS.txt)
-          client_cert="$("$signer" verify --print-certs "dist/MEIZZO-Client-$GITHUB_REF_NAME.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
-          controller_cert="$("$signer" verify --print-certs "dist/MEIZZO-Controller-$GITHUB_REF_NAME.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          client_cert="$("$signer" verify --print-certs "dist/MEIZZO-Client-$MEIZZO_RELEASE_TAG.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          controller_cert="$("$signer" verify --print-certs "dist/MEIZZO-Controller-$MEIZZO_RELEASE_TAG.apk" | sed -n 's/.*certificate SHA-256 digest: //p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
           test "${#client_cert}" -eq 64
           test "${#controller_cert}" -eq 64
-          python3 - "$GITHUB_REF_NAME" "$MEIZZO_VERSION_NAME" "$MEIZZO_VERSION_CODE" "$client_cert" "$controller_cert" <<'PY'
+          python3 - "$MEIZZO_RELEASE_TAG" "$MEIZZO_VERSION_NAME" "$MEIZZO_VERSION_CODE" "$client_cert" "$controller_cert" <<'PY'
           import hashlib, json, pathlib, sys
           tag, version_name, version_code, client_cert, controller_cert = sys.argv[1:]
           root = pathlib.Path("dist")
@@ -124,6 +142,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' || inputs.publish_release == true
         with:
+          tag_name: ${{ env.MEIZZO_RELEASE_TAG }}
+          name: MEIZZO ${{ env.MEIZZO_RELEASE_TAG }}
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.MEIZZO_RELEASE_TAG, '-') }}
           files: dist/*
