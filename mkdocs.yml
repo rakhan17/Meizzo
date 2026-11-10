@@ -1,0 +1,65 @@
+site_name: MEIZZO Documentation
+site_description: User and developer documentation for the MEIZZO device-assistance ecosystem
+site_url: https://rakhan17.github.io/Meizzo/
+repo_url: https://github.com/rakhan17/Meizzo
+repo_name: rakhan17/Meizzo
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Use dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Use light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+plugins:
+  - search
+nav:
+  - MEIZZO Documentation: index.md
+  - Getting Started:
+      - Quick start: getting-started.md
+      - Installation: installation.md
+  - User Guide:
+      - User manual: user-guide.md
+      - Client: client-guide.md
+      - Controller: controller-guide.md
+      - Pairing: pairing.md
+      - Device monitoring: device-monitoring.md
+      - Troubleshooting: troubleshooting.md
+      - FAQ: faq.md
+  - Platform Guides:
+      - Android: android-guide.md
+      - iOS: ios-guide.md
+      - iOS implementation status: ios.md
+  - Developer Guide:
+      - Development setup: development.md
+      - Architecture: architecture.md
+      - API reference: api-reference.md
+      - Backend deployment: backend-deployment.md
+      - Testing: testing.md
+      - Security and privacy: security-and-privacy.md
+  - Project:
+      - Implementation status: implementation-status.md
+      - Release notes: release-notes.md
+      - License status: license.md
+      - Contributing: contributing.md
+      - Security policy: security-policy.md
+      - Pairing protocol: pairing-protocol.md
+      - Screenshot contribution: assets/screenshots/README.md
+extra:
+  generator: false

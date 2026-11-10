@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible MEIZZO problem
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: app
+    attributes:
+      label: App
+      description: Client, Controller, or signaling backend
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and OS version
+      placeholder: Android 14, iOS 17 Simulator, or Node.js 22
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App or release version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, passwords, pairing codes, private URLs, and personal data.
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Attach only screenshots without private information.

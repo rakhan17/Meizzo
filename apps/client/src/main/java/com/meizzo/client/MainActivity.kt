@@ -49,6 +49,7 @@ class MainActivity : Activity() {
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
+    private val updateManager by lazy { ClientUpdateManager(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +85,10 @@ class MainActivity : Activity() {
                 socket?.close(1000, "Pairing stopped")
                 status.text = "Pairing stopped"
             }
+        })
+        layout.addView(Button(this).apply {
+            text = "Check for app updates"
+            setOnClickListener { checkForUpdate() }
         })
         setContentView(layout)
         connect()
@@ -276,6 +281,49 @@ class MainActivity : Activity() {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
             else -> "other"
+        }
+
+        private fun checkForUpdate() {
+            status.text = "Checking for updates…"
+            updateManager.check { result ->
+                runOnUiThread {
+                    result.onFailure { error ->
+                        status.text = "Update check failed · ${error.message ?: "network error"}"
+                    }.onSuccess { release ->
+                        if (release == null) {
+                            status.text = "Up to date · ${BuildConfig.VERSION_NAME}"
+                            return@onSuccess
+                        }
+                        AlertDialog.Builder(this)
+                            .setTitle("Update ${release.tag}${if (release.prerelease) " · beta" else ""}")
+                            .setMessage("${release.notes}\n\nPublished: ${updateManager.formatDate(release.publishedAt)}")
+                            .setNegativeButton("Later") { _, _ -> status.text = "Update available · ${release.tag}" }
+                            .setPositiveButton("Download") { _, _ -> downloadUpdate(release) }
+                            .show()
+                    }
+                }
+            }
+        }
+
+        private fun downloadUpdate(release: ClientReleaseInfo) {
+            status.text = "Downloading update · 0%"
+            updateManager.download(release, { progress ->
+                runOnUiThread { status.text = "Downloading update · $progress%" }
+            }) { result ->
+                runOnUiThread {
+                    result.onFailure { error ->
+                        status.text = "Update failed · ${error.message ?: "verification error"}"
+                    }.onSuccess { apk ->
+                        status.text = "Update verified · installation pending"
+                        AlertDialog.Builder(this)
+                            .setTitle("Install ${release.tag}?")
+                            .setMessage("The APK package and SHA-256 checksum were verified. Android will show the final install confirmation.")
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Install") { _, _ -> updateManager.install(apk) }
+                            .show()
+                    }
+                }
+            }
         }
     }
 }

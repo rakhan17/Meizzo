@@ -27,8 +27,10 @@ uses the same Gradle wrapper, JDK 17, Android SDK 35, and build tools 35.0.0.
 Run `gh run download <run-id> --repo rakhan17/Meizzo` to download verified
 Client and Controller APK artifacts from a successful run.
 
-The emulator endpoint is `ws://10.0.2.2:8080`. Physical devices need the
-reachable LAN address during development, or a deployed WSS endpoint.
+Debug builds default to `ws://10.0.2.2:8080`. Physical devices need a
+reachable LAN address during development, or a deployed WSS endpoint for
+release builds. Override the debug endpoint with
+`-Pmeizzo.debugSignalingUrl=ws://<host>:8080`.
 
 ## Three-device test
 
@@ -57,7 +59,8 @@ Set `PORT` to the internal listener port and expose `/healthz` for monitoring.
 The service intentionally stores pairing and authorization state only in memory;
 restarting it invalidates active sessions and pairing offers. A production
 deployment must use a stable process, resource limits, access logging that
-excludes message bodies, and a WSS URL in both Android modules.
+excludes message bodies, and a WSS URL passed to both Android modules through
+`-Pmeizzo.releaseSignalingUrl=...`.
 
 TURN credentials and WebRTC configuration are not required by the current
 pairing milestone. They must be added before camera or screen media sessions
@@ -65,8 +68,8 @@ are enabled.
 
 ## Releases
 
-Push a semver tag such as `v0.1.0-beta.3` to run the Android release workflow
-and the iOS simulator release publishing job.
-Release signing is not configured in source. Add protected signing secrets and a
-Gradle signing configuration before distributing production APKs; never commit a
-keystore or password.
+Push a semver tag such as `v0.1.0-beta.4` to run the Android release workflow
+and the iOS simulator release publishing job. Android release CI requires the
+stable keystore and endpoint secrets documented in
+[release notes](release-notes.md); it no longer generates a throwaway signing
+key, because that would make future in-app updates impossible.

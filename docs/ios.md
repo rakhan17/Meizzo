@@ -35,7 +35,7 @@ reconnection. No XCUITest target exists yet.
 ## Physical-device IPA workflow
 
 The repository includes a separate manual workflow:
-[`.github/workflows/ios-device.yml`](../.github/workflows/ios-device.yml).
+[`ios-device.yml`](https://github.com/rakhan17/Meizzo/blob/main/.github/workflows/ios-device.yml).
 It uses `iphoneos`, archives Client and Controller independently, exports real
 IPAs, and validates the bundle identifier, code signature, and embedded
 provisioning profile. It never creates an unsigned IPA or renames a Simulator

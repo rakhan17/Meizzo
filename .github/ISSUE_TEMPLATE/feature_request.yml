@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose a user or developer-facing improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or developer problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android Client
+        - Android Controller
+        - iOS Client
+        - iOS Controller
+        - Backend
+        - Documentation
+        - Cross-platform
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and permission considerations
+      description: Explain consent, data, and platform restrictions.
