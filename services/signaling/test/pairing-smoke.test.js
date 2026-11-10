@@ -107,6 +107,32 @@ async function run() {
       throw new Error('Expected protocol version and capabilities negotiation');
     }
 
+    const rateLimited = await new Promise((resolve, reject) => {
+      let received = 0;
+      let sawRateLimit = false;
+      const timeout = setTimeout(() => reject(new Error('Pairing IP rate limit was not enforced')), 2000);
+      const listener = (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type !== 'controller.pairing_result') return;
+        received += 1;
+        if (message.status === 'rate_limited') sawRateLimit = true;
+        if (received === 29) {
+          clearTimeout(timeout);
+          controller.off('message', listener);
+          resolve(sawRateLimit);
+        }
+      };
+      controller.on('message', listener);
+      for (let index = 0; index < 29; index += 1) {
+        controller.send(JSON.stringify({
+          type: 'controller.request_pairing',
+          controllerId: `rate-test-${index}`,
+          pairingCode: '000000'
+        }));
+      }
+    });
+    if (!rateLimited) throw new Error('Pairing attempts were not limited per network address');
+
     console.log('pairing-smoke.test: OK');
   } finally {
     server.kill('SIGTERM');
