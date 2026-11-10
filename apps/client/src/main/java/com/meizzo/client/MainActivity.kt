@@ -29,6 +29,7 @@ import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.security.SecureRandom
 import java.io.File
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import android.os.Handler
@@ -110,7 +111,7 @@ class MainActivity : Activity() {
                 }
                 .show()
         } else {
-            status.text("Allow MEIZZO to install updates, then return here.")
+            status.text = "Allow MEIZZO to install updates, then return here."
         }
     }
 
@@ -319,7 +320,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun formatUpdateSize(bytes: Long): String = when {\n        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))\n        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)\n        else -> "$bytes B"\n    }\n\n    private fun formatUpdateSize(bytes: Long): String = when {
+    private fun formatUpdateSize(bytes: Long): String = when {
         bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
         bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
         else -> "$bytes B"
