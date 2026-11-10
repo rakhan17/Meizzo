@@ -164,7 +164,8 @@ function controllerHasDeviceAccess(ws, device) {
   if (!device || ws.auth?.role !== 'controller') return false;
   return [...device.controllerTokens].some((value) =>
     ws.authenticatedControllerTokens?.has(value) &&
-    controllerSessions.get(value)?.controllerId === ws.auth.controllerId
+    controllerSessions.get(value)?.controllerId === ws.auth.controllerId &&
+    controllerSessions.get(value)?.connection === ws
   );
 }
 
@@ -586,7 +587,7 @@ function onRevoke(ws, message) {
     notifySession(session);
     sessions.delete(session.sessionId);
   }
-  if (device.controllerIds.size > 0) return sendJson(ws, { type: 'device.revoked', clientId: device.clientId });
+  if (device.controllerIds.size > 0) return;
   pairedDevices.delete(device.clientId);
   if (device.clientConnection) sendJson(device.clientConnection, { type: 'device.revoked', clientId: device.clientId });
   for (const controller of device.controllerConnections) {
