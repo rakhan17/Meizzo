@@ -43,6 +43,7 @@ class MainActivity : Activity() {
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private val devices = linkedMapOf<String, JSONObject>()
     private val approvedInteractionSessions = mutableMapOf<String, String>()
+    private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private var pendingUpdateApk: File? = null
 
@@ -255,6 +256,7 @@ class MainActivity : Activity() {
                             preferences.edit().remove("paired_$clientId").apply()
                             devices.remove(clientId)
                             approvedInteractionSessions.remove(clientId)
+                            pendingInteractionSessions.remove(clientId)
                             renderDevices()
                         }
                         "error" -> runOnUiThread {
@@ -267,6 +269,7 @@ class MainActivity : Activity() {
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     runOnUiThread {
                         approvedInteractionSessions.clear()
+                        pendingInteractionSessions.clear()
                         renderDevices()
                     }
                     setConnection(connectionFailureLabel(t), false)
@@ -392,11 +395,19 @@ class MainActivity : Activity() {
         })
         card.addView(Button(this).apply { text = "Open device details"; setOnClickListener { showDetails(device) } })
         val interactionSession = approvedInteractionSessions[id]
+        val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
-            if (interactionSession == null) "Request interaction access" else "End interaction session",
-            interactionSession == null
+            when {
+                interactionSession != null -> "End interaction session"
+                pendingInteraction != null -> "Waiting for Client approval"
+                else -> "Request interaction access"
+            },
+            interactionSession == null && pendingInteraction == null
         ) {
-            if (interactionSession == null) requestInteraction(id) else endInteraction(id, interactionSession)
+            when {
+                interactionSession != null -> endInteraction(id, interactionSession)
+                pendingInteraction == null -> requestInteraction(id)
+            }
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         if (interactionSession != null) {
             card.addView(uiActionButton("Flashlight on", false) { sendDeviceCommand(id, "flashlight", true) },
@@ -488,12 +499,17 @@ class MainActivity : Activity() {
         if (clientId.isBlank() || sessionId.isBlank() ||
             message.optString("sessionType") != "interaction") return@runOnUiThread
         when (message.optString("state")) {
-            "pending" -> setConnection("Waiting for Client approval", false)
+            "pending" -> {
+                pendingInteractionSessions[clientId] = sessionId
+                setConnection("Waiting for Client approval", false)
+            }
             "approved" -> {
+                pendingInteractionSessions.remove(clientId, sessionId)
                 approvedInteractionSessions[clientId] = sessionId
                 setConnection("Interaction approved · controls unlocked", true)
             }
             "failed", "rejected", "ended" -> {
+                pendingInteractionSessions.remove(clientId, sessionId)
                 if (approvedInteractionSessions[clientId] == sessionId) {
                     approvedInteractionSessions.remove(clientId)
                 }
@@ -504,6 +520,8 @@ class MainActivity : Activity() {
     }
 
     private fun requestInteraction(clientId: String) {
+        if (pendingInteractionSessions.containsKey(clientId) ||
+            approvedInteractionSessions.containsKey(clientId)) return
         socket?.send(JSONObject().apply {
             put("type", "controller.start_session")
             put("clientId", clientId)
@@ -513,6 +531,8 @@ class MainActivity : Activity() {
     }
 
     private fun endInteraction(clientId: String, sessionId: String) {
+        approvedInteractionSessions.remove(clientId, sessionId)
+        renderDevices()
         socket?.send(JSONObject().apply {
             put("type", "controller.end_session")
             put("sessionId", sessionId)
