@@ -160,6 +160,14 @@ async function run() {
       approved: true
     }));
     await sessionApproved;
+    const staleDecisionError = nextMessage(clientAReconnect, (message) =>
+      message.type === 'error' && message.code === 'session_not_pending', 2000, 'reject repeated session decision');
+    clientAReconnect.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: pending.sessionId,
+      approved: false
+    }));
+    await staleDecisionError;
     const sessionEnded = nextMessage(controller, (message) =>
       message.type === 'session.status' && message.sessionId === pending.sessionId &&
       message.state === 'ended', 2000, 'session ended');
