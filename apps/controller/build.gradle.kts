@@ -7,10 +7,11 @@ val releaseVersionName = providers.gradleProperty("meizzo.releaseVersionName")
     .orElse("2.0.1-beta.1").get()
 val releaseVersionCode = providers.gradleProperty("meizzo.releaseVersionCode")
     .orElse("20001301").get().toInt()
+val defaultSignalingUrl = "wss://meizzo-signaling.rakhanatanox.workers.dev"
 val debugSignalingUrl = providers.gradleProperty("meizzo.debugSignalingUrl")
-    .orElse("ws://10.0.2.2:8080").get()
+    .orElse(defaultSignalingUrl).get()
 val releaseSignalingUrl = providers.gradleProperty("meizzo.releaseSignalingUrl")
-    .orElse("wss://configure-your-meizzo-endpoint.invalid").get()
+    .orElse(defaultSignalingUrl).get()
 
 android {
     namespace = "com.meizzo.controller"
@@ -25,7 +26,7 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            manifestPlaceholders["allowCleartext"] = true
+            manifestPlaceholders["allowCleartext"] = false
             buildConfigField("String", "SIGNALING_URL", "\"$debugSignalingUrl\"")
         }
         getByName("release") {
