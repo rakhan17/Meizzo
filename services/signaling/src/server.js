@@ -593,6 +593,9 @@ function onClientResult(ws, message) {
   const target = device.pendingRequests?.get(message.requestId);
   if (!target) return sendError(ws, 'request_not_found', 'Request is no longer active');
   device.pendingRequests.delete(message.requestId);
+  if (!controllerHasDeviceAccess(target, device)) {
+    return sendError(ws, 'request_unauthorized', 'The requesting Controller no longer has device access');
+  }
   sendJson(target, {
     type: 'device.result',
     clientId: device.clientId,
@@ -624,6 +627,11 @@ function onRevoke(ws, message) {
     for (const value of revokedTokens) controller.authenticatedControllerTokens.delete(value);
     device.controllerConnections.delete(controller);
     sendJson(controller, { type: 'device.revoked', clientId: device.clientId });
+  }
+  for (const [requestId, target] of device.pendingRequests || []) {
+    if (target.auth?.role === 'controller' && target.auth.controllerId === ws.auth.controllerId) {
+      device.pendingRequests.delete(requestId);
+    }
   }
   for (const session of sessions.values()) {
     if (session.clientId !== device.clientId || session.controllerId !== ws.auth.controllerId ||
