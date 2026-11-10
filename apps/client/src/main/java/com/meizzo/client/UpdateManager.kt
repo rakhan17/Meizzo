@@ -53,6 +53,7 @@ class ClientUpdateManager(private val context: Context) {
                 val releasesBody = executeText(apiUrl, "application/vnd.github+json")
                 val releases = org.json.JSONArray(releasesBody)
 
+                var bestRelease: ClientReleaseInfo? = null
                 for (index in 0 until releases.length()) {
                     val release = releases.getJSONObject(index)
                     if (release.optBoolean("draft")) continue
@@ -114,7 +115,7 @@ class ClientUpdateManager(private val context: Context) {
                     require(sha256.matches(Regex("[0-9a-f]{64}"))) { "Invalid APK SHA-256 in manifest" }
                     require(certSha256.matches(Regex("[0-9a-f]{64}"))) { "Invalid signing certificate digest" }
 
-                    return@runCatching ClientReleaseInfo(
+                    val candidate = ClientReleaseInfo(
                         tag = tag,
                         notes = release.optString("body", "No release notes provided."),
                         publishedAt = release.optString("published_at"),
@@ -128,8 +129,11 @@ class ClientUpdateManager(private val context: Context) {
                         expectedSha256 = sha256,
                         signingCertificateSha256 = certSha256
                     )
+                    if (bestRelease == null || candidate.versionCode > bestRelease!!.versionCode) {
+                        bestRelease = candidate
+                    }
                 }
-                null
+                bestRelease
             }.onSuccess { onResult(Result.success(it)) }
                 .onFailure { onResult(Result.failure(it)) }
         }.start()
