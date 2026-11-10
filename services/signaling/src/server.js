@@ -543,12 +543,19 @@ wss.on('connection', (ws) => {
     const device = deviceForConnection(ws);
     if (ws.authenticatedControllerIds) {
       for (const current of pairedDevices.values()) current.controllerConnections.delete(ws);
-      for (const session of controllerSessions.values()) {
-        if (session.connection === ws) session.connection = null;
-      }
     }
     for (const session of controllerSessions.values()) {
       if (session.connection === ws) session.connection = null;
+    }
+    for (const [sessionId, session] of sessions) {
+      if (session.controllerConnection !== ws && session.clientConnection !== ws) continue;
+      session.state = 'failed';
+      session.endedAtMs = nowMs();
+      session.terminationReason = session.clientConnection === ws
+        ? 'client_disconnected'
+        : 'controller_disconnected';
+      notifySession(session);
+      sessions.delete(sessionId);
     }
     if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
       device.clientConnection = null;
