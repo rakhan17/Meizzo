@@ -37,7 +37,7 @@ export class MeizzoSignaling {
     const client = pair[0];
     const server = pair[1];
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ role: "guest" });
+    server.serializeAttachment({ role: "guest", ip: request.headers.get("CF-Connecting-IP") || "unknown", connId: id() });
     this.send(server, { type: "system.hello", protocolVersion: PROTOCOL_VERSION, capabilities: SERVER_CAPABILITIES, message: "Meizzo signaling ready" });
     await this.ensureAlarm();
     return new Response(null, { status: 101, webSocket: client });
@@ -64,7 +64,12 @@ export class MeizzoSignaling {
   }
 
   sendTag(tag, payload) {
-    for (const ws of this.ctx.getWebSockets(tag)) this.send(ws, payload);
+    const [kind, identity] = tag.split(":");
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = this.attachment(ws);
+      if (kind === "client" && a.clientId === identity) this.send(ws, payload);
+      if (kind === "controller" && a.controllerId === identity) this.send(ws, payload);
+    }
   }
 
   sendClient(clientId, payload) {
@@ -118,7 +123,7 @@ export class MeizzoSignaling {
           pairingAcceptanceEnabled: m.pairingAcceptanceEnabled === true,
           metadata: m.metadata && typeof m.metadata === "object" && !Array.isArray(m.metadata) ? m.metadata : {}
         };
-        this.setAuth(ws, { currentPairingCode: m.pairingCode });
+        this.setAuth(ws, { role: "client", clientId: m.clientId, currentPairingCode: m.pairingCode });
         await this.save(s);
         return this.send(ws, { type: "client.pairing_offer_registered", clientId: m.clientId, pairingCode: m.pairingCode, expiresAtMs: m.expiresAtMs });
       }
@@ -129,7 +134,7 @@ export class MeizzoSignaling {
         if (!attempt || t - attempt.start > 60000) s.attempts[key] = { count: 1, start: t };
         else if (attempt.count >= 10) return this.send(ws, { type: "controller.pairing_result", status: "rate_limited", reason: "Too many attempts, retry later" });
         else attempt.count++;
-        const ip = requestIp(ws);
+        const ip = a.ip || "unknown";
         const ipAttempt = s.ipAttempts[ip];
         if (!ipAttempt || t - ipAttempt.start > 60000) s.ipAttempts[ip] = { count: 1, start: t };
         else if (ipAttempt.count >= 30) return this.send(ws, { type: "controller.pairing_result", status: "rate_limited", reason: "Too many attempts, retry later" });
@@ -164,7 +169,7 @@ export class MeizzoSignaling {
         const device = s.devices[pending.clientId] || {
           clientId: pending.clientId, clientToken: randomToken(), controllerTokens: {},
           controllerIds: [], metadata: offer.metadata, status: "online", lastSeen: t,
-          clientHeartbeat: t, pendingRequests: {}
+          clientHeartbeat: t, pendingRequests: {}, clientConnId: a.connId
         };
         const controllerToken = randomToken();
         device.metadata = offer.metadata;
@@ -191,7 +196,7 @@ export class MeizzoSignaling {
           const d = s.devices[m.clientId];
           if (!d || d.clientToken !== m.authToken) return this.sendError(ws, "unauthorized", "Invalid authentication token");
           this.setAuth(ws, { role: "client", clientId: m.clientId });
-          d.status = "online"; d.lastSeen = t; d.clientHeartbeat = t;
+          d.status = "online"; d.lastSeen = t; d.clientHeartbeat = t; d.clientConnId = a.connId;
           await this.save(s);
           this.broadcastDevice(s, d);
           this.send(ws, { type: "auth.connected", protocolVersion: PROTOCOL_VERSION, capabilities: SERVER_CAPABILITIES, clientId: d.clientId, role: "client", status: d.status });
@@ -323,7 +328,7 @@ export class MeizzoSignaling {
     const a = this.attachment(ws);
     if (a.role === "client" && a.clientId) {
       const s = await this.state(); const d = s.devices[a.clientId];
-      if (d) { d.status = "offline"; d.lastSeen = now(); await this.save(s); this.broadcastDevice(s, d); }
+      if (d && (!d.clientConnId || d.clientConnId === a.connId)) { d.status = "offline"; d.lastSeen = now(); await this.save(s); this.broadcastDevice(s, d); }
     }
   }
 
@@ -362,8 +367,3 @@ export class MeizzoSignaling {
   }
 }
 
-function requestIp(ws) {
-  // Cloudflare does not expose the original Request to WebSocket message callbacks.
-  // Use a shared bucket when the runtime does not provide a connection address.
-  return "cloudflare-edge";
-}
