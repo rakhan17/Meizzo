@@ -237,7 +237,10 @@ class MainActivity : Activity() {
                             }
                         }
                         "device.revoked" -> {
-                            devices.remove(message.optString("clientId")); renderDevices()
+                            val clientId = message.optString("clientId")
+                            secureStore.remove("token_$clientId")
+                            devices.remove(clientId)
+                            renderDevices()
                         }
                         "error" -> runOnUiThread {
                             connectionLabel.text = "● Error · ${message.optString("message")}"
