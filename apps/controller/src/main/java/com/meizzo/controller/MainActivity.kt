@@ -321,21 +321,37 @@ class MainActivity : Activity() {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
     }
 
-    private fun formatUpdateSize(bytes: Long): String = when {\n        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))\n        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)\n        else -> "$bytes B"\n    }\n\n    private fun checkForUpdate() {
-        setConnection("Checking for updates", false)
+    private fun formatUpdateSize(bytes: Long): String = when {\n        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))\n        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)\n        else -> "$bytes B"\n    }\n\n    private fun formatUpdateSize(bytes: Long): String = when {
+        bytes >= 1024L * 1024L -> String.format(Locale.US, "%.1f MB", bytes / (1024.0 * 1024.0))
+        bytes >= 1024L -> String.format(Locale.US, "%.1f KB", bytes / 1024.0)
+        else -> "$bytes B"
+    }
+
+    private fun setUpdateStatus(message: String) { setConnection(message, false) }
+
+    private fun checkForUpdate() {
+        setUpdateStatus("Checking for updates…")
         updateManager.check { result ->
             runOnUiThread {
                 result.onFailure { error ->
-                    setConnection("Update check failed · ${error.message ?: "network error"}", false)
-                }.onSuccess { release ->
-                    val available = release ?: run {
-                        setConnection("Connected · up to date (${BuildConfig.VERSION_NAME})", true)
+                    setUpdateStatus("Update check failed · ${error.message ?: "network error"}")
+                }.onSuccess { available ->
+                    if (available == null) {
+                        setUpdateStatus("Up to date · ${BuildConfig.VERSION_NAME}")
                         return@onSuccess
                     }
+                    val details = "Installed: ${BuildConfig.VERSION_NAME} (code ${BuildConfig.VERSION_CODE})\n" +
+                        "Available: ${available.versionName} (code ${available.versionCode})\n" +
+                        "Channel: ${if (available.prerelease) "Beta" else "Stable"}\n" +
+                        "APK size: ${formatUpdateSize(available.assetSize)}\n" +
+                        "Published: ${updateManager.formatDate(available.publishedAt)}\n\n" +
+                        available.notes
                     AlertDialog.Builder(this)
-                        .setTitle("Update ${available.tag}${if (available.prerelease) " · beta" else ""}")
-                        .setMessage("${available.notes}\n\nPublished: ${updateManager.formatDate(available.publishedAt)}")
-                        .setNegativeButton("Later") { _, _ -> setConnection("Update available · ${available.tag}", true) }
+                        .setTitle("MEIZZO update · ${available.tag}")
+                        .setMessage(details)
+                        .setNegativeButton("Later") { _, _ ->
+                            setUpdateStatus("Update available · ${available.versionName}")
+                        }
                         .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
                         .show()
                 }
@@ -344,21 +360,28 @@ class MainActivity : Activity() {
     }
 
     private fun downloadUpdate(release: ControllerReleaseInfo) {
-        setConnection("Downloading update · 0%", false)
+        setUpdateStatus("Downloading update · 0%")
         updateManager.download(release, { progress ->
-            runOnUiThread { setConnection("Downloading update · $progress%", false) }
+            runOnUiThread { setUpdateStatus("Downloading update · $progress%") }
         }) { result ->
             runOnUiThread {
                 result.onFailure { error ->
-                    setConnection("Update failed · ${error.message ?: "verification error"}", false)
+                    setUpdateStatus("Update failed · ${error.message ?: "verification error"}")
                 }.onSuccess { apk ->
+                    setUpdateStatus("Update verified · awaiting installation")
                     AlertDialog.Builder(this)
-                        .setTitle("Install ${release.tag}?")
-                        .setMessage("The APK package and SHA-256 checksum were verified. Android will show the final install confirmation.")
+                        .setTitle("Install ${release.versionName}?")
+                        .setMessage(
+                            "Package ID, version, file size, SHA-256, and signing certificate were verified. " +
+                                "Android will show the final installation confirmation."
+                        )
                         .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Install") { _, _ ->\n                            pendingUpdateApk = apk\n                            updateManager.install(apk)\n                            if (updateManager.canInstallPackages()) pendingUpdateApk = null\n                        }
+                        .setPositiveButton("Install") { _, _ ->
+                            pendingUpdateApk = apk
+                            updateManager.install(apk)
+                            if (updateManager.canInstallPackages()) pendingUpdateApk = null
+                        }
                         .show()
-                    setConnection("Update verified · installation pending", true)
                 }
             }
         }
