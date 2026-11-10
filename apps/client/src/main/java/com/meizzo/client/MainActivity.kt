@@ -53,7 +53,7 @@ class MainActivity : Activity() {
     private var reconnectScheduled = false
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
-    private val pendingSessionDialogs = mutableSetOf<String>()
+    private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -235,8 +235,8 @@ class MainActivity : Activity() {
                             val sessionType = message.optString("sessionType").ifBlank { "device" }
                             when (state) {
                                 "pending" -> runOnUiThread {
-                                    if (sessionId.isBlank() || !pendingSessionDialogs.add(sessionId)) return@runOnUiThread
-                                    AlertDialog.Builder(this@MainActivity)
+                                    if (sessionId.isBlank() || pendingSessionDialogs.containsKey(sessionId)) return@runOnUiThread
+                                    val dialog = AlertDialog.Builder(this@MainActivity)
                                         .setTitle("Allow $sessionType session?")
                                         .setMessage("A paired Controller is requesting permission to start a $sessionType session. Nothing starts until you approve.")
                                         .setNegativeButton("Deny") { _, _ ->
@@ -251,11 +251,13 @@ class MainActivity : Activity() {
                                             pendingSessionDialogs.remove(sessionId)
                                             decideSession(webSocket, sessionId, false)
                                         }
-                                        .show()
+                                        .create()
+                                    pendingSessionDialogs[sessionId] = dialog
+                                    dialog.show()
                                 }
                                 "approved" -> runOnUiThread { status.text = "$sessionType session approved" }
                                 "rejected", "failed", "ended" -> runOnUiThread {
-                                    pendingSessionDialogs.remove(sessionId)
+                                    pendingSessionDialogs.remove(sessionId)?.dismiss()
                                     status.text = if (state == "rejected") "Session request declined" else "Session $state"
                                 }
                             }
