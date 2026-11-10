@@ -19,11 +19,14 @@ consent, isolated sessions, and real-time device status.
 
 </div>
 
-> **Beta status:** Android is the active testing platform for this release.
-> iOS is still under development and is not part of the current downloadable
-> build. Media streaming, unrestricted remote control, production TLS
-> deployment, persistence, and signed iOS distribution remain outside the
-> verified beta boundary.
+> **Beta status:** Android is the active testing platform. iOS is still
+> under development and is not part of the current Android testing build.
+> The Cloudflare Workers signaling endpoint is deployed over WSS and has
+> passed a browser-based protocol-v2 pairing/authentication smoke test.
+> Android CI debug builds are configured for this endpoint, but end-to-end
+> runtime testing in BlueStacks or on physical devices is still pending.
+> Media streaming, unrestricted remote control, production operations, and
+> signed iOS distribution are not verified.
 
 ## Product
 
@@ -54,6 +57,12 @@ separate Android applications.
 
 > **Beta software:** bugs may occur. Install Client on the device being
 > assisted and Controller on the operator's device.
+>
+> **Latest CI testing builds:** [Download Android Client and Controller
+> debug APKs](https://github.com/rakhan17/Meizzo/actions/runs/42780599354)
+> from the workflow's **Artifacts** section. These are CI debug artifacts,
+> not a published GitHub Release, and are intended for testing the Cloudflare
+> WSS endpoint.
 
 **Stable:** <sub>Not released yet</sub> · **All versions:** [Browse MEIZZO releases](https://github.com/rakhan17/Meizzo/releases)
 
@@ -163,12 +172,16 @@ stored in Android Keystore or iOS Keychain. Device sessions and commands are
 isolated by Client identity. Logs must not contain credentials, pairing codes,
 or personal data.
 
-The current backend stores active pairing and authorization state in memory.
-Production deployments require TLS/WSS, a stable deployment, operational
-limits, and a persistent state strategy. iOS system restrictions prevent
-unrestricted touch control, arbitrary file access, and silent screen capture.
-See [security and privacy](docs/security-and-privacy.md) and
-[implementation status](docs/implementation-status.md).
+The Cloudflare Workers signaling endpoint is deployed with WSS and a
+Durable Object binding. Its browser-based smoke test has verified protocol-v2
+handshake, pairing approval, token issuance/authentication, heartbeat, online
+presence, and device-list delivery. This does not yet establish end-to-end
+compatibility with the Android apps or production operational readiness.
+Complete Android runtime testing, review persistence/retention behavior, and
+apply operational safeguards before treating the service as production-ready.
+iOS system restrictions prevent unrestricted touch control, arbitrary file
+access, and silent screen capture. See [security and privacy](docs/security-and-privacy.md)
+and [implementation status](docs/implementation-status.md).
 
 ## Development
 
@@ -187,10 +200,12 @@ For Android debug builds, use JDK 17, Android SDK 35, and:
 ./gradlew :apps:controller:assembleDebug
 ```
 
-Debug builds default to `ws://10.0.2.2:8080` for an Android emulator or
-BlueStacks instance. Release builds require
-`-Pmeizzo.releaseSignalingUrl=wss://your-host.example` and do not permit
-cleartext traffic. See [Android development](docs/android-guide.md).
+Debug and release builds default to the deployed MEIZZO signaling
+endpoint, `wss://meizzo-signaling.rakhanatanox.workers.dev`. The CI workflow
+also accepts an optional `meizzo.debugSignalingUrl` Gradle property for
+testing against another endpoint. Cleartext traffic is disabled. For local
+Node signaling development, explicitly override the endpoint and configure
+the emulator host appropriately. See [Android development](docs/android-guide.md).
 
 ## License status
 
