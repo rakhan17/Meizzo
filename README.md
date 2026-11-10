@@ -104,7 +104,7 @@ apps. Choose the one that matches the role of each device.
       <strong>MEIZZO Client for iOS</strong><br>
       <sub>iOS Simulator package</sub><br><br>
       <a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip">
-        <img src="https://img.shields.io/badge/↓%20DOWNLOAD-CLIENT%20ZIP- A78BFA?style=for-the-badge&labelColor=111111" alt="Download iOS Client ZIP">
+        <img src="https://img.shields.io/badge/↓%20DOWNLOAD-CLIENT%20ZIP-A78BFA?style=for-the-badge&labelColor=111111" alt="Download iOS Client ZIP">
       </a>
     </td>
     <td align="center" width="50%">
@@ -121,7 +121,7 @@ apps. Choose the one that matches the role of each device.
   <sub>These are unsigned Simulator ZIPs for use with Xcode on a Mac. They cannot be installed directly on a physical iPhone.</sub>
 </p>
 
-[ iOS development guide ](docs/ios-guide.md)
+[iOS development guide](docs/ios-guide.md)
 
 ## Feature overview
 
