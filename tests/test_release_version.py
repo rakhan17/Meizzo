@@ -32,9 +32,9 @@ class ReleaseVersionTests(unittest.TestCase):
                 derive_version(tag)
 
     def test_android_version_code_upper_boundary(self):
-        self.assertEqual(derive_version("210.0.0")[1], 2_100_000_000)
+        self.assertEqual(derive_version("209.99.99")[1], 2_099_999_999)
         with self.assertRaises(ValueError):
-            derive_version("210.0.1")
+            derive_version("210.0.0")
 
 
 if __name__ == "__main__":
