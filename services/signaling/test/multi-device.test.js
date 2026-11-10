@@ -196,14 +196,14 @@ async function run() {
     const failedSession = nextMessage(controller, (message) =>
       message.type === 'session.status' && message.sessionId === disconnectSession.sessionId &&
       message.state === 'failed', 2000, 'session failed after Client disconnect');
-    const offlinePromise = nextMessage(controller, (message) =>
+    const clientDisconnectOfflinePromise = nextMessage(controller, (message) =>
       message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline');
     clientAReconnect.close();
     const failed = await failedSession;
     if (failed.terminationReason !== 'client_disconnected') {
       throw new Error('Client disconnect did not terminate its active session');
     }
-    await offlinePromise;
+    await clientDisconnectOfflinePromise;
 
     const controllerDropPendingClient = nextMessage(clientB, (message) =>
       message.type === 'client.session_status' && message.state === 'pending', 2000, 'controller-drop session pending');
