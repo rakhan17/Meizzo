@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: meizzo-signaling
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: services/signaling
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
