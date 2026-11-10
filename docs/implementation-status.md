@@ -10,8 +10,9 @@ This status reflects source code and tests in the repository, not planned work.
   one-time consumption, explicit approval, and backend attempt limiting.
 - Authenticated post-pairing tokens held in app-local preferences.
 - One Controller associated with multiple independent Clients.
-- Per-device status routing, heartbeat handling, disconnect/offline state, and
-  authenticated reconnect.
+- Per-device status routing, heartbeat handling, disconnect/offline state,
+  authoritative presence broadcasts with stale-connection protection, telemetry,
+  and authenticated reconnect.
 - Controller re-authentication across all previously paired devices.
 - Controller snapshot requests routed only to the selected Client.
 - Client battery percentage, charging state, storage totals, uptime, network

@@ -11,6 +11,9 @@ Implemented foundation behaviors:
 - explicit client approval path (`client.pairing_decision`)
 - post-pairing token authentication (`auth.connect`)
 - heartbeat and online/offline status
+- authoritative presence timeout: 45 seconds without a client heartbeat
+- client heartbeat interval: 15 seconds
+- real-time per-device telemetry updates carried by authenticated heartbeats
 - controller device listing and revocation
 - `GET /healthz` health check
 
