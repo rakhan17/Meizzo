@@ -553,6 +553,7 @@ function onControllerCommand(ws, message) {
     session.clientId === device.clientId &&
     session.controllerId === ws.auth.controllerId &&
     session.controllerConnection === ws &&
+    session.clientConnection === device.clientConnection &&
     session.state === 'approved' &&
     session.sessionType === 'interaction'
   );
