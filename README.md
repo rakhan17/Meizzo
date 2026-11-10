@@ -6,8 +6,17 @@
 
 **CONTROL YOUR CONNECTED WORLD.**
 
-Permission-based device assistance for Android and iOS, built around explicit
+Permission-based device assistance for Android, built around explicit
 consent, isolated sessions, and real-time device status.
+
+<div align="center">
+
+<a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client.apk"><img src="https://img.shields.io/badge/Download-MEIZZO%20Client-111111?style=for-the-badge&logo=android&logoColor=white" alt="Download MEIZZO Client"></a>
+<a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller.apk"><img src="https://img.shields.io/badge/Download-MEIZZO%20Controller-111111?style=for-the-badge&logo=android&logoColor=white" alt="Download MEIZZO Controller"></a>
+
+<sub>Latest published Android beta: <strong>v0.1.0-beta.3</strong> · <a href="https://github.com/rakhan17/Meizzo/releases">All versions and release notes</a></sub>
+
+</div>
 
 [![Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml/badge.svg)](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml)
 [![iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
@@ -40,65 +49,15 @@ Client until the Client approves the request.
 
 ## Downloads
 
-### Version catalogue
+The buttons above always point to the latest **published Android release**. MEIZZO Client and MEIZZO Controller are separate applications, so install the one you need. For older versions, release notes, and the Stable/Beta release history, visit the [GitHub Releases page](https://github.com/rakhan17/Meizzo/releases).
 
-MEIZZO keeps **Stable** and **Beta** release histories separate. A beta that
-graduates to stable is retained in the Beta archive, while its stable release
-is also listed in Stable. Promotion never erases the testing history.
+> **Testing note:** The newest development build may appear in GitHub Actions before it is published as a release. Only use APKs attached to a published release for the direct-download buttons above.
 
-#### Stable releases
-
-_No stable release has been published yet._
-
-#### Beta releases
-
-<details open>
-<summary><strong>v2.0.1-beta.1</strong> · Android beta testing build</summary>
-
-The Android Client and Controller debug APKs have been built by GitHub Actions.
-These are **testing artifacts**, not production-signed release APKs. They use
-the default emulator endpoint `ws://10.0.2.2:8080`, so they are intended for
-emulator/BlueStacks testing with a reachable local signaling service. They are
-not ready for normal physical-device use.
-
-- [Download MEIZZO Client + Controller build artifacts](https://github.com/rakhan17/Meizzo/actions/runs/42767340017)
-- On the Actions page, open **Artifacts** and download `meizzo-client-debug`
-  and `meizzo-controller-debug`.
-
-A public GitHub Release with direct APK assets will be published after the
-production WSS endpoint and Android release-signing secrets are configured
-and the signed APKs pass validation.
-
-</details>
-
-<details>
-<summary><strong>v0.1.0-beta.3</strong> · Previously published beta</summary>
-
-<table>
-<tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
-<tr><td>MEIZZO Client</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.client</code></td><td>Android 8.0+</td></tr>
-<tr><td>MEIZZO Controller</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.controller</code></td><td>Android 8.0+</td></tr>
-</table>
-
-- [Client iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
-- [Controller iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
-- [Release notes and all assets](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
-- [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt)
-
-</details>
-
-[Browse all GitHub Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[Installation guide](docs/getting-started.md)
-
-### iOS status
+### iOS
 
 <badge>Under development</badge>
 
-iOS is intentionally deferred while the Android beta is prepared and tested.
-There are no current iOS downloads in this release. Simulator builds,
-physical-device signing, and iOS feature validation will be addressed in a
-later milestone. See [iOS development notes](docs/ios-guide.md) for platform
-requirements.
+iOS is still being developed and is not included in the current downloadable release. Android is the active platform for this beta.
 
 ## Feature overview
 
