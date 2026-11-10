@@ -205,7 +205,35 @@ async function run() {
     }
     await offlinePromise;
 
+    const controllerDropPendingClient = nextMessage(clientB, (message) =>
+      message.type === 'client.session_status' && message.state === 'pending', 2000, 'controller-drop session pending');
+    const controllerDropPendingController = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.state === 'pending', 2000, 'controller-drop session pending at controller');
+    controller.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-b',
+      sessionType: 'monitoring'
+    }));
+    const controllerDropSession = await controllerDropPendingController;
+    await controllerDropPendingClient;
+    const controllerDropApproved = nextMessage(clientB, (message) =>
+      message.type === 'client.session_status' && message.sessionId === controllerDropSession.sessionId &&
+      message.state === 'approved', 2000, 'controller-drop session approved');
+    clientB.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: controllerDropSession.sessionId,
+      approved: true
+    }));
+    await controllerDropApproved;
+    const controllerDisconnected = nextMessage(clientB, (message) =>
+      message.type === 'client.session_status' && message.sessionId === controllerDropSession.sessionId &&
+      message.state === 'failed', 2000, 'session failed after Controller disconnect');
+
     controller.close();
+    const failedByControllerDisconnect = await controllerDisconnected;
+    if (failedByControllerDisconnect.terminationReason !== 'controller_disconnected') {
+      throw new Error('Controller disconnect did not terminate its active session');
+    }
     const replacementController = await openSocket('ws://127.0.0.1:8101');
     sockets.push(replacementController);
     const reconnectA = nextMessage(replacementController, (message) => message.type === 'auth.connected' && message.clientId === 'client-a');
