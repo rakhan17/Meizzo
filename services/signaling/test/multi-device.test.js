@@ -173,6 +173,38 @@ async function run() {
       throw new Error('Session termination reason was not preserved');
     }
 
+    const disconnectPendingClient = nextMessage(clientAReconnect, (message) =>
+      message.type === 'client.session_status' && message.state === 'pending', 2000, 'disconnect session pending');
+    const disconnectPendingController = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.state === 'pending', 2000, 'disconnect session pending at controller');
+    controller.send(JSON.stringify({
+      type: 'controller.start_session',
+      clientId: 'client-a',
+      sessionType: 'monitoring'
+    }));
+    const disconnectSession = await disconnectPendingController;
+    await disconnectPendingClient;
+    const disconnectApproved = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === disconnectSession.sessionId &&
+      message.state === 'approved', 2000, 'disconnect session approved');
+    clientAReconnect.send(JSON.stringify({
+      type: 'client.session_decision',
+      sessionId: disconnectSession.sessionId,
+      approved: true
+    }));
+    await disconnectApproved;
+    const failedSession = nextMessage(controller, (message) =>
+      message.type === 'session.status' && message.sessionId === disconnectSession.sessionId &&
+      message.state === 'failed', 2000, 'session failed after Client disconnect');
+    const offlinePromise = nextMessage(controller, (message) =>
+      message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline');
+    clientAReconnect.close();
+    const failed = await failedSession;
+    if (failed.terminationReason !== 'client_disconnected') {
+      throw new Error('Client disconnect did not terminate its active session');
+    }
+    await offlinePromise;
+
     controller.close();
     const replacementController = await openSocket('ws://127.0.0.1:8101');
     sockets.push(replacementController);
