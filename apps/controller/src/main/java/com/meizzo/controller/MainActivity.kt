@@ -370,22 +370,60 @@ class MainActivity : Activity() {
         val id = device.optString("clientId")
         val metadata = device.optJSONObject("metadata") ?: JSONObject()
         val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+        val lastSeen = device.optLong("lastSeen", 0L)
+        val battery = if (telemetry.has("batteryPercent")) {
+            "${telemetry.optInt("batteryPercent").coerceIn(0, 100)}%"
+        } else "Unavailable"
+        val storage = formatBytes(telemetry.optLong("storageAvailableBytes", -1L))
+        val uptime = formatDuration(telemetry.optLong("uptimeMs", -1L))
+        val manufacturer = metadata.optString("manufacturer").takeUnless { it.isBlank() }
+        val model = metadata.optString("model").takeUnless { it.isBlank() }
+        val deviceName = listOfNotNull(manufacturer, model).joinToString(" ").ifBlank { "Unavailable" }
         val text = buildString {
-            append("Status: ${device.optString("status", "offline").replaceFirstChar { it.uppercase() }}\n")
-            append("Last seen: ${device.optLong("lastSeen", 0)}\n\n")
-            append("Overview\n${metadata.optString("manufacturer", "Unavailable")} ${metadata.optString("model", "")}\n")
-            append("Platform: ${metadata.optString("platform", "Android")}\n")
-            append("OS: ${metadata.optString("androidVersion", "Unavailable")}\n\n")
-            append("Battery: ${telemetry.optString("batteryPercent", "Unavailable")}%\n")
-            append("Charging: ${telemetry.optString("charging", "Unavailable")}\n")
-            append("Network: ${telemetry.optString("network", "Unavailable")}\n")
-            append("Storage available: ${telemetry.optString("storageAvailableBytes", "Unavailable")} bytes\n")
-            append("Uptime: ${telemetry.optString("uptimeMs", "Unavailable")} ms")
+            append("CONNECTION\\n")
+            append("Status: ${device.optString("status", "offline").replaceFirstChar { it.uppercase() }}\\n")
+            append("Last seen: ${if (lastSeen > 0L) android.text.format.DateFormat.format("dd MMM yyyy, HH:mm", lastSeen) else "Never"}\\n\\n")
+            append("DEVICE\\n")
+            append("Model: $deviceName\\n")
+            append("Platform: ${metadata.optString("platform").ifBlank { "Unavailable" }}\\n")
+            append("OS version: ${metadata.optString("androidVersion").ifBlank { "Unavailable" }}\\n\\n")
+            append("TELEMETRY\\n")
+            append("Battery: $battery\\n")
+            append("Charging: ${telemetry.optString("charging").ifBlank { "Unavailable" }}\\n")
+            append("Network: ${telemetry.optString("network").ifBlank { "Unavailable" }}\\n")
+            append("Available storage: $storage\\n")
+            append("Uptime: $uptime")
         }
         AlertDialog.Builder(this).setTitle(metadata.optString("alias").ifBlank { id }).setMessage(text)
             .setPositiveButton("Refresh telemetry") { _, _ -> sendSnapshot(id) }
             .setNeutralButton("Rename") { _, _ -> rename(id, metadata.optString("alias")) }
             .setNegativeButton("Close", null).show()
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 0L) return "Unavailable"
+        if (bytes < 1024L) return "$bytes B"
+        val units = arrayOf("KB", "MB", "GB", "TB")
+        var value = bytes.toDouble()
+        var unit = -1
+        while (value >= 1024.0 && unit < units.lastIndex) {
+            value /= 1024.0
+            unit++
+        }
+        return String.format(Locale.getDefault(), "%.1f %s", value, units[unit])
+    }
+
+    private fun formatDuration(milliseconds: Long): String {
+        if (milliseconds < 0L) return "Unavailable"
+        val totalMinutes = milliseconds / 60_000L
+        val days = totalMinutes / 1_440L
+        val hours = (totalMinutes % 1_440L) / 60L
+        val minutes = totalMinutes % 60L
+        return when {
+            days > 0L -> "${days}d ${hours}h"
+            hours > 0L -> "${hours}h ${minutes}m"
+            else -> "${minutes}m"
+        }
     }
 
     private fun rename(clientId: String, current: String) {
