@@ -363,6 +363,9 @@ function onClientSessionDecision(ws, message) {
       typeof message.approved !== 'boolean') {
     return sendError(ws, 'unauthorized', 'Invalid session decision');
   }
+  if (session.state !== 'pending') {
+    return sendError(ws, 'session_not_pending', 'Session is no longer awaiting approval');
+  }
   session.state = message.approved ? 'approved' : 'rejected';
   session.endedAtMs = message.approved ? undefined : nowMs();
   session.terminationReason = message.approved ? undefined : 'client_rejected';
