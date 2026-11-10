@@ -282,30 +282,31 @@ class MainActivity : Activity() {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
             else -> "other"
         }
+    }
 
-        private fun checkForUpdate() {
+    private fun checkForUpdate() {
             status.text = "Checking for updates…"
             updateManager.check { result ->
                 runOnUiThread {
                     result.onFailure { error ->
                         status.text = "Update check failed · ${error.message ?: "network error"}"
                     }.onSuccess { release ->
-                        if (release == null) {
+                        val available = release ?: run {
                             status.text = "Up to date · ${BuildConfig.VERSION_NAME}"
                             return@onSuccess
                         }
                         AlertDialog.Builder(this)
-                            .setTitle("Update ${release.tag}${if (release.prerelease) " · beta" else ""}")
-                            .setMessage("${release.notes}\n\nPublished: ${updateManager.formatDate(release.publishedAt)}")
-                            .setNegativeButton("Later") { _, _ -> status.text = "Update available · ${release.tag}" }
-                            .setPositiveButton("Download") { _, _ -> downloadUpdate(release) }
+                            .setTitle("Update ${available.tag}${if (available.prerelease) " · beta" else ""}")
+                            .setMessage("${available.notes}\n\nPublished: ${updateManager.formatDate(available.publishedAt)}")
+                            .setNegativeButton("Later") { _, _ -> status.text = "Update available · ${available.tag}" }
+                            .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
                             .show()
                     }
                 }
             }
         }
 
-        private fun downloadUpdate(release: ClientReleaseInfo) {
+    private fun downloadUpdate(release: ClientReleaseInfo) {
             status.text = "Downloading update · 0%"
             updateManager.download(release, { progress ->
                 runOnUiThread { status.text = "Downloading update · $progress%" }
@@ -321,7 +322,6 @@ class MainActivity : Activity() {
                             .setNegativeButton("Cancel", null)
                             .setPositiveButton("Install") { _, _ -> updateManager.install(apk) }
                             .show()
-                    }
                 }
             }
         }

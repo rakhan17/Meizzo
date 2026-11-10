@@ -294,15 +294,15 @@ class MainActivity : Activity() {
                 result.onFailure { error ->
                     setConnection("Update check failed · ${error.message ?: "network error"}", false)
                 }.onSuccess { release ->
-                    if (release == null) {
+                    val available = release ?: run {
                         setConnection("Connected · up to date (${BuildConfig.VERSION_NAME})", true)
                         return@onSuccess
                     }
                     AlertDialog.Builder(this)
-                        .setTitle("Update ${release.tag}${if (release.prerelease) " · beta" else ""}")
-                        .setMessage("${release.notes}\n\nPublished: ${updateManager.formatDate(release.publishedAt)}")
-                        .setNegativeButton("Later") { _, _ -> setConnection("Update available · ${release.tag}", true) }
-                        .setPositiveButton("Download") { _, _ -> downloadUpdate(release) }
+                        .setTitle("Update ${available.tag}${if (available.prerelease) " · beta" else ""}")
+                        .setMessage("${available.notes}\n\nPublished: ${updateManager.formatDate(available.publishedAt)}")
+                        .setNegativeButton("Later") { _, _ -> setConnection("Update available · ${available.tag}", true) }
+                        .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
                         .show()
                 }
             }
