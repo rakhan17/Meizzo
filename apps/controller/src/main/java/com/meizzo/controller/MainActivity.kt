@@ -209,7 +209,6 @@ class MainActivity : Activity() {
                         connectionLabel.setTextColor(Color.rgb(120, 210, 170))
                     }
                     authenticateExisting(webSocket)
-                    requestDeviceList(webSocket)
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
