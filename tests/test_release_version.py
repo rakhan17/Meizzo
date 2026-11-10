@@ -18,6 +18,9 @@ class ReleaseVersionTests(unittest.TestCase):
     def test_v_prefix_is_removed_from_version_name(self):
         self.assertEqual(derive_version("v0.1.0-beta.4")[0], "0.1.0-beta.4")
 
+    def test_meizzo_2_0_1_beta_1_version_metadata(self):
+        self.assertEqual(derive_version("v2.0.1-beta.1"), ("2.0.1-beta.1", 20_001_301))
+
     def test_unprefixed_tag_is_supported(self):
         self.assertEqual(derive_version("1.0.0"), ("1.0.0", 10_000_999))
 
