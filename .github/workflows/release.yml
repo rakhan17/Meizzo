@@ -29,13 +29,15 @@ jobs:
               raise SystemExit(f"Unsupported release tag: {tag}")
           major, minor, patch = map(int, match.group(1, 2, 3))
           phase, serial = match.group(4), int(match.group(5) or 0)
+          if minor > 99 or patch > 99:
+              raise SystemExit("Minor and patch components must be between 0 and 99")
           if phase is None:
-              qualifier = 99
+              qualifier = 999
           else:
-              if not 1 <= serial <= 39:
-                  raise SystemExit("Prerelease serial must be between 1 and 39")
-              qualifier = {"alpha": 0, "beta": 20, "rc": 60}[phase] + serial
-          code = major * 1_000_000 + minor * 10_000 + patch * 100 + qualifier
+              if not 1 <= serial <= 299:
+                  raise SystemExit("Prerelease serial must be between 1 and 299")
+              qualifier = {"alpha": 0, "beta": 300, "rc": 600}[phase] + serial
+          code = major * 10_000_000 + minor * 100_000 + patch * 1_000 + qualifier
           if code < 1 or code > 2_100_000_000:
               raise SystemExit(f"Derived Android versionCode is out of range: {code}")
           with open(os.environ["GITHUB_ENV"], "a") as env:
