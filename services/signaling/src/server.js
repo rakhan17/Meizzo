@@ -470,6 +470,16 @@ function onSessionStart(ws, message) {
     return sendError(ws, 'invalid_session_type', 'Unsupported session type');
   }
   if (!device.clientConnection) return sendError(ws, 'offline', 'Client is offline');
+  const activeDuplicate = [...sessions.values()].some((session) =>
+    session.clientId === device.clientId &&
+    ['pending', 'approved'].includes(session.state) &&
+    (message.sessionType === 'interaction'
+      ? session.sessionType === 'interaction'
+      : session.controllerId === ws.auth.controllerId && session.sessionType === message.sessionType)
+  );
+  if (activeDuplicate) {
+    return sendError(ws, 'session_already_active', 'An equivalent session is already active for this Client');
+  }
   const session = {
     sessionId: crypto.randomUUID(),
     clientId: device.clientId,
