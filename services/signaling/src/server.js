@@ -107,6 +107,14 @@ function prune() {
       device.lastSeen = now;
       logEvent('presence.offline', { clientId });
       broadcastDeviceStatus(clientId);
+      for (const [sessionId, session] of sessions) {
+        if (session.clientId !== clientId || !['pending', 'approved'].includes(session.state)) continue;
+        session.state = 'failed';
+        session.endedAtMs = now;
+        session.terminationReason = 'client_heartbeat_timeout';
+        notifySession(session);
+        sessions.delete(sessionId);
+      }
     }
   }
   for (const [sessionId, session] of sessions) {
@@ -645,7 +653,7 @@ const healthServer = http.createServer((req, res) => {
   res.end();
 });
 healthServer.listen(PORT, '0.0.0.0');
-const wss = new WebSocketServer({ server: healthServer });
+const wss = new WebSocketServer({ server: healthServer, maxPayload: 64 * 1024 });
 setInterval(prune, 15 * 1000).unref();
 
 wss.on('connection', (ws) => {
