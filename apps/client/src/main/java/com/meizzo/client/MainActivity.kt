@@ -260,6 +260,7 @@ class MainActivity : Activity() {
                                 "approved" -> runOnUiThread { status.text = "$sessionType session approved" }
                                 "rejected", "failed", "ended" -> runOnUiThread {
                                     pendingSessionDialogs.remove(sessionId)?.dismiss()
+                                    stopActiveOutputs()
                                     status.text = if (state == "rejected") "Session request declined" else "Session $state"
                                 }
                             }
@@ -294,6 +295,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         pendingSessionDialogs.values.forEach { it.dismiss() }
                         pendingSessionDialogs.clear()
+                        stopActiveOutputs()
                         status.text = connectionFailureMessage(t)
                     }
                     scheduleReconnect()
@@ -388,6 +390,26 @@ class MainActivity : Activity() {
             handleCommand(pending.first, pending.second)
         } else {
             sendCommandFailure(pending.first, pending.second, "Camera permission was denied; flashlight control is unavailable")
+        }
+    }
+
+    private fun stopActiveOutputs() {
+        alarm?.stopTone()
+        alarm?.release()
+        alarm = null
+        if (torchEnabled) {
+            try {
+                val manager = getSystemService(CameraManager::class.java)
+                val cameraId = manager.cameraIdList.firstOrNull {
+                    manager.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                }
+                if (cameraId != null && checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    manager.setTorchMode(cameraId, false)
+                }
+            } catch (_: Exception) {
+                // The session is already ending; keep local state safe even if torch shutdown fails.
+            }
+            torchEnabled = false
         }
     }
 
