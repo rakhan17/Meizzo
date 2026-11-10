@@ -34,10 +34,24 @@ data class ClientReleaseInfo(
 )
 
 class ClientUpdateManager(private val context: Context) {
+    private val allowedUpdateHosts = setOf(
+        "api.github.com",
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "objects.githubusercontent.com"
+    )
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .callTimeout(90, TimeUnit.SECONDS)
+        // Validate every network hop, including redirects, not just the initial URL.
+        .addNetworkInterceptor { chain ->
+            val url = chain.request().url
+            require(url.isHttps && url.host in allowedUpdateHosts) {
+                "Update request redirected to an untrusted host"
+            }
+            chain.proceed(chain.request())
+        }
         .build()
     private val packageName = "com.meizzo.client"
     private val appKey = "client"
