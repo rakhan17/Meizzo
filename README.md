@@ -43,28 +43,30 @@ Client until the Client approves the request.
 
 ## Downloads
 
-Select the app based on the role of the device. Client and Controller are
+Choose the app based on the role of each device. Client and Controller are
 separate Android applications.
 
 ### Android
 
-<sub>**LATEST BETA** &nbsp; `v0.1.0-beta.3`</sub>
+<sub>**LATEST BETA** · `v0.1.0-beta.4` · Version code `100304`</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [Download Client APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [Download Controller APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/Download-Client%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/Download-Controller%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
 
-> **Beta software:** bugs may occur. Install Client on the device being
-> assisted and Controller on the operator's device.
+> **Beta software:** this build is for testing and may contain bugs. Install
+> Client on the device receiving assistance and Controller on the operator's
+> device. Pairing still requires explicit approval on the Client.
 >
-> **Latest CI testing builds:** [Download Android Client and Controller
-> debug APKs](https://github.com/rakhan17/Meizzo/actions/runs/42781256887)
-> from the workflow's **Artifacts** section. These are CI debug artifacts,
-> not a published GitHub Release, and are intended for testing the Cloudflare
-> WSS endpoint.
+> **Upgrade note:** beta.4 is signed with the project's current release key.
+> If an older installation was signed with a different key, Android may reject
+> an in-place update. Back up any important app data before uninstalling an
+> older build; uninstalling removes that app's local data.
 
-**Stable:** <sub>Not released yet</sub> · **All versions:** [Browse MEIZZO releases](https://github.com/rakhan17/Meizzo/releases)
+**Latest release:** [MEIZZO v0.1.0-beta.4](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.4) ·
+**All versions:** [Browse every MEIZZO release](https://github.com/rakhan17/Meizzo/releases) ·
+**Stable:** <sub>Not released yet</sub>
 
 ### iOS
 
@@ -77,7 +79,7 @@ separate Android applications.
 
 <sub>Unsigned Simulator packages for Xcode on Mac only. They cannot be
 installed directly on a physical iPhone. iOS is not part of the current
-Android beta.</sub>
+Android beta and remains under development.</sub>
 
 [Read the iOS development guide](docs/ios-guide.md)
 
