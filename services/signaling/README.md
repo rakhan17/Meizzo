@@ -1,61 +1,63 @@
 # Meizzo Signaling Service
 
-This service provides WebSocket signaling with expiring in-memory state only. Render terminates public TLS and forwards traffic to this Node.js service; Android and iOS clients must connect using the service's `wss://` URL.
+MEIZZO includes two signaling runtimes:
 
-Implemented foundation behaviors:
-- client pairing offer registration (`client.register_pairing_offer`)
-- controller pairing request (`controller.request_pairing`)
-- pairing attempt rate limiting
-- offer expiration handling
-- one-time offer consumption on approval
-- explicit client approval path (`client.pairing_decision`)
-- post-pairing token authentication (`auth.connect`)
-- heartbeat and online/offline status
-- authoritative presence timeout: 45 seconds without a client heartbeat
-- client heartbeat interval: 15 seconds
-- real-time per-device telemetry updates carried by authenticated heartbeats
-- controller device listing and revocation
-- `GET /healthz` health check
+- **Cloudflare Workers + Durable Objects** for the hosted beta service.
+- **Node.js + ws** for local development and the existing regression tests.
 
-## Deploy to Render
+The Cloudflare Worker is defined in `services/signaling/cloudflare/worker.js`; the repository-root `wrangler.toml` binds its Durable Object. The Durable Object stores pairing offers, device credentials, controller credentials, pending requests, and session state in SQLite-backed Durable Object storage.
 
-The repository-root `render.yaml` defines a free Node.js web service:
+## Deploy with Cloudflare Workers Builds
 
-- Root directory: `services/signaling`
-- Build command: `npm ci`
-- Start command: `npm start`
-- Health check: `/healthz`
-- Region: Singapore
+1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) and go to **Workers & Pages**.
+2. Choose **Create application → Workers → Connect to Git** (wording may vary).
+3. Connect GitHub and select `rakhan17/Meizzo`, branch `main`.
+4. Set the Worker name to **meizzo-signaling**. It must match `name` in the root `wrangler.toml`.
+5. Set **Root directory** to the repository root (leave it blank if blank means repository root).
+6. Leave **Build command** blank. The project has no separate compile step.
+7. Keep **Preview builds** disabled for the initial setup. Leave **Protect with Cloudflare Access** disabled because the Android and iOS apps must connect directly.
+8. For **Deploy command**, use the default `npx wrangler deploy`.
+9. Use the automatically generated Cloudflare API token. Do not paste a personal API token into the repository or commit it.
+10. Save and deploy. Wait for the build to finish successfully.
 
-1. Push the repository to GitHub.
-2. Open the [Render Dashboard](https://dashboard.render.com/).
-3. Choose **New → Blueprint** and connect this repository.
-4. Review the `meizzo-signaling` service from `render.yaml`, then apply the Blueprint.
-5. Wait for the first deploy to become **Live**.
-6. Test `https://YOUR-SERVICE.onrender.com/healthz`. It should return HTTP 200 and JSON similar to `{"status":"ok","uptimeSeconds":12}`.
-7. Use `wss://YOUR-SERVICE.onrender.com` as the signaling URL in the Android release configuration. Do not use `ws://` for public releases.
+Cloudflare's Workers Builds uses the Wrangler deploy command by default and supports GitHub-triggered deployments. The Worker name must match the Wrangler configuration.
 
-## Keep the Render Free instance warm with UptimeRobot
+## Verify the deployment
 
-Render Free web services spin down after 15 minutes without inbound HTTP requests or WebSocket messages. An external monitor can send a lightweight health request more frequently:
+Open:
 
-1. Create an account at [UptimeRobot](https://uptimerobot.com/).
-2. Add a monitor with type **HTTP(s)**.
-3. Set the URL to `https://YOUR-SERVICE.onrender.com/healthz`.
-4. Choose a **5-minute** monitoring interval and save it.
-5. Confirm the monitor receives a successful HTTP response.
+`https://meizzo-signaling.<your-subdomain>.workers.dev/healthz`
 
-This is a best-effort keep-warm workaround, not an uptime guarantee or a substitute for a paid always-on instance. A continuously running free instance uses approximately 720 hours in a 30-day month, close to Render's 750 included free instance hours per workspace. Render can still restart free instances at any time.
+Expected response:
 
-## Important service limitations
+```json
+{
+  "status": "ok",
+  "service": "meizzo-signaling",
+  "runtime": "cloudflare-workers",
+  "protocolVersion": 2
+}
+```
 
-- Pairing credentials, device presence, and sessions currently live in process memory. A restart, redeploy, or spin-down loses that state, so devices may need to pair again.
-- This service handles signaling and authorization only. It is not a media relay.
-- The current service does not persist device identity or media.
-- The free Render plan is suitable for beta/testing, not production-critical availability.
-- Add a managed TURN service when WebRTC media sessions are enabled.
+The public signaling endpoint is:
 
-## Run locally
+`wss://meizzo-signaling.<your-subdomain>.workers.dev`
+
+Use the exact hostname Cloudflare assigns to the Worker. Do not guess the account subdomain.
+
+## Runtime behavior and limitations
+
+- WebSocket signaling uses a Durable Object singleton so pairing and device state is coordinated across connections.
+- Durable Object storage persists application state across isolate restarts. Active WebSocket connections can still disconnect during platform restarts or deployments, and clients must reconnect.
+- Presence becomes offline after 45 seconds without a Client heartbeat.
+- Pairing offers expire after at most 10 minutes. Pairing attempts are rate-limited per Controller ID and source IP.
+- This service handles signaling, pairing, authorization, and device commands only. It does **not** relay screen, camera, or other media streams.
+- Cloudflare Free has usage limits. Check the current Workers and Durable Objects quotas in the Cloudflare dashboard; exceeding free quotas can require a paid plan.
+- This is a beta deployment. Validate real Client/Controller pairing and reconnection before publishing an Android release against this endpoint.
+
+## Local Node.js server
+
+The Node.js implementation remains available for local testing:
 
 ```bash
 cd services/signaling
@@ -63,4 +65,14 @@ npm ci
 npm start
 ```
 
-Default port: `8080` (set `PORT` env var to override).
+Default port: `8080` (override with `PORT`).
+
+Run existing regression tests:
+
+```bash
+npm test
+```
+
+## Legacy Render configuration
+
+The repository still contains `render.yaml` for reference/rollback. It is not required for the Cloudflare deployment.
