@@ -40,16 +40,28 @@ Client until the Client approves the request.
 
 ## Downloads
 
-### Android
+### Version catalogue
 
-The latest published Android beta is **v0.1.0-beta.3**. Client and Controller
-are separate packages and must not be interchanged.
+MEIZZO keeps **Stable** and **Beta** release histories separate. A beta that
+graduates to stable is retained in the Beta archive, while its stable release
+is also listed in Stable. Promotion never erases the testing history.
 
-Beta.3 is the previous published build and contains the legacy local
-`10.0.2.2` debug endpoint behavior. For BlueStacks Air testing, use a current
-debug build configured with the Mac's reachable LAN address; beta.4 is not
-published until a production WSS endpoint and compatible signing key are
-available.
+#### Stable releases
+
+_No stable release has been published yet._
+
+#### Beta releases
+
+<details open>
+<summary><strong>v2.0.1-beta.1</strong> · Current development target · Android + iOS</summary>
+
+This beta is being prepared. Download links will appear here only after the
+matching build artifacts have been produced and validated.
+
+</details>
+
+<details>
+<summary><strong>v0.1.0-beta.3</strong> · Previously published beta</summary>
 
 <table>
 <tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
@@ -57,20 +69,22 @@ available.
 <tr><td>MEIZZO Controller</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.controller</code></td><td>Android 8.0+</td></tr>
 </table>
 
-[Latest Release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3) ·
-[All Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt) ·
+- [Client iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
+- [Controller iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
+- [Release notes and all assets](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
+- [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt)
+
+</details>
+
+[Browse all GitHub Releases](https://github.com/rakhan17/Meizzo/releases) ·
 [Installation guide](docs/getting-started.md)
 
-### iOS
+### iOS distribution note
 
 The published iOS artifacts are **Simulator ZIP files**, not IPAs. They
 contain unsigned `.app` bundles for iOS Simulator and cannot be installed on a
-physical iPhone or iPad. A signed device IPA is shown as a download only after
-the manual Apple-signing workflow has produced and validated it.
-
-- [MEIZZO Client Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
-- [MEIZZO Controller Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
+physical iPhone or iPad. A signed device IPA will be listed only after the
+manual Apple-signing workflow produces and validates it.
 
 See [iOS distribution](docs/ios-guide.md) for `.app`, `.zip`, `.ipa`,
 provisioning, TestFlight, and physical-device requirements.
