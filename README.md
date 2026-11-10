@@ -1,180 +1,140 @@
 <div align="center">
 
-<img src="assets/branding/meizzo-banner.svg" alt="MEIZZO — CONTROL YOUR CONNECTED WORLD." width="100%">
+<img src="assets/branding/meizzo-banner.svg" alt="MEIZZO" width="100%">
 
 # MEIZZO
 
 **CONTROL YOUR CONNECTED WORLD.**
 
-Permission-based device assistance for Android and iOS, built around explicit
-consent, isolated sessions, and real-time device status.
+Consent-first device assistance for Android and iOS, with separate Client and Controller applications.
 
 [![Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml/badge.svg)](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml)
 [![iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
 [![Latest beta](https://img.shields.io/github/v/release/rakhan17/Meizzo?include_prereleases&label=latest%20beta)](https://github.com/rakhan17/Meizzo/releases)
 
-[Documentation](https://github.com/rakhan17/Meizzo/tree/main/docs) ·
-[Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[Issues](https://github.com/rakhan17/Meizzo/issues)
+[Documentation](docs/index.md) · [Releases](https://github.com/rakhan17/Meizzo/releases) · [Support](SUPPORT.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
-> **Beta status:** Android pairing, authorization, presence, telemetry, and
-> selected commands are implemented. iOS Simulator builds are validated.
-> Media streaming, unrestricted remote control, production TLS deployment,
-> persistence, and signed iOS distribution remain outside the verified beta
-> boundary.
+> **Beta software.** Android pairing, approval, presence, telemetry, and selected device commands are implemented. iOS Simulator builds are validated. Do not assume build success means physical-device or cross-network runtime validation. See [implementation status](docs/implementation-status.md).
 
-## Product
+## At a glance
 
-MEIZZO is an ecosystem of two independent applications:
+MEIZZO has two independently installed applications:
 
-- **MEIZZO Client** runs on the device receiving assistance. It displays a
-  temporary six-digit code and explicitly approves pairing requests.
-- **MEIZZO Controller** runs on the operator device. It pairs with and monitors
-  one or more authorized Clients independently.
+| | Client | Controller |
+|---|---|---|
+| Role | Device receiving assistance | Device initiating authorized assistance |
+| Main job | Pairing offer, approval, status, telemetry | Pairing, multi-device dashboard, authorized actions |
+| Android package | `com.meizzo.client` | `com.meizzo.controller` |
+| iOS bundle | `com.meizzo.client.ios` | `com.meizzo.controller.ios` |
 
-The signaling service works across different networks when exposed through a
-reachable endpoint. Authorization is consent-based; a Controller cannot use a
-Client until the Client approves the request.
+A pairing code is temporary discovery, not permission. The Client must explicitly approve a pairing request before the Controller is authorized.
 
 ## Downloads
 
 ### Android
 
-The latest published Android beta is **v0.1.0-beta.3**. Client and Controller
-are separate packages and must not be interchanged.
+The latest published Android release is **v0.1.0-beta.3**. It is an older beta and is known to contain the legacy `ws://10.0.2.2:8080` endpoint behavior. It is **not recommended for validating the BlueStacks Air connectivity fix**.
 
-Beta.3 is the previous published build and contains the legacy local
-`10.0.2.2` debug endpoint behavior. For BlueStacks Air testing, use a current
-debug build configured with the Mac's reachable LAN address; beta.4 is not
-published until a production WSS endpoint and compatible signing key are
-available.
+| App | Download | Package |
+|---|---|---|
+| MEIZZO Client | [Download beta.3 APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) | `com.meizzo.client` |
+| MEIZZO Controller | [Download beta.3 APK](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) | `com.meizzo.controller` |
 
-<table>
-<tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
-<tr><td>MEIZZO Client</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.client</code></td><td>Android 8.0+</td></tr>
-<tr><td>MEIZZO Controller</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.controller</code></td><td>Android 8.0+</td></tr>
-</table>
+[Release notes](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3) · [All releases](https://github.com/rakhan17/Meizzo/releases) · [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt)
 
-[Latest Release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3) ·
-[All Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt) ·
-[Installation guide](docs/getting-started.md)
+**BlueStacks Air testing:** build fresh debug APKs with the Mac's reachable LAN address. The default `10.0.2.2` is not guaranteed to route from BlueStacks Air. Follow [the BlueStacks Air guide](docs/bluestacks-air.md). The CI debug artifacts are not published releases and must be configured with the correct endpoint before use.
 
 ### iOS
 
-The published iOS artifacts are **Simulator ZIP files**, not IPAs. They
-contain unsigned `.app` bundles for iOS Simulator and cannot be installed on a
-physical iPhone or iPad. A signed device IPA is shown as a download only after
-the manual Apple-signing workflow has produced and validated it.
+The published iOS downloads are **Simulator ZIP artifacts**, not iPhone-installable IPA files.
 
 - [MEIZZO Client Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
 - [MEIZZO Controller Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
 
-See [iOS distribution](docs/ios-guide.md) for `.app`, `.zip`, `.ipa`,
-provisioning, TestFlight, and physical-device requirements.
+Physical iPhone installation requires a signed device build and provisioning profile, or TestFlight/App Store distribution. See [iOS distribution guide](docs/ios-guide.md).
 
-## Feature overview
+## Product capabilities
 
-**Android:** six-digit pairing, explicit approval, multi-device management,
-authoritative presence, heartbeat telemetry, battery and charging state,
-network type, storage, RAM where exposed, device metadata, flashlight and
-alarm commands where supported, Android Keystore credentials, and isolated
-command routing.
+**Android beta**
+- Six-digit, expiring pairing code and explicit Client approval.
+- Separate Client and Controller identities and secure token storage.
+- Multi-Client Controller dashboard with isolated device state.
+- Authenticated presence, heartbeat, and device telemetry.
+- Battery/charging, storage, network type, memory and device metadata where the platform exposes them.
+- Selected commands such as flashlight and alarm, subject to hardware and permission availability.
+- App update checks and user-approved Android Package Installer flow, subject to release signing compatibility.
 
-**iOS beta:** native SwiftUI Client and Controller targets, pairing and
-approval, Keychain-backed tokens, multi-device presence, reconnect state,
-heartbeat telemetry exposed by public APIs, and verified Simulator
-install/launch smoke tests. iOS does not claim Android-equivalent remote
-control, screen capture, file access, or background monitoring.
-
-## Screenshots
-
-No production screenshots are committed yet. Do not treat mockups as runtime
-evidence. The capture workflow and naming convention are documented in
-[docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
+**iOS beta**
+- Separate native SwiftUI Client and Controller targets.
+- Pairing and approval flow, Keychain-backed credentials, and Simulator smoke tests.
+- Platform-supported status and telemetry only.
+- No claim of unrestricted touch control, silent screen capture, arbitrary file browsing, or Android-equivalent background behavior.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  AC[Android Client] -->|WebSocket / WSS| B[Signaling backend]
-  AO[Android Controller] -->|WebSocket / WSS| B
-  IC[iOS Client] -->|WebSocket / WSS| B
-  IO[iOS Controller] -->|WebSocket / WSS| B
-  B --> P[Pairing + explicit approval]
-  B --> A[Token authentication]
-  B --> R[Presence + heartbeat]
-  B --> T[Telemetry]
-  B --> C[Isolated command routing]
+  AC[Android Client] <-->|WSS / WebSocket| S[Signaling service]
+  AO[Android Controller] <-->|WSS / WebSocket| S
+  IC[iOS Client] <-->|WSS / WebSocket| S
+  IO[iOS Controller] <-->|WSS / WebSocket| S
+  S --> P[Pairing + explicit approval]
+  S --> A[Token authentication]
+  S --> R[Presence + heartbeat]
+  S --> T[Telemetry]
+  S --> C[Isolated command routing]
 ```
 
 ```mermaid
 sequenceDiagram
-  participant C as Client
-  participant S as Signaling
-  participant O as Controller
-  C->>S: register six-digit offer
-  O->>S: request pairing code
-  S->>C: pairing request
-  C->>S: explicit approval
-  S-->>C: client token
-  S-->>O: controller token
-  C->>S: authenticated heartbeat + telemetry
-  O->>S: authenticated device list/command
-  S-->>O: authoritative presence and result
+  participant Client
+  participant Service
+  participant Controller
+  Client->>Service: Register temporary pairing offer
+  Controller->>Service: Request pairing code
+  Service->>Client: Pairing request
+  Client->>Service: Approve or reject
+  Service-->>Client: Client authorization
+  Service-->>Controller: Controller authorization
+  Client->>Service: Authenticated heartbeat + telemetry
+  Service-->>Controller: Presence and telemetry updates
 ```
 
-## Repository
+## Repository map
 
-| Path | Responsibility |
+| Directory | Purpose |
 |---|---|
-| `apps/client` | Android Client, telemetry, consent UI, commands, updater |
-| `apps/controller` | Android Controller, multi-device dashboard, updater |
-| `ios/Client` | SwiftUI iOS Client target and Simulator project definition |
-| `ios/Controller` | SwiftUI iOS Controller target and Simulator project definition |
-| `ios/Shared` | iOS WebSocket, reconnect, heartbeat, and Keychain code |
-| `services/signaling` | Node.js WebSocket pairing, auth, presence, telemetry, routing |
-| `scripts` | Manual BlueStacks/ADB harnesses |
-| `docs` | User, developer, platform, security, and release documentation |
-| `.github/workflows` | Android, iOS Simulator, iOS device, release, and docs CI |
+| `apps/client` | Android Client |
+| `apps/controller` | Android Controller |
+| `ios/Client`, `ios/Controller` | Native iOS app targets |
+| `ios/Shared` | Shared iOS networking and secure storage |
+| `services/signaling` | Node.js WebSocket signaling backend |
+| `docs` | User, platform, developer, operations, and security docs |
+| `.github/workflows` | CI, iOS Simulator/device, release, and documentation workflows |
 
 ## Documentation
 
-- [Quick start](docs/getting-started.md)
-- [User manual](docs/user-guide.md)
-- [Client guide](docs/client-guide.md)
-- [Controller guide](docs/controller-guide.md)
-- [Pairing](docs/pairing.md)
-- [Device monitoring](docs/device-monitoring.md)
-- [Development setup](docs/development.md)
-- [Architecture](docs/architecture.md)
-- [API reference](docs/api-reference.md)
-- [Testing](docs/testing.md)
-- [Android guide](docs/android-guide.md)
-- [iOS guide](docs/ios-guide.md)
-- [Backend deployment](docs/backend-deployment.md)
-- [Security and privacy](docs/security-and-privacy.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security reporting](SECURITY.md)
-- [Support](SUPPORT.md)
+| Audience | Start here |
+|---|---|
+| New users | [Quick start](docs/getting-started.md) · [User manual](docs/user-guide.md) |
+| Client users | [Client guide](docs/client-guide.md) |
+| Controller users | [Controller guide](docs/controller-guide.md) |
+| Device information | [Telemetry reference](docs/device-monitoring.md) |
+| BlueStacks Air | [Network and installation guide](docs/bluestacks-air.md) |
+| Android developers | [Android guide](docs/android-guide.md) |
+| iOS developers | [iOS guide](docs/ios-guide.md) |
+| Backend operators | [Deployment guide](docs/backend-deployment.md) |
+| Contributors | [Contributing](CONTRIBUTING.md) |
+| Security reports | [Security policy](SECURITY.md) |
+| Project support | [Support](SUPPORT.md) |
 
-## Security, privacy, and limitations
+Full navigation is available in the [documentation index](docs/index.md).
 
-Pairing requires a short-lived code and explicit Client approval. Tokens are
-stored in Android Keystore or iOS Keychain. Device sessions and commands are
-isolated by Client identity. Logs must not contain credentials, pairing codes,
-or personal data.
+## Build and test
 
-The current backend stores active pairing and authorization state in memory.
-Production deployments require TLS/WSS, a stable deployment, operational
-limits, and a persistent state strategy. iOS system restrictions prevent
-unrestricted touch control, arbitrary file access, and silent screen capture.
-See [security and privacy](docs/security-and-privacy.md) and
-[implementation status](docs/implementation-status.md).
-
-## Development
+### Signaling service
 
 ```bash
 cd services/signaling
@@ -184,28 +144,37 @@ npm test
 PORT=8080 npm start
 ```
 
-For Android debug builds, use JDK 17, Android SDK 35, and:
+### Android
+
+Use JDK 17 and Android SDK 35:
 
 ```bash
 ./gradlew :apps:client:assembleDebug
 ./gradlew :apps:controller:assembleDebug
 ```
 
-Debug builds default to `ws://10.0.2.2:8080` for an Android emulator or
-BlueStacks instance. Release builds require
-`-Pmeizzo.releaseSignalingUrl=wss://your-host.example` and do not permit
-cleartext traffic. See [Android development](docs/android-guide.md).
+For BlueStacks Air, set `-Pmeizzo.debugSignalingUrl=ws://<MAC-LAN-IP>:8080` on **both** builds. Do not assume `10.0.2.2` is reachable. Release builds must use a real WSS endpoint; the placeholder endpoint is intentionally blocked from production release.
 
-## License status
+### iOS
 
-No repository license has been finalized. Until the owner approves a license,
-the source should not be described as open-source software. Apache License 2.0
-is documented as the recommended option in [docs/license.md](docs/license.md).
+Use the documented XcodeGen and macOS Simulator workflow. Simulator ZIPs are not physical-device IPAs.
+
+## Security and privacy
+
+Pairing requires explicit Client approval. Tokens are stored using Android Keystore-backed storage or iOS Keychain. Authenticated device sessions must remain isolated. Production deployments require TLS/WSS, appropriate operational controls, and a reviewed persistence strategy. The current signaling service keeps active state in memory.
+
+Read [Security and privacy](docs/security-and-privacy.md), [Security policy](SECURITY.md), and [known implementation status](docs/implementation-status.md).
+
+## License
+
+**No project license has been selected or committed.** Until the repository owner approves and adds a root `LICENSE` file, do not assume that public visibility grants permission to reuse or redistribute this code. See [license status and recommendation](docs/license.md).
+
+---
 
 <div align="center">
 
-**MEIZZO** · Android and iOS beta ·
-[Documentation](docs/index.md) · [Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[Issues](https://github.com/rakhan17/Meizzo/issues)
+**MEIZZO** · Cross-platform device assistance · Beta
+
+[Documentation](docs/index.md) · [Releases](https://github.com/rakhan17/Meizzo/releases) · [Report a bug](https://github.com/rakhan17/Meizzo/issues)
 
 </div>

@@ -8,29 +8,50 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      primary: black
+      accent: grey
       toggle:
         icon: material/brightness-7
         name: Use dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      primary: black
+      accent: grey
       toggle:
         icon: material/brightness-4
         name: Use light mode
   features:
+    - navigation.instant
     - navigation.sections
+    - navigation.expand
+    - navigation.path
     - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
     - search.highlight
     - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+extra_css:
+  - stylesheets/extra.css
 markdown_extensions:
   - admonition
   - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
   - pymdownx.details
   - pymdownx.highlight
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
 plugins:
   - search
 nav:
-  - MEIZZO Documentation: index.md
+  - Overview: index.md
   - Getting Started:
       - Quick start: getting-started.md
       - Installation: installation.md
@@ -62,5 +83,6 @@ nav:
       - Security policy: security-policy.md
       - Pairing protocol: pairing-protocol.md
       - Screenshot contribution: assets/screenshots/README.md
+      - Community policies: community.md
 extra:
   generator: false
