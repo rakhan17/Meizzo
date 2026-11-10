@@ -59,7 +59,7 @@ separate Android applications.
 > assisted and Controller on the operator's device.
 >
 > **Latest CI testing builds:** [Download Android Client and Controller
-> debug APKs](https://github.com/rakhan17/Meizzo/actions/runs/42780599354)
+> debug APKs](https://github.com/rakhan17/Meizzo/actions/runs/42781256887)
 > from the workflow's **Artifacts** section. These are CI debug artifacts,
 > not a published GitHub Release, and are intended for testing the Cloudflare
 > WSS endpoint.
