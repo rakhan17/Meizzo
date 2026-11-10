@@ -40,65 +40,36 @@ Client until the Client approves the request.
 
 ## Downloads
 
-### Version catalogue
+### Android
 
-MEIZZO keeps **Stable** and **Beta** release histories separate. A beta that
-graduates to stable is retained in the Beta archive, while its stable release
-is also listed in Stable. Promotion never erases the testing history.
+Choose the latest published version below. Client and Controller are separate
+applications, so install the APK that matches each device's role.
 
-#### Stable releases
+**Latest Beta · v0.1.0-beta.3**
 
-_No stable release has been published yet._
+[![Download MEIZZO Client APK](https://img.shields.io/badge/Download-Client%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk)
+[![Download MEIZZO Controller APK](https://img.shields.io/badge/Download-Controller%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk)
 
-#### Beta releases
+<sub>Beta builds may contain bugs. Install Client on the device being assisted and Controller on the device used to manage it.</sub>
 
-<details open>
-<summary><strong>v2.0.1-beta.1</strong> · Android beta testing build</summary>
+**Latest Stable**
 
-The Android Client and Controller debug APKs have been built by GitHub Actions.
-These are **testing artifacts**, not production-signed release APKs. They use
-the default emulator endpoint `ws://10.0.2.2:8080`, so they are intended for
-emulator/BlueStacks testing with a reachable local signaling service. They are
-not ready for normal physical-device use.
+![Stable release coming soon](https://img.shields.io/badge/Stable-Coming%20soon-lightgrey?style=for-the-badge)
 
-- [Download MEIZZO Client + Controller build artifacts](https://github.com/rakhan17/Meizzo/actions/runs/42767340017)
-- On the Actions page, open **Artifacts** and download `meizzo-client-debug`
-  and `meizzo-controller-debug`.
+No stable version has been published yet. The latest stable download button will appear here when the first stable release is available.
 
-A public GitHub Release with direct APK assets will be published after the
-production WSS endpoint and Android release-signing secrets are configured
-and the signed APKs pass validation.
+[![Browse all versions](https://img.shields.io/badge/Browse-All%20versions-555555?style=for-the-badge)](https://github.com/rakhan17/Meizzo/releases)
 
-</details>
-
-<details>
-<summary><strong>v0.1.0-beta.3</strong> · Previously published beta</summary>
-
-<table>
-<tr><th>Application</th><th>Download</th><th>Package</th><th>Minimum</th></tr>
-<tr><td>MEIZZO Client</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.client</code></td><td>Android 8.0+</td></tr>
-<tr><td>MEIZZO Controller</td><td><a href="https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk">Download APK</a></td><td><code>com.meizzo.controller</code></td><td>Android 8.0+</td></tr>
-</table>
-
-- [Client iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
-- [Controller iOS Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
-- [Release notes and all assets](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
-- [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/SHA256SUMS.txt)
-
-</details>
-
-[Browse all GitHub Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[Installation guide](docs/getting-started.md)
-
-### iOS status
+### iOS
 
 <badge>Under development</badge>
 
-iOS is intentionally deferred while the Android beta is prepared and tested.
-There are no current iOS downloads in this release. Simulator builds,
-physical-device signing, and iOS feature validation will be addressed in a
-later milestone. See [iOS development notes](docs/ios-guide.md) for platform
-requirements.
+The latest available iOS packages are the original **v0.1.0-beta.3** development builds. They are unsigned iOS Simulator ZIP files for testing on a Mac with Xcode. **They cannot be installed on a physical iPhone.**
+
+[![Download iOS Client](https://img.shields.io/badge/Download-iOS%20Client%20ZIP-111111?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip)
+[![Download iOS Controller](https://img.shields.io/badge/Download-iOS%20Controller%20ZIP-111111?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip)
+
+[View iOS development and build instructions](docs/ios-guide.md)
 
 ## Feature overview
 
