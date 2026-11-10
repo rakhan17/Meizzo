@@ -62,7 +62,7 @@ No stable version has been published yet. The latest stable download button will
 
 ### iOS
 
-<badge>Under development</badge>
+![Under development](https://img.shields.io/badge/iOS-Under%20development-lightgrey?style=for-the-badge)
 
 The latest available iOS packages are the original **v0.1.0-beta.3** development builds. They are unsigned iOS Simulator ZIP files for testing on a Mac with Xcode. **They cannot be installed on a physical iPhone.**
 
