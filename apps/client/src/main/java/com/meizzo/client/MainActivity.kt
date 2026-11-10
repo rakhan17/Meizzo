@@ -56,46 +56,127 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val layout = LinearLayout(this).apply {
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 56, 48, 32)
+            setPadding(dp(24), dp(28), dp(24), dp(28))
             setBackgroundColor(Color.rgb(8, 8, 10))
         }
-        layout.addView(ImageView(this).apply {
+        content.addView(ImageView(this).apply {
             setImageResource(R.drawable.meizzo_logo)
             contentDescription = "MEIZZO logo"
             adjustViewBounds = true
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }, LinearLayout.LayoutParams(-1, 150))
-        layout.addView(TextView(this).apply {
-            text = "MEIZZO CLIENT"; textSize = 28f; setTextColor(Color.WHITE); typeface = Typeface.DEFAULT_BOLD
-        })
-        layout.addView(TextView(this).apply {
-            text = "Pair this device with a Controller using the temporary code below."
-            textSize = 16f; setTextColor(Color.LTGRAY)
-        })
-        layout.addView(TextView(this).apply {
-            text = pairingCode
-            textSize = 44f; setTextColor(Color.WHITE); typeface = Typeface.MONOSPACE; gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 24)
-        })
-        status = TextView(this).apply { text = "Connecting…"; textSize = 16f; setTextColor(Color.rgb(120, 210, 170)) }
-        layout.addView(status)
-        layout.addView(Button(this).apply {
-            text = "Stop pairing"
+        }, LinearLayout.LayoutParams(-1, dp(88)))
+        content.addView(TextView(this).apply {
+            text = "MEIZZO CLIENT"
+            textSize = 25f
+            letterSpacing = 0.12f
             setTextColor(Color.WHITE)
-            setOnClickListener {
-                socket?.close(1000, "Pairing stopped")
-                status.text = "Pairing stopped"
-            }
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setPadding(0, dp(20), 0, dp(4))
         })
-        layout.addView(Button(this).apply {
-            text = "Check for app updates"
-            setOnClickListener { checkForUpdate() }
+        content.addView(TextView(this).apply {
+            text = "Your device, connected on your terms."
+            textSize = 14f
+            setTextColor(Color.rgb(155, 155, 163))
         })
-        setContentView(layout)
+
+        val pairingCard = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(20))
+        }
+        pairingCard.addView(uiEyebrow("PAIRING CODE"))
+        pairingCard.addView(TextView(this).apply {
+            text = pairingCode
+            textSize = 42f
+            letterSpacing = 0.18f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("monospace", Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, dp(12))
+        })
+        pairingCard.addView(TextView(this).apply {
+            text = "Share this temporary code with your MEIZZO Controller. It expires automatically."
+            textSize = 13f
+            setTextColor(Color.rgb(160, 160, 168))
+            gravity = Gravity.CENTER
+        })
+        content.addView(pairingCard, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(28)
+        })
+
+        val connectionCard = uiCard().apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        connectionCard.addView(uiEyebrow("DEVICE CONNECTION"))
+        status = TextView(this).apply {
+            text = "Connecting…"
+            textSize = 15f
+            setTextColor(Color.rgb(220, 190, 120))
+            setPadding(0, dp(8), 0, 0)
+        }
+        connectionCard.addView(status)
+        content.addView(connectionCard, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(12)
+        })
+        content.addView(uiActionButton("Stop pairing", false) {
+            socket?.close(1000, "Pairing stopped")
+            status.text = "Pairing stopped"
+        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
+        content.addView(uiActionButton("Check for updates", true) {
+            checkForUpdate()
+        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) })
+        content.addView(TextView(this).apply {
+            text = "PRIVATE BY DESIGN  ·  YOU CONTROL ACCESS"
+            textSize = 10f
+            letterSpacing = 0.12f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(105, 105, 113))
+            setPadding(0, dp(28), 0, dp(8))
+        })
+        setContentView(android.widget.ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
+            setBackgroundColor(Color.rgb(8, 8, 10))
+        })
         connect()
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun uiCard(): LinearLayout = LinearLayout(this).apply {
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(20, 20, 24))
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(42, 42, 48))
+        }
+    }
+
+    private fun uiEyebrow(value: String): TextView = TextView(this).apply {
+        text = value
+        textSize = 10f
+        letterSpacing = 0.16f
+        setTextColor(Color.rgb(145, 145, 154))
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    }
+
+    private fun uiActionButton(label: String, primary: Boolean, action: () -> Unit): TextView =
+        TextView(this).apply {
+            text = label
+            textSize = 14f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(if (primary) Color.rgb(12, 12, 14) else Color.WHITE)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(if (primary) Color.WHITE else Color.rgb(27, 27, 32))
+                cornerRadius = dp(14).toFloat()
+                if (!primary) setStroke(dp(1), Color.rgb(55, 55, 62))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
 
     override fun onResume() {
         super.onResume()
