@@ -42,6 +42,7 @@ class ClientUpdateManager(private val context: Context) {
     private val packageName = "com.meizzo.client"
     private val appKey = "client"
     private val apiUrl = "https://api.github.com/repos/rakhan17/Meizzo/releases?per_page=30"
+    private val signingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
 
     fun check(onResult: (Result<ClientReleaseInfo?>) -> Unit) {
         Thread {
@@ -62,7 +63,6 @@ class ClientUpdateManager(private val context: Context) {
                     if (tag.isBlank()) continue
                     val assets = release.optJSONArray("assets") ?: continue
                     var manifestUrl: String? = null
-                    var manifestAssetSize = -1L
                     val assetUrls = mutableMapOf<String, Pair<String, Long>>()
                     for (assetIndex in 0 until assets.length()) {
                         val asset = assets.getJSONObject(assetIndex)
@@ -71,7 +71,6 @@ class ClientUpdateManager(private val context: Context) {
                         val size = asset.optLong("size", -1L)
                         if (name == "MEIZZO-UPDATE.json") {
                             manifestUrl = url
-                            manifestAssetSize = size
                         } else if (name.isNotBlank()) {
                             assetUrls[name] = url to size
                         }
@@ -107,7 +106,7 @@ class ClientUpdateManager(private val context: Context) {
                     val assetUrl = asset.first
                     requireHttps(assetUrl)
                     val assetSize = app.optLong("assetSize", -1L)
-                    require(assetSize > 0L && asset.first.isNotBlank()) { "Invalid APK size" }
+                    require(assetSize in 1L..(512L * 1024L * 1024L)) { "Invalid APK size" }
                     require(asset.second == assetSize) { "APK size does not match release metadata" }
 
                     val sha256 = app.optString("sha256").lowercase(Locale.ROOT)
@@ -185,7 +184,7 @@ class ClientUpdateManager(private val context: Context) {
 
                 val archive = context.packageManager.getPackageArchiveInfo(
                     partial.absolutePath,
-                    PackageManager.GET_SIGNING_CERTIFICATES
+                    signingFlags
                 ) ?: error("Downloaded file is not a valid APK")
                 require(archive.packageName == packageName) { "Downloaded APK package ID does not match $packageName" }
                 require(appVersionCode(archive) == release.versionCode) { "Downloaded APK versionCode mismatch" }
@@ -266,7 +265,7 @@ class ClientUpdateManager(private val context: Context) {
     }
 
     private fun packageInfo(): PackageInfo =
-        context.packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        context.packageManager.getPackageInfo(packageName, signingFlags)
 
     private fun appVersionCode(info: PackageInfo): Long =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else {
