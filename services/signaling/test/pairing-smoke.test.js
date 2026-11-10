@@ -88,9 +88,6 @@ async function run() {
 
     await wait(500);
 
-    client.close();
-    controller.close();
-
     if (!paired) {
       throw new Error('Expected pairing success flow to complete');
     }
@@ -133,6 +130,8 @@ async function run() {
     });
     if (!rateLimited) throw new Error('Pairing attempts were not limited per network address');
 
+    client.close();
+    controller.close();
     console.log('pairing-smoke.test: OK');
   } finally {
     server.kill('SIGTERM');
