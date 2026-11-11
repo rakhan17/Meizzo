@@ -124,6 +124,10 @@ class MainActivity : ComponentActivity() {
                     val payload = intent.getStringExtra(ConnectionForegroundService.EXTRA_MESSAGE) ?: return
                     val active = socket ?: return
                     handleServerMessage(active, payload)
+                    val type = runCatching { JSONObject(payload).optString("type") }.getOrDefault("")
+                    if (type == "client.pairing_request" || type == "client.session_status") {
+                        startService(Intent(this@MainActivity, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_ACK_PENDING))
+                    }
                 }
                 ConnectionForegroundService.ACTION_STATE -> {
                     socket = ConnectionForegroundService.activeSocket
@@ -147,7 +151,9 @@ class MainActivity : ComponentActivity() {
             connectionReceiverRegistered = true
         }
         socket = ConnectionForegroundService.activeSocket
-        startService(Intent(this, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_REFRESH))
+        if (preferences.getBoolean("connection_enabled", true)) {
+            startService(Intent(this, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_REFRESH))
+        }
     }
 
     override fun onStop() {
@@ -172,6 +178,7 @@ class MainActivity : ComponentActivity() {
                 statusView = status,
                 onStopPairing = {
                     shouldMaintainConnection = false
+                    preferences.edit().putBoolean("connection_enabled", false).apply()
                     reconnectHandler.removeCallbacksAndMessages(null)
                     reconnectScheduled = false
                     startService(Intent(this@MainActivity, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_STOP))
