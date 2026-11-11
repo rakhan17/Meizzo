@@ -66,6 +66,38 @@ build configuration or committed to the repository.
 Cloudflare Realtime TURN is a metered relay service. Check current account
 pricing and usage limits before enabling it for public users.
 
+## Isolated MEIZZO v3 Worker
+
+The v3 development branch has a separate Worker configuration:
+`wrangler.v3.toml`. It deploys as `meizzo-signaling-v3`, keeping the
+stable `meizzo-signaling` Worker untouched. This is intentional: the v3
+Worker adds participant-bound WebRTC media signaling, ICE-server delivery,
+and additional reconnect/session checks that are not present in the stable
+Worker.
+
+Expected v3 endpoint for the existing Cloudflare account subdomain:
+
+`wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
+
+The repository includes a guarded manual workflow at
+[Deploy MEIZZO v3 Cloudflare](../.github/workflows/deploy-cloudflare-v3.yml).
+Before using it, configure these GitHub Actions repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`: token with permission to deploy Workers and manage
+  the required Durable Object binding/migration.
+- `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account identifier.
+
+The workflow runs signaling regression tests and a Wrangler dry-run before
+publishing. The stable Worker is not modified. The v3 Worker has its own
+Durable Object namespace and its own Realtime TURN secrets. If TURN is enabled,
+configure `REALTIME_TURN_TOKEN_ID` and `REALTIME_TURN_TOKEN_SECRET` on the
+v3 Worker separately.
+
+After deployment, verify the v3 health endpoint and WebSocket handshake, then
+set `MEIZZO_SIGNALING_URL` for v3 release builds to the exact deployed WSS
+hostname. Do not publish v3 APKs against the stable Worker if they require
+v3-only media signaling or TURN credentials.
+
 ## Local Node.js development harness
 
 The Node.js implementation is for local development and tests. It uses
