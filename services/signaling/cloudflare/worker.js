@@ -229,6 +229,24 @@ export class MeizzoSignaling {
           const controllerId = s.controllers[m.authToken]?.controllerId;
           if (!controllerId) return this.sendError(ws, "unauthorized", "Invalid authentication token");
           if (a.role === "controller" && a.controllerId !== controllerId) return this.sendError(ws, "unauthorized", "Controller identity mismatch");
+          if (a.connId) {
+            for (const [sessionId, session] of Object.entries(s.sessions)) {
+              if (session.controllerId !== controllerId || session.controllerConnId === a.connId ||
+                  !["pending", "approved"].includes(session.state)) continue;
+              session.state = "failed";
+              session.endedAtMs = t;
+              session.terminationReason = "controller_reconnected";
+              const payload = {
+                type: "session.status", sessionId, clientId: session.clientId,
+                controllerId: session.controllerId, sessionType: session.sessionType,
+                state: "failed", createdAtMs: session.createdAtMs, endedAtMs: t,
+                terminationReason: "controller_reconnected"
+              };
+              this.sendController(session.controllerId, payload);
+              this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+              delete s.sessions[sessionId];
+            }
+          }
           const tokens = [...new Set([...(a.tokens || []), m.authToken])];
           this.setAuth(ws, { role: "controller", controllerId, token: m.authToken, tokens });
           this.send(ws, { type: "controller.status", status: "connected", timestamp: t });
@@ -293,7 +311,12 @@ export class MeizzoSignaling {
           return this.sendError(ws, "session_already_active", "An equivalent session is already active for this Client");
         }
         const sessionId = id();
-        const session = { sessionId, clientId: d.clientId, controllerId: a.controllerId, controllerToken: a.token, sessionType: m.sessionType, state: "pending", createdAtMs: t };
+        const session = {
+          sessionId, clientId: d.clientId, controllerId: a.controllerId,
+          controllerToken: a.token, controllerConnId: a.connId,
+          clientConnId: d.clientConnId, sessionType: m.sessionType,
+          state: "pending", createdAtMs: t
+        };
         s.sessions[sessionId] = session; await this.save(s);
         const payload = { type: "session.status", sessionId, clientId: d.clientId, controllerId: a.controllerId, sessionType: m.sessionType, state: "pending", createdAtMs: t, endedAtMs: null, terminationReason: null };
         this.sendController(a.controllerId, payload); this.sendClient(d.clientId, { ...payload, type: "client.session_status" });
@@ -301,7 +324,7 @@ export class MeizzoSignaling {
       }
       case "client.session_decision": {
         const session = s.sessions[m.sessionId];
-        if (!session || a.role !== "client" || session.clientId !== a.clientId || typeof m.approved !== "boolean") return this.sendError(ws, "unauthorized", "Invalid session decision");
+        if (!session || a.role !== "client" || session.clientId !== a.clientId || session.clientConnId !== a.connId || typeof m.approved !== "boolean") return this.sendError(ws, "unauthorized", "Invalid session decision");
         if (session.state !== "pending") return this.sendError(ws, "session_not_pending", "Session is no longer awaiting approval");
         session.state = m.approved ? "approved" : "rejected"; session.endedAtMs = m.approved ? null : t;
         session.terminationReason = m.approved ? null : "client_rejected";
@@ -313,7 +336,7 @@ export class MeizzoSignaling {
       }
       case "controller.end_session": {
         const session = s.sessions[m.sessionId];
-        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || session.controllerToken !== a.token) return this.sendError(ws, "unauthorized", "Invalid session termination");
+        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || session.controllerToken !== a.token || session.controllerConnId !== a.connId) return this.sendError(ws, "unauthorized", "Invalid session termination");
         session.state = "ended"; session.endedAtMs = t; session.terminationReason = validString(m.reason) ? m.reason : "controller_ended";
         await this.save(s);
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: "ended", createdAtMs: session.createdAtMs, endedAtMs: t, terminationReason: session.terminationReason };
@@ -329,7 +352,7 @@ export class MeizzoSignaling {
           return this.sendError(ws, "invalid_signal", "Invalid or oversized media signaling payload");
         }
         const payload = { type: "media.signal", sessionId: session.sessionId, fromRole: a.role, signal: m.signal };
-        if (a.role === "client" && a.clientId === session.clientId) {
+        if (a.role === "client" && a.clientId === session.clientId && a.connId === session.clientConnId) {
           for (const peer of this.ctx.getWebSockets()) {
             const peerAuth = this.attachment(peer);
             if (peerAuth.role === "controller" && peerAuth.controllerId === session.controllerId &&
@@ -338,7 +361,7 @@ export class MeizzoSignaling {
           return;
         }
         if (a.role === "controller" && a.controllerId === session.controllerId &&
-            (a.tokens || [a.token]).includes(session.controllerToken)) {
+            session.controllerConnId === a.connId && (a.tokens || [a.token]).includes(session.controllerToken)) {
           this.sendClient(session.clientId, payload);
           return;
         }
@@ -405,7 +428,7 @@ export class MeizzoSignaling {
       const tokens = new Set(a.tokens || [a.token].filter(Boolean));
       let changed = false;
       for (const [sessionId, session] of Object.entries(s.sessions)) {
-        if (session.controllerId !== a.controllerId ||
+        if (session.controllerId !== a.controllerId || session.controllerConnId !== a.connId ||
             (tokens.size && !tokens.has(session.controllerToken)) ||
             !["pending", "approved"].includes(session.state)) continue;
         session.state = "ended";
