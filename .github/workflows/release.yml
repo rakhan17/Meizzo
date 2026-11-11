@@ -79,7 +79,7 @@ jobs:
           esac
           case "$MEIZZO_SIGNALING_URL" in
             *meizzo-signaling.rakhanatanox.workers.dev)
-              echo "::error::v3 releases must use the isolated meizzo-signaling-v3 Worker, not the stable Worker."
+              echo "::error::v3 releases must use the isolated meizzo-signaling-beta Worker, not the stable Worker."
               exit 1
               ;;
           esac
