@@ -5,13 +5,29 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.view.accessibility.AccessibilityNodeInfo
 
 class RemoteAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
+        val info = serviceInfo
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        if (Build.VERSION.SDK_INT >= 33) {
+            info.flags = info.flags or AccessibilityServiceInfo.FLAG_INPUT_METHOD_EDITOR
+        }
+        setServiceInfo(info)
         instance = this
+    }
+
+    fun sendKey(keyCode: Int): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return false
+        val connection = getInputMethod()?.getCurrentInputConnection() ?: return false
+        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
+        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode)
+        return connection.sendKeyEvent(down) && connection.sendKeyEvent(up)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
