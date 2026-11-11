@@ -995,6 +995,7 @@ class MainActivity : Activity() {
             startActivityForResult(
                 android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                    putExtra(android.content.Intent.EXTRA_ALLOW_MULTIPLE, true)
                     type = "*/*"
                 },
                 filePickRequestCode
@@ -1346,11 +1347,19 @@ class MainActivity : Activity() {
         when (requestCode) {
             filePickRequestCode -> {
                 val sessionId = selectedFileSessionId
-                if (resultCode == RESULT_OK && data?.data != null && sessionId != null) {
+                if (resultCode == RESULT_OK && data != null && sessionId != null) {
+                    val selected = mutableListOf<android.net.Uri>()
+                    data.data?.let(selected::add)
+                    data.clipData?.let { clip ->
+                        for (index in 0 until clip.itemCount) {
+                            val uri = clip.getItemAt(index).uri
+                            if (selected.none { it == uri }) selected.add(uri)
+                        }
+                    }
                     try {
-                        fileTransferCoordinators[sessionId]?.sendFile(data.data!!)
+                        fileTransferCoordinators[sessionId]?.sendFiles(selected)
                     } catch (error: Exception) {
-                        setConnection("Could not send file · ${error.message ?: "storage error"}", false)
+                        setConnection("Could not send selected files · ${error.message ?: "storage error"}", false)
                     }
                 }
                 selectedFileSessionId = null
