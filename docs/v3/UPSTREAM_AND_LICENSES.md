@@ -40,12 +40,15 @@ APK as Apache-only.
   and
   https://github.com/rustdesk/rustdesk/blob/master/flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/DocumentPicker.kt
 
-The current native Kotlin MEIZZO Client is not yet a RustDesk fork and does
-not yet contain copied RustDesk source. The existing implementation uses
-Android platform APIs and the WebRTC Android SDK. The RustDesk source is
-currently an upstream engineering reference. The actual engine integration
-must be done as a separately reviewed implementation milestone, pinned to a
-specific upstream commit, with source provenance and notices recorded.
+The RustDesk client source is now pinned as a Git submodule at
+`third_party/rustdesk`, commit `95cca3f661f635b3cc85c04935fe8d96d8f432ef`.
+The repository also pins RustDesk's upstream license text in
+`LICENSE-AGPL-3.0-only`. This makes the exact upstream source available to
+contributors and CI; it does not yet mean the RustDesk engine is linked into
+the MEIZZO APKs. The existing MEIZZO Client and Controller remain native Kotlin
+applications using Android platform APIs and the WebRTC Android SDK. Engine
+integration is a separate milestone that must be built, tested, and reviewed
+before any APK is described as RustDesk-powered.
 
 ## Integration constraints and architecture
 
