@@ -858,6 +858,7 @@ class MainActivity : Activity() {
                 }.toString())
             },
             { reason ->
+                ControllerVoiceForegroundService.stop(this)
                 runOnUiThread { setConnection("Media stream error · $reason", false) }
             },
             iceServersJson = iceServersBySession.remove(sessionId)
