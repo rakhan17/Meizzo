@@ -165,6 +165,9 @@ class RtcMediaController(
 
     fun enableLocalMicrophone(): Boolean {
         val connection = peer ?: return false
+        if (localAudioTrack == null &&
+            (!remoteDescriptionSet || connection.signalingState() != PeerConnection.SignalingState.STABLE)
+        ) return false
         if (localAudioTrack != null) {
             localAudioTrack?.setEnabled(true)
             localAudioEnabled = true
