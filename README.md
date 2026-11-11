@@ -117,7 +117,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Android camera streaming prototype using Camera2 and WebRTC.
 - Optional one-way Client microphone audio alongside screen or camera streams, with per-session confirmation and Android microphone permission; Controller can mute local playback.
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
-- Remote Back, Home, Recents, and lock-screen actions through the user-enabled AccessibilityService.
+- Remote Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
 - Remote text insertion, Backspace, and newline for focused editable non-password fields.
 - Remote media volume up/down/mute/unmute controls during an approved interaction session.
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
