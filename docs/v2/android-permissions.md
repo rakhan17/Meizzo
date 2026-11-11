@@ -18,6 +18,7 @@ physical-device and cross-network acceptance work listed in the v3 roadmap.
 | Remote lock screen | Accessibility global action (Android 9+) | Implemented; requires a separately approved interaction session |
 | Remote screenshot | PixelCopy of the Controller's currently rendered live-screen surface | Implemented in Controller; saved to Pictures/MEIZZO on Android 10+, or app-specific Pictures storage on older supported versions |
 | Camera streaming | Runtime CAMERA permission + WebRTC | Implemented prototype; requires Client session approval and camera permission |
+| Microphone audio streaming | Runtime RECORD_AUDIO + foreground microphone service + WebRTC | Optional one-way Client microphone audio; separately confirmed for each media session |
 | Location | Runtime coarse/fine location permission and explicit Find My toggle | Opt-in last-known location snapshot only; not continuous tracking |
 | Flashlight | CAMERA permission and torch hardware | Implemented command path |
 | Alarm | Foreground service and audio policy | Implemented command path |
