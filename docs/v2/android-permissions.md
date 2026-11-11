@@ -10,7 +10,7 @@ physical-device and cross-network acceptance work listed in the v3 roadmap.
 | Pairing and device presence | Authenticated WebSocket, six-digit pairing, heartbeat | Implemented |
 | Battery/storage/device metadata | Public Android APIs | Implemented telemetry snapshot |
 | Live screen viewing | MediaProjection consent + media-projection foreground service + WebRTC | Implemented prototype; Client must approve the session and Android must show its system capture prompt |
-| Remote tap and swipe | User-enabled AccessibilityService with gesture capability | Implemented; requires a separately approved interaction session |
+| Remote tap, swipe, and long-press | User-enabled AccessibilityService with gesture capability | Implemented; requires a separately approved interaction session |
 | Remote navigation | Accessibility global actions for Back, Home, and Recents | Implemented; requires a separately approved interaction session |
 | Remote lock screen | Accessibility global action (Android 9+) | Implemented; requires a separately approved interaction session |
 | Remote screenshot | PixelCopy of the Controller's currently rendered live-screen surface | Implemented in Controller; saved to Pictures/MEIZZO on Android 10+, or app-specific Pictures storage on older supported versions |
