@@ -115,7 +115,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Session request, approval, rejection, and termination state, including Client-initiated termination.
 - Live Android screen streaming prototype using MediaProjection and WebRTC.
 - Android camera streaming prototype using Camera2 and WebRTC.
-- Optional one-way Client microphone audio alongside screen or camera streams, with per-session confirmation and Android microphone permission.
+- Optional one-way Client microphone audio alongside screen or camera streams, with per-session confirmation and Android microphone permission; Controller can mute local playback.
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
 - Remote Back, Home, Recents, and lock-screen actions through the user-enabled AccessibilityService.
 - Remote text insertion, Backspace, and newline for focused editable non-password fields.
