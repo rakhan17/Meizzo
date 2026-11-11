@@ -4,9 +4,9 @@ plugins {
 }
 
 val releaseVersionName = providers.gradleProperty("meizzo.releaseVersionName")
-    .orElse("2.0.1-beta.1").get()
+    .orElse("2.5.0").get()
 val releaseVersionCode = providers.gradleProperty("meizzo.releaseVersionCode")
-    .orElse("20001301").get().toInt()
+    .orElse("20500999").get().toInt()
 val defaultSignalingUrl = "wss://meizzo-signaling.rakhanatanox.workers.dev"
 val debugSignalingUrl = providers.gradleProperty("meizzo.debugSignalingUrl")
     .orElse(defaultSignalingUrl).get()
