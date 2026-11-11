@@ -333,7 +333,9 @@ class MainActivity : Activity() {
                                 }
                                 "rejected", "failed", "ended" -> runOnUiThread {
                                     pendingSessionDialogs.remove(sessionId)?.dismiss()
-                                    stopActiveOutputs()
+                                    if (sessionId == activeMediaSessionId || sessionId == pendingMediaSessionId) {
+                                        stopActiveOutputs()
+                                    }
                                     status.text = if (state == "rejected") "Session request declined" else "Session $state"
                                 }
                             }
