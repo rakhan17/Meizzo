@@ -126,10 +126,12 @@ Before calling a capability production-ready, record:
 3. Client and Controller installation result.
 4. Pairing and explicit approval result.
 5. Screen/camera stream start, quality, latency, camera switching, and stop behavior.
-6. Two-way voice start/mute/stop, permission denial, audio routing, echo, and background behavior.\n7. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
+6. Two-way voice start/mute/stop, permission denial, audio routing, echo, and background behavior.
+7. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
    OFF, local notification Stop alarm, background playback, and volume behavior.
 8. Tap, swipe, keyboard shortcuts, system navigation, lock, and Accessibility permission-denial behavior.
-9. Clipboard approval, remote folder navigation, file download, rename/delete, and SAF permission revocation.\n10. File transfer in both directions, including multi-file batches, progress, cancellation, interrupted
+9. Clipboard approval, remote folder navigation, file download, rename/delete, and SAF permission revocation.
+10. File transfer in both directions, including multi-file batches, progress, cancellation, interrupted
    transfers.
 11. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
 12. Multi-device isolation, revocation, and session cleanup.
