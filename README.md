@@ -116,7 +116,8 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Live Android screen streaming prototype using MediaProjection and WebRTC.
 - Android camera streaming prototype using Camera2 and WebRTC.
 - Tap/swipe from the Controller's live video surface, gated by a separate approved interaction session.
-- Remote Android lock-screen action through the user-enabled AccessibilityService.
+- Remote Back, Home, Recents, and lock-screen actions through the user-enabled AccessibilityService.
+- Save a screenshot from the active remote live-screen viewer to the Controller device.
 - Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, chunk acknowledgements, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
