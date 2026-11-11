@@ -13,6 +13,7 @@ physical-device and cross-network acceptance work listed in the v3 roadmap.
 | Remote tap, swipe, and long-press | User-enabled AccessibilityService with gesture capability | Implemented; requires a separately approved interaction session |
 | Remote navigation | Accessibility global actions for Back, Home, and Recents | Implemented; requires a separately approved interaction session |
 | Remote text input | Accessibility window access and an editable, focused, non-password field | Appends up to 2,000 characters; custom editors may reject ACTION_SET_TEXT |
+| Remote keyboard actions | Accessibility window access and a focused editable non-password field | Backspace and newline; arbitrary keycodes and shortcuts are not implemented |
 | Clipboard transfer | Android ClipboardManager | Text-only read/write up to 10,000 characters; every operation requires a separate Client approval dialog |
 | Remote lock screen | Accessibility global action (Android 9+) | Implemented; requires a separately approved interaction session |
 | Remote screenshot | PixelCopy of the Controller's currently rendered live-screen surface | Implemented in Controller; saved to Pictures/MEIZZO on Android 10+, or app-specific Pictures storage on older supported versions |
