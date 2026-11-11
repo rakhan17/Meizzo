@@ -53,6 +53,7 @@ class ConnectionForegroundService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 maintainConnection = false
+                preferences.edit().putBoolean("connection_enabled", false).apply()
                 handler.removeCallbacksAndMessages(null)
                 activeSocket?.close(1000, "Pairing stopped")
                 activeSocket = null
@@ -60,6 +61,7 @@ class ConnectionForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_ACK_PENDING -> preferences.edit().remove("pending_server_message").apply()
             ACTION_REFRESH -> {
                 activeSocket?.let {
                     registerPairingOffer(it)
@@ -71,8 +73,12 @@ class ConnectionForegroundService : Service() {
                 }
             }
         }
+        maintainConnection = preferences.getBoolean("connection_enabled", true)
+        if (!maintainConnection) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         startInForeground()
-        maintainConnection = true
         if (activeSocket == null) connect()
         return START_STICKY
     }
@@ -338,6 +344,7 @@ class ConnectionForegroundService : Service() {
         const val ACTION_STATE = "com.meizzo.client.CONNECTION_STATE"
         const val ACTION_STOP = "com.meizzo.client.CONNECTION_STOP"
         const val ACTION_REFRESH = "com.meizzo.client.CONNECTION_REFRESH"
+        const val ACTION_ACK_PENDING = "com.meizzo.client.CONNECTION_ACK_PENDING"
         const val EXTRA_MESSAGE = "message"
         const val EXTRA_STATE = "state"
         const val EXTRA_CONNECTED = "connected"
