@@ -63,7 +63,19 @@ class FileTransferCoordinator(
         channel.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
             override fun onStateChange() {
-                if (channel.state() == DataChannel.State.OPEN) onStatus("Secure file channel ready")
+                when (channel.state()) {
+                    DataChannel.State.OPEN -> onStatus("Secure file channel ready")
+                    DataChannel.State.CLOSING, DataChannel.State.CLOSED -> {
+                        cancelChunkRetry()
+                        closeOutgoing()
+                        outgoingQueue.clear()
+                        discardIncoming()
+                        pendingName = ""
+                        pendingSize = 0L
+                        onStatus("File channel closed · transfer stopped")
+                    }
+                    else -> Unit
+                }
             }
             override fun onMessage(buffer: DataChannel.Buffer) {
                 if (buffer.binary) return
@@ -82,8 +94,8 @@ class FileTransferCoordinator(
             return
         }
         if (uris.isEmpty()) return
-        if (outgoingInput != null) {
-            onStatus("Wait for the current file transfer to finish")
+        if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
+            onStatus("Finish or cancel the current file transfer before starting another")
             return
         }
         outgoingQueue.clear()
@@ -130,6 +142,7 @@ class FileTransferCoordinator(
         send(JSONObject().put("type", "file_reject"))
         pendingName = ""
         pendingSize = 0L
+        discardIncoming()
     }
 
     fun close() {
@@ -144,11 +157,18 @@ class FileTransferCoordinator(
         val message = try { JSONObject(raw) } catch (_: Exception) { return }
         when (message.optString("type")) {
             "file_offer" -> {
+                if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
+                    send(JSONObject().put("type", "file_reject"))
+                    onStatus("Another file transfer is already active")
+                    return
+                }
                 pendingName = message.optString("name").take(128)
                 pendingSize = message.optLong("size", -1L)
                 val mime = message.optString("mimeType", "application/octet-stream")
                 if (pendingName.isBlank() || pendingSize < -1L || pendingSize > MAX_FILE_SIZE) {
                     send(JSONObject().put("type", "file_reject"))
+                    pendingName = ""
+                    pendingSize = 0L
                     onStatus("Rejected invalid or oversized file offer")
                     return
                 }
@@ -163,6 +183,8 @@ class FileTransferCoordinator(
                 closeOutgoing()
                 outgoingQueue.clear()
                 discardIncoming()
+                pendingName = ""
+                pendingSize = 0L
                 onStatus("The other device declined or could not complete the file")
             }
             "file_chunk" -> {
