@@ -37,6 +37,7 @@ class MainActivity : Activity() {
     private lateinit var connectionLabel: TextView
     private lateinit var summaryLabel: TextView
     private lateinit var devicesLayout: LinearLayout
+    private val httpClient by lazy { OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build() }
     private var socket: WebSocket? = null
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
@@ -202,8 +203,7 @@ class MainActivity : Activity() {
     private fun connect() {
         connectionLabel.text = "● Connecting to MEIZZO"
         connectionLabel.setTextColor(Color.rgb(238, 190, 100))
-        socket = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
-            .newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
+        socket = httpClient.newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     reconnectAttempt = 0
                     reconnectScheduled = false
@@ -215,7 +215,12 @@ class MainActivity : Activity() {
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val message = JSONObject(text)
+                    val message = try {
+                        JSONObject(text)
+                    } catch (_: Exception) {
+                        setConnection("Received an invalid server message · retrying safely", false)
+                        return
+                    }
                     when (message.optString("type")) {
                         "controller.status" -> setConnection("Connected", true)
                         "controller.pairing_pending" -> runOnUiThread {
