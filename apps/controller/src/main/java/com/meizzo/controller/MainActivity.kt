@@ -248,7 +248,7 @@ class MainActivity : ComponentActivity() {
                             connectionLabel.text = "● Connected · waiting for Client approval"
                         }
                         "controller.pairing_result" -> handlePairingResult(message)
-                        "auth.connected" -> requestDeviceList(webSocket)
+                        "auth.connected" -> setConnection("Connected · restoring devices", true)
                         "controller.device_list", "device.status" -> {
                             if (message.optString("type") == "controller.device_list") {
                                 val list = message.optJSONArray("devices") ?: return
