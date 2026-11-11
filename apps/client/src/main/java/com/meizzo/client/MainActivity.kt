@@ -496,7 +496,7 @@ class MainActivity : Activity() {
                                 pendingIncomingFileMime = mime
                                 AlertDialog.Builder(this)
                                     .setTitle("Receive file?")
-                                    .setMessage("$name · ${size / 1024} KB\nSave this file to this device?")
+                                    .setMessage("$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to this device?")
                                     .setNegativeButton("Decline") { _, _ -> fileTransferCoordinator?.rejectIncoming() }
                                     .setPositiveButton("Choose destination") { _, _ ->
                                         startActivityForResult(
