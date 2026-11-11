@@ -543,6 +543,12 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send text to focused field", false) { showRemoteTextDialog(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Keyboard · Backspace", false) {
+                sendInteractionAction(id, "key_backspace", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Keyboard · New line", false) {
+                sendInteractionAction(id, "text_input", JSONObject().put("text", "\n"))
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Read Client clipboard", false) {
                 sendClipboardCommand(id, "clipboard_read", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
