@@ -11,6 +11,7 @@ const SERVER_CAPABILITIES = Object.freeze([
   'multi-device-routing',
   'session-authorization',
   'media-signaling',
+  'turn-credentials',
   'remote-interaction'
 ]);
 
