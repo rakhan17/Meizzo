@@ -24,6 +24,7 @@ class FileTransferCoordinator(
     private var outgoingInput: InputStream? = null
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
+    private var incomingBytes = 0L
     private var waitingForAck = false
     private var pendingName = ""
     private var pendingSize = 0L
@@ -68,6 +69,7 @@ class FileTransferCoordinator(
     fun acceptIncoming(uri: Uri) {
         incomingOutput = context.contentResolver.openOutputStream(uri, "wt")
             ?: throw IllegalStateException("Android could not create the destination file")
+        incomingBytes = 0L
         send(JSONObject().put("type", "file_accept"))
         onStatus("Receiving $pendingName")
     }
@@ -112,6 +114,13 @@ class FileTransferCoordinator(
                 if (sequence < 0 || encoded.isBlank() || incomingOutput == null) return
                 try {
                     val bytes = Base64.decode(encoded, Base64.NO_WRAP)
+                    incomingBytes += bytes.size
+                    if (incomingBytes > MAX_FILE_SIZE) {
+                        closeIncoming()
+                        send(JSONObject().put("type", "file_reject"))
+                        onStatus("Incoming file exceeded the 50 MiB transfer limit")
+                        return
+                    }
                     incomingOutput?.write(bytes)
                     send(JSONObject().put("type", "file_ack").put("sequence", sequence))
                 } catch (error: Exception) {
@@ -199,6 +208,7 @@ class FileTransferCoordinator(
     private fun closeIncoming() {
         try { incomingOutput?.flush(); incomingOutput?.close() } catch (_: Exception) { }
         incomingOutput = null
+        incomingBytes = 0L
     }
 
     companion object {
