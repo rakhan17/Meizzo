@@ -4,7 +4,9 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Build
+import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 
 class RemoteAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
@@ -66,6 +68,22 @@ class RemoteAccessibilityService : AccessibilityService() {
             .addStroke(GestureDescription.StrokeDescription(path, 0, durationMs.coerceIn(100, 2000)))
             .build()
         return dispatchGesture(gesture, null, null)
+    }
+
+    /**
+     * Appends text to the currently focused, non-password input field.
+     * Accessibility cannot safely or reliably type into every custom keyboard/editor;
+     * report failure instead of pretending the text was entered.
+     */
+    fun appendText(value: String): Boolean {
+        if (value.isEmpty() || value.length > 2_000) return false
+        val root = rootInActiveWindow ?: return false
+        val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        if (field.isPassword || !field.isEditable || !field.isEnabled) return false
+        val current = field.text?.toString().orEmpty()
+        val updated = current + value
+        val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, updated) }
+        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
     fun navigate(action: String): Boolean = when (action) {
