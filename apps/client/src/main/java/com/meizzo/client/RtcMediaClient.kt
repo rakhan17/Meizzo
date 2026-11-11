@@ -8,6 +8,7 @@ import android.util.Log
 import org.json.JSONObject
 import org.json.JSONArray
 import org.webrtc.Camera2Enumerator
+import org.webrtc.CameraVideoCapturer
 import org.webrtc.AudioSource
 import org.webrtc.AudioTrack
 import org.webrtc.DefaultVideoDecoderFactory
@@ -206,6 +207,17 @@ class RtcMediaClient(
                 if (sender.setParameters(parameters)) currentMaxBitrateBps = target
             }
         }
+    }
+
+    fun switchCamera(): Boolean {
+        val cameraCapturer = capturer as? CameraVideoCapturer ?: return false
+        cameraCapturer.switchCamera(object : CameraVideoCapturer.CameraSwitchHandler {
+            override fun onCameraSwitchDone(isFrontCamera: Boolean) = Unit
+            override fun onCameraSwitchError(errorDescription: String?) {
+                onFailure(errorDescription ?: "Unable to switch remote camera")
+            }
+        })
+        return true
     }
 
     fun startFiles(sessionId: String) {
