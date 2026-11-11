@@ -340,13 +340,26 @@ export class MeizzoSignaling {
 
   async webSocketClose(ws) {
     const a = this.attachment(ws);
-    if (a.role === "client" && a.clientId) {
-      const s = await this.state(); const d = s.devices[a.clientId];
-      if (d && (!d.clientConnId || d.clientConnId === a.connId)) { d.status = "offline"; d.lastSeen = now(); await this.save(s); this.broadcastDevice(s, d); }
+    if (a.role !== "client" || !a.clientId) return;
+
+    // A WebSocket close can be caused by Android background suspension or a
+    // transient network handoff. Do not equate socket closure with device
+    // unavailability. The durable-object alarm marks the device offline only
+    // after its authenticated heartbeat has exceeded HEARTBEAT_TIMEOUT_MS.
+    // A reconnect updates clientConnId and refreshes clientHeartbeat.
+    const s = await this.state();
+    const d = s.devices[a.clientId];
+    if (d && d.clientConnId === a.connId) {
+      console.log(JSON.stringify({
+        event: "presence.socket_closed",
+        clientId: a.clientId,
+        at: now()
+      }));
     }
   }
 
   async webSocketError(ws) {
+    // Errors follow the same heartbeat-timeout policy as normal socket closes.
     await this.webSocketClose(ws);
   }
 
