@@ -6,6 +6,25 @@ const source = await readFile(sourceUrl, 'utf8');
 const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
 const { MeizzoSignaling } = await import(moduleUrl);
 
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url, options = {}) => {
+  if (String(url).startsWith('https://rtc.live.cloudflare.com/v1/turn/keys/')) {
+    if (options.headers?.Authorization !== 'Bearer test-turn-secret') {
+      throw new Error('Worker did not use the server-side TURN API secret');
+    }
+    const body = JSON.parse(options.body || '{}');
+    if (body.ttl !== 86400) throw new Error('Worker did not request the expected short-lived TURN TTL');
+    return new Response(JSON.stringify({
+      iceServers: [{
+        urls: ['turn:turn.cloudflare.com:3478?transport=udp'],
+        username: 'temporary-turn-user',
+        credential: 'temporary-turn-password'
+      }]
+    }), { status: 201, headers: { 'content-type': 'application/json' } });
+  }
+  return originalFetch(url, options);
+};
+
 class FakeSocket {
   constructor(attachment) {
     this.attachment = attachment;
@@ -58,7 +77,10 @@ async function run() {
     },
     getWebSockets() { return sockets; }
   };
-  const signaling = new MeizzoSignaling(ctx, {});
+  const signaling = new MeizzoSignaling(ctx, {
+    REALTIME_TURN_TOKEN_ID: 'test-turn-key-id',
+    REALTIME_TURN_TOKEN_SECRET: 'test-turn-secret'
+  });
 
   const start = () => signaling.webSocketMessage(controller, JSON.stringify({
     type: 'controller.start_session',
@@ -109,9 +131,13 @@ async function run() {
   }));
   const controllerIce = controller.take(m => m.type === 'media.ice_servers' && m.sessionId === screenPending.sessionId, 'Controller ICE server configuration');
   const clientIce = client.take(m => m.type === 'media.ice_servers' && m.sessionId === screenPending.sessionId, 'Client ICE server configuration');
-  if (!controllerIce.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478')) ||
-      !clientIce.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478'))) {
-    throw new Error('Cloudflare STUN fallback was not delivered to both media peers');
+  const hasTurn = config => config.iceServers?.some(server =>
+    server.urls?.includes('turn:turn.cloudflare.com:3478?transport=udp') &&
+    server.username === 'temporary-turn-user' &&
+    server.credential === 'temporary-turn-password'
+  );
+  if (!hasTurn(controllerIce) || !hasTurn(clientIce)) {
+    throw new Error('Short-lived Cloudflare TURN credentials were not delivered to both media peers');
   }
   controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'approved', 'screen session approved');
 
@@ -157,6 +183,7 @@ async function run() {
     m.state === 'failed' && m.terminationReason === 'client_reconnected', 'session cleanup on Client reconnect');
   if (Object.keys(stored.sessions).length !== 0) throw new Error('Client reconnect left an orphaned session');
 
+  globalThis.fetch = originalFetch;
   console.log('worker-sessions.test: OK');
 }
 
