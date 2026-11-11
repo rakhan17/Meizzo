@@ -509,7 +509,7 @@ class MainActivity : Activity() {
         rtcMediaClient?.close()
         rtcMediaClient = null
         activeMediaSessionId = sessionId
-        activeMediaKind = kind
+        activeMediaKind = "files"
         rtcMediaClient = RtcMediaClient(
             this,
             { signal ->
@@ -611,6 +611,7 @@ class MainActivity : Activity() {
     ) {
         rtcMediaClient?.close()
         activeMediaSessionId = sessionId
+        activeMediaKind = kind
         rtcMediaClient = RtcMediaClient(
             this,
             { signal ->
