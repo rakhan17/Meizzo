@@ -38,9 +38,13 @@ application. The updater checks the app-specific asset, SHA-256, package ID,
 and signing certificate before handing installation to Android Package
 Installer. It must not bypass certificate mismatch checks.
 
-The release workflow should create a tag pointing to the exact source commit
-used to build the APK assets. Verify the tag target and workflow source SHA
-when reviewing a release.
+The beta.5 workflow was dispatched from source commit
+`8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, while the published tag currently
+resolves to `3894aba79f087974bef1bc2bacc345aed837afa2`. The APK assets are the
+outputs of the successful workflow, but the tag is not an exact source pointer.
+The release workflow now pins future tags to `github.sha`; this existing tag
+has intentionally not been rewritten. Verify the tag target and workflow
+source SHA when reviewing future releases.
 
 ## iOS
 
