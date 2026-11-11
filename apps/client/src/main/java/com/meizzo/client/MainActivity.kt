@@ -712,7 +712,7 @@ class MainActivity : Activity() {
                             android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
                                 android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                             )
-                        if (grantFlags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION == 0) {
+                        if ((grantFlags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
                             throw SecurityException("Android did not grant read access to the selected folder")
                         }
                         contentResolver.takePersistableUriPermission(treeUri, grantFlags)
@@ -720,11 +720,21 @@ class MainActivity : Activity() {
                         val previousTree = fileAccessPreferences.getString("tree_uri", null)
                         if (!previousTree.isNullOrBlank() && previousTree != treeUri.toString()) {
                             try {
-                                contentResolver.releasePersistableUriPermission(
-                                    android.net.Uri.parse(previousTree),
-                                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                                )
+                                val previousUri = android.net.Uri.parse(previousTree)
+                                val previousGrant = contentResolver.persistedUriPermissions
+                                    .firstOrNull { it.uri == previousUri }
+                                if (previousGrant != null) {
+                                    var previousFlags = 0
+                                    if (previousGrant.isReadPermission) {
+                                        previousFlags = previousFlags or android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    }
+                                    if (previousGrant.isWritePermission) {
+                                        previousFlags = previousFlags or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                    }
+                                    if (previousFlags != 0) {
+                                        contentResolver.releasePersistableUriPermission(previousUri, previousFlags)
+                                    }
+                                }
                             } catch (_: Exception) { }
                         }
                         fileAccessPreferences.edit().putString("tree_uri", treeUri.toString()).apply()
