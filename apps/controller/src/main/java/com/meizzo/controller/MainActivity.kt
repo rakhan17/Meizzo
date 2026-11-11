@@ -833,7 +833,6 @@ class MainActivity : Activity() {
             .setPositiveButton("Mute remote audio", null)
             .create()
         mediaDialogs[sessionId] = dialog
-        activeFileTransferSessions[clientId] = sessionId
         val viewer = RtcMediaController(
             this,
             { signal ->
@@ -1104,6 +1103,7 @@ class MainActivity : Activity() {
             .setNegativeButton("End session") { _, _ -> endMediaSession(clientId, sessionId) }
             .create()
         mediaDialogs[sessionId] = dialog
+        activeFileTransferSessions[clientId] = sessionId
         val viewer = RtcMediaController(
             this,
             { signal ->
