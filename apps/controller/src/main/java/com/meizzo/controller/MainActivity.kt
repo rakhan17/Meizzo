@@ -858,6 +858,7 @@ class MainActivity : Activity() {
                 }.toString())
             },
             { reason ->
+                mediaViewers[sessionId]?.disableLocalMicrophone()
                 ControllerVoiceForegroundService.stop(this)
                 runOnUiThread { setConnection("Media stream error · $reason", false) }
             },
