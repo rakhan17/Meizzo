@@ -94,6 +94,11 @@ for real Android device testing, network traversal testing, or a security audit.
 
 ## Not yet release-ready
 
+- Internal app/system audio capture, automatic clipboard synchronization, and
+  full hardware-keyboard/modifier coverage. Current clipboard support is
+  manual and explicitly approved; current voice support is microphone audio.
+- RustDesk's upstream engine is not integrated into the APKs; current features
+  are native MEIZZO prototypes and do not yet provide full RustDesk parity.
 - Production TURN secret configuration and network traversal acceptance. The
   Worker can issue short-lived Cloudflare Realtime TURN credentials when
   configured; without them, restrictive NATs, carrier-grade NAT, and firewalls
