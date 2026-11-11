@@ -335,6 +335,8 @@ class MainActivity : Activity() {
                                     pendingSessionDialogs.remove(sessionId)?.dismiss()
                                     if (sessionId == activeMediaSessionId || sessionId == pendingMediaSessionId) {
                                         stopActiveOutputs()
+                                    } else if (sessionType == "interaction") {
+                                        stopPeripheralOutputs()
                                     }
                                     status.text = if (state == "rejected") "Session request declined" else "Session $state"
                                 }
