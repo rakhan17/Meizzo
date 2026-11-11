@@ -1032,7 +1032,7 @@ class MainActivity : Activity() {
                     val command = message.optString("command")
                     val newName = parameters.optString("newName").trim()
                     if (command == "file_rename") {
-                        if (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong() == 0L) {
+                        if ((flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong()) == 0L) {
                             throw IllegalStateException("This storage provider does not support renaming this item")
                         }
                         if (newName.isBlank() || newName.length > 128 || newName.contains('/') || newName.contains('\\')) {
@@ -1040,7 +1040,7 @@ class MainActivity : Activity() {
                         }
                     } else {
                         if (isDirectory) throw IllegalArgumentException("Folder deletion is disabled for safety")
-                        if (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_DELETE.toLong() == 0L) {
+                        if ((flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_DELETE.toLong()) == 0L) {
                             throw IllegalStateException("This storage provider does not support deleting this file")
                         }
                     }
