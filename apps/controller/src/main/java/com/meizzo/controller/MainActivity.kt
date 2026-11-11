@@ -3,6 +3,7 @@ package com.meizzo.controller
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
