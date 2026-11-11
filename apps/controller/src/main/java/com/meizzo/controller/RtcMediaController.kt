@@ -195,22 +195,36 @@ class RtcMediaController(
             remoteDescriptionSet = false
             connection.createOffer(object : SdpObserver {
                 override fun onCreateSuccess(description: SessionDescription?) {
-                    if (description == null) return onFailure("Unable to renegotiate voice audio")
+                    if (description == null) {
+                        remoteDescriptionSet = true
+                        disableLocalMicrophone()
+                        return onFailure("Unable to renegotiate voice audio")
+                    }
                     connection.setLocalDescription(object : SdpObserver {
                         override fun onSetSuccess() {
                             sendSignal(JSONObject().put("type", "offer").put("sdp", description.description))
                         }
-                        override fun onSetFailure(error: String?) = onFailure(error ?: "Unable to set voice offer")
+                        override fun onSetFailure(error: String?) {
+                            remoteDescriptionSet = true
+                            disableLocalMicrophone()
+                            onFailure(error ?: "Unable to set voice offer")
+                        }
                         override fun onCreateSuccess(description: SessionDescription?) = Unit
                         override fun onCreateFailure(error: String?) = Unit
                     }, description)
                 }
                 override fun onSetSuccess() = Unit
-                override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create voice offer")
+                override fun onCreateFailure(error: String?) {
+                    remoteDescriptionSet = true
+                    disableLocalMicrophone()
+                    onFailure(error ?: "Unable to create voice offer")
+                }
                 override fun onSetFailure(error: String?) = Unit
             }, MediaConstraints())
             true
         } catch (error: Exception) {
+            remoteDescriptionSet = true
+            disableLocalMicrophone()
             onFailure(error.message ?: "Unable to enable Controller microphone")
             false
         }
