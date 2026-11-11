@@ -13,6 +13,9 @@ import android.hardware.camera2.CameraManager
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.BatteryManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.StatFs
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -112,7 +115,13 @@ class ConnectionForegroundService : Service() {
                             authenticate(webSocket, token)
                         }
                     }
-                    "device.revoked" -> secureStore.remove("auth_token")
+                    "device.revoked" -> {
+                        secureStore.remove("auth_token")
+                        stopActiveOutputs()
+                    }
+                    "client.session_status" -> {
+                        if (message.optString("state") in setOf("rejected", "failed", "ended")) stopActiveOutputs()
+                    }
                     "client.snapshot_request" -> {
                         val result = runCatching { deviceMetrics() }.getOrElse { JSONObject() }
                         webSocket.send(JSONObject().apply {
@@ -253,9 +262,46 @@ class ConnectionForegroundService : Service() {
 
     private fun deviceMetrics() = JSONObject(deviceMetadata().toString()).apply {
         val battery = getSystemService(BATTERY_SERVICE) as BatteryManager
+        val batteryIntent = registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val batteryStatus = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
         put("batteryPercent", battery.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
+        put("charging", batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING || batteryStatus == BatteryManager.BATTERY_STATUS_FULL)
+        put("batteryTemperatureC", (batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1) / 10.0)
+        put("batteryHealth", batteryIntent?.getIntExtra(BatteryManager.EXTRA_HEALTH, -1) ?: -1)
+        val storage = StatFs(filesDir.absolutePath)
+        put("storageAvailableBytes", storage.availableBytes); put("storageTotalBytes", storage.totalBytes)
         put("uptimeMs", SystemClock.elapsedRealtime()); put("timestamp", System.currentTimeMillis())
+        val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivity.activeNetwork
+        val capabilities = network?.let { connectivity.getNetworkCapabilities(it) }
+        put("network", when {
+            capabilities == null -> "offline"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            else -> "other"
+        })
+        val memory = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        memory.getMemoryInfo(memoryInfo)
+        put("ramTotalBytes", memoryInfo.totalMem); put("ramAvailableBytes", memoryInfo.availMem)
         put("flashlightEnabled", torchEnabled)
+    }
+
+    private fun stopActiveOutputs() {
+        alarm?.stopTone(); alarm?.release(); alarm = null
+        if (torchEnabled) {
+            runCatching {
+                val manager = getSystemService(CameraManager::class.java)
+                val cameraId = manager.cameraIdList.firstOrNull {
+                    manager.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                }
+                if (cameraId != null && checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    manager.setTorchMode(cameraId, false)
+                }
+            }
+            torchEnabled = false
+        }
     }
 
     private fun broadcastMessage(message: String) {
@@ -281,7 +327,7 @@ class ConnectionForegroundService : Service() {
         handler.removeCallbacksAndMessages(null)
         activeSocket?.close(1001, "Connection service stopped")
         activeSocket = null
-        alarm?.stopTone(); alarm?.release(); alarm = null
+        stopActiveOutputs()
         super.onDestroy()
     }
 
