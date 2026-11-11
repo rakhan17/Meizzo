@@ -78,6 +78,12 @@ jobs:
             *) echo "::error::MEIZZO_SIGNALING_URL must use wss:// for release builds."; exit 1 ;;
           esac
           case "$MEIZZO_SIGNALING_URL" in
+            *meizzo-signaling.rakhanatanox.workers.dev)
+              echo "::error::v3 releases must use the isolated meizzo-signaling-v3 Worker, not the stable Worker."
+              exit 1
+              ;;
+          esac
+          case "$MEIZZO_SIGNALING_URL" in
             *".invalid"*|wss://localhost*|wss://127.0.0.1*|wss://10.0.2.2*)
               echo "::error::MEIZZO_SIGNALING_URL must be a reachable production endpoint."
               exit 1
