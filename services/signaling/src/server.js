@@ -268,6 +268,13 @@ function authenticate(ws, message) {
     ws.authenticatedControllerTokens.add(message.authToken);
     device.controllerConnections.add(ws);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
+    for (const active of sessions.values()) {
+      if (active.controllerId === session.controllerId && active.clientId === device.clientId &&
+          active.state === 'approved') {
+        active.controllerConnection = ws;
+        notifySession(active);
+      }
+    }
     return device;
   }
   return null;
