@@ -579,6 +579,15 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Recent apps", false) {
                 sendInteractionAction(id, "recents", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Notification shade", false) {
+                sendInteractionAction(id, "notifications", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Quick settings", false) {
+                sendInteractionAction(id, "quick_settings", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Power menu", false) {
+                sendInteractionAction(id, "power_dialog", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Tap screen by coordinates", false) { showTapDialog(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Swipe screen by coordinates", false) { showSwipeDialog(id) },
