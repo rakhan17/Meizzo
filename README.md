@@ -8,7 +8,7 @@
 
 [![Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml)
 [![iOS CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
-[![Latest Beta](https://img.shields.io/github/v/release/rakhan17/Meizzo?include_prereleases&label=latest%20beta)](https://github.com/rakhan17/Meizzo/releases)
+[![Stable](https://img.shields.io/badge/ANDROID-STABLE%20v2.5.0-111111?style=flat)](https://github.com/rakhan17/Meizzo/releases)
 [![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
 
 Permission-based device assistance for Android and iOS, built around explicit
@@ -24,7 +24,7 @@ consent, isolated sessions, and real-time device status.
 
 </div>
 
-> **Beta status:** Android is the active testing platform. iOS is still
+> **Stable status:** Android v2.5.0 is the tested stable source line. Signed release APK publication is the remaining step. iOS is still
 > under development and is not part of the current Android testing build.
 > The Cloudflare Workers signaling endpoint is deployed over WSS and has
 > passed a browser-based protocol-v2 pairing/authentication smoke test.
@@ -62,30 +62,30 @@ release channel below.
 
 #### Release
 
-<sub>**LATEST RELEASE** · `v0.1.0-beta.4` · Version code `100304` · Published and runtime-tested</sub>
+<sub>**LATEST RELEASE** · `v2.5.0` · Version code `100304` · Published and runtime-tested</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Client-v2.5.0.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Controller-v2.5.0.apk) |
 
-[![View Android Release](https://img.shields.io/badge/VIEW-ANDROID%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.4)
+[![View Android Release](https://img.shields.io/badge/VIEW-ANDROID%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 
 #### Beta
 
-<sub>**BETA CHANNEL** · New preview builds will appear here when published.</sub>
+<sub>**NEXT BETA LINE** · `v2.6.0-beta.1` · Development channel, not yet published.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Device receiving assistance | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Controller** | Device managing connected Clients | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
 
-> **Beta software:** v0.1.0-beta.4 is a prerelease build intended for testing
+> **Beta software:** v2.5.0 is a prerelease build intended for testing
 > and may contain bugs. Install Client on the device receiving assistance and
 > Controller on the operator's device. Pairing still requires explicit
 > approval on the Client.
 >
-> **Upgrade note:** beta.4 is signed with the project's current release key.
+> **Upgrade note:** v2.5.0 release APKs must use the project's persistent release key.
 > If an older installation was signed with a different key, Android may reject
 > an in-place update. Back up any important app data before uninstalling an
 > older build; uninstalling removes that app's local data.
