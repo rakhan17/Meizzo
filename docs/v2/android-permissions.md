@@ -12,6 +12,8 @@ physical-device and cross-network acceptance work listed in the v3 roadmap.
 | Live screen viewing | MediaProjection consent + media-projection foreground service + WebRTC | Implemented prototype; Client must approve the session and Android must show its system capture prompt |
 | Remote tap, swipe, and long-press | User-enabled AccessibilityService with gesture capability | Implemented; requires a separately approved interaction session |
 | Remote navigation | Accessibility global actions for Back, Home, and Recents | Implemented; requires a separately approved interaction session |
+| Remote text input | Accessibility window access and an editable, focused, non-password field | Appends up to 2,000 characters; custom editors may reject ACTION_SET_TEXT |
+| Clipboard transfer | Android ClipboardManager | Text-only read/write up to 10,000 characters; every operation requires a separate Client approval dialog |
 | Remote lock screen | Accessibility global action (Android 9+) | Implemented; requires a separately approved interaction session |
 | Remote screenshot | PixelCopy of the Controller's currently rendered live-screen surface | Implemented in Controller; saved to Pictures/MEIZZO on Android 10+, or app-specific Pictures storage on older supported versions |
 | Camera streaming | Runtime CAMERA permission + WebRTC | Implemented prototype; requires Client session approval and camera permission |
@@ -28,7 +30,11 @@ physical-device and cross-network acceptance work listed in the v3 roadmap.
 - Screen capture additionally requires Android's system MediaProjection
   confirmation. MEIZZO cannot silently grant or reuse that consent.
 - Remote input is unavailable until the device owner enables MEIZZO in Android
-  Accessibility settings and approves an interaction session.
+  Accessibility settings and approves an interaction session. Text insertion is
+  limited to the currently focused editable non-password field.
+- Clipboard reads and writes require a separate per-operation approval on the
+  Client. Only plain text is transferred; Android may restrict clipboard reads
+  while MEIZZO is not foregrounded.
 - Accessibility access is limited to the implemented gestures and global
   actions. MEIZZO does not expose arbitrary shell execution or protected-UI
   bypasses.
