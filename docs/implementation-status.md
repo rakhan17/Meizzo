@@ -40,7 +40,7 @@ build does not prove runtime behavior on every Android vendor or network.
 - Remote file management:
   - Client-granted Storage Access Framework tree browsing with folder navigation and metadata listing.
   - Individual file downloads through a separate approved WebRTC files session and per-file Client confirmation.
-  - Rename and file deletion when the provider grants write access and advertises support; folder deletion is disabled.
+  - Folder creation, rename, and file deletion when the provider grants write access and advertises support; folder deletion is disabled.
 - File transfer prototype:
   - Bidirectional single- and multi-file send/receive over an ordered WebRTC DataChannel.
   - 12 KiB stop-and-wait chunks, unique transfer IDs, bounded retries, duplicate completion handling, sequence validation, and SHA-256 verification.
