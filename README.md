@@ -115,10 +115,13 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Session request, approval, rejection, and termination state, including Client-initiated termination.
 - Live Android screen streaming prototype using MediaProjection and WebRTC.
 - Android camera streaming prototype using Camera2 and WebRTC.
+- Optional one-way Client microphone audio alongside screen or camera streams, with per-session confirmation and Android microphone permission.
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
 - Remote Back, Home, Recents, and lock-screen actions through the user-enabled AccessibilityService.
+- Remote text insertion, Backspace, and newline for focused editable non-password fields.
+- Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
-- Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, chunk acknowledgements, and a 50 MiB transfer limit.
+- Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, sequence and size validation, SHA-256 verification, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
 - Release metadata, SHA-256 verification, package checks, signing-certificate
@@ -127,7 +130,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 ### Still in development / not release-ready
 
 - Production TURN secret configuration and reliable media connectivity across restrictive NATs.
-- Adaptive bitrate, reconnect recovery, resumable file transfer, and large-file optimization.
+- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
@@ -167,7 +170,7 @@ flowchart LR
   end
 
   subgraph MediaPlane["Approved WebRTC media plane"]
-    C <-->|DTLS-SRTP video| O
+    C <-->|DTLS-SRTP video/audio| O
     C <-->|DTLS data channel| O
   end
 
@@ -216,7 +219,7 @@ separately approved interaction session and user-enabled AccessibilityService.
 | iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
 | Signaling protocol | JSON messages over WSS, protocol version 2 |
 | Hosted signaling | Cloudflare Workers + Durable Objects |
-| Android media | WebRTC video tracks, STUN, MediaProjection, Camera2 |
+| Android media | WebRTC video and optional microphone audio tracks, STUN, MediaProjection, Camera2 |
 | Android file transfer | Ordered WebRTC DataChannel, SAF, acknowledged 12 KiB chunks |
 | Local signaling harness | Node.js + `ws`, in-memory process state |
 | Release distribution | GitHub Actions and GitHub Releases |
