@@ -5,8 +5,6 @@ import android.app.AlertDialog
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
@@ -49,7 +47,6 @@ class MainActivity : Activity() {
     private var socket: WebSocket? = null
     private var heartbeatSocket: WebSocket? = null
     private var torchEnabled = false
-    private var alarm: ToneGenerator? = null
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
@@ -785,15 +782,20 @@ class MainActivity : Activity() {
             }
             "alarm" -> {
                 val enabled = parameters.optBoolean("enabled")
-                if (enabled) {
-                    alarm?.release()
-                    alarm = ToneGenerator(AudioManager.STREAM_ALARM, 100)
-                    alarm?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 30_000)
-                } else {
-                    alarm?.release()
-                    alarm = null
+                try {
+                    val action = if (enabled) {
+                        ConnectionForegroundService.ACTION_ALARM_ON
+                    } else {
+                        ConnectionForegroundService.ACTION_ALARM_OFF
+                    }
+                    startForegroundService(
+                        android.content.Intent(this, ConnectionForegroundService::class.java).setAction(action)
+                    )
+                    result.put("enabled", enabled)
+                    result.put("playback", "foreground_service")
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Unable to control the remote alarm"
                 }
-                result.put("enabled", enabled)
             }
             "lock_screen" -> {
                 val accessibility = RemoteAccessibilityService.instance
