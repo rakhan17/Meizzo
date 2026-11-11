@@ -40,7 +40,13 @@ class ConnectionForegroundService : Service() {
         }
 
         when (intent.action) {
-            ACTION_ALARM_ON -> startAlarm()
+            ACTION_ALARM_ON -> {
+                try {
+                    startAlarm()
+                } catch (_: Exception) {
+                    stopAlarm()
+                }
+            }
             ACTION_ALARM_OFF -> stopAlarm()
         }
 
