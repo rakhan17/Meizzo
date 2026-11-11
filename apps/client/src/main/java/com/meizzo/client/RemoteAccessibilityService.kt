@@ -22,11 +22,18 @@ class RemoteAccessibilityService : AccessibilityService() {
         instance = this
     }
 
-    fun sendKey(keyCode: Int): Boolean {
+    fun sendKey(keyCode: Int): Boolean = sendKey(keyCode, 0)
+
+    fun sendShortcut(keyCode: Int): Boolean {
+        val modifiers = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
+        return sendKey(keyCode, modifiers)
+    }
+
+    private fun sendKey(keyCode: Int, metaState: Int): Boolean {
         if (Build.VERSION.SDK_INT < 33) return false
         val connection = getInputMethod()?.getCurrentInputConnection() ?: return false
-        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
-        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode)
+        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
+        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode, 0, metaState)
         return connection.sendKeyEvent(down) && connection.sendKeyEvent(up)
     }
 
