@@ -54,6 +54,33 @@ export class MeizzoSignaling {
     await this.ensureAlarm();
   }
 
+  async getIceServers() {
+    const fallback = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+    const keyId = this.env.REALTIME_TURN_TOKEN_ID;
+    const apiToken = this.env.REALTIME_TURN_TOKEN_SECRET;
+    if (!keyId || !apiToken) return fallback;
+    try {
+      const response = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ ttl: 86400 })
+        }
+      );
+      if (!response.ok) return fallback;
+      const data = await response.json();
+      return Array.isArray(data.iceServers) && data.iceServers.length
+        ? data.iceServers
+        : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   async ensureAlarm() {
     const alarm = await this.ctx.storage.getAlarm();
     if (alarm === null) await this.ctx.storage.setAlarm(now() + 15000);
@@ -333,6 +360,12 @@ export class MeizzoSignaling {
         session.state = m.approved ? "approved" : "rejected"; session.endedAtMs = m.approved ? null : t;
         session.terminationReason = m.approved ? null : "client_rejected";
         await this.save(s);
+        if (m.approved && ["screen", "camera", "files"].includes(session.sessionType)) {
+          const iceServers = await this.getIceServers();
+          const icePayload = { type: "media.ice_servers", sessionId: session.sessionId, iceServers };
+          this.sendController(session.controllerId, icePayload);
+          this.sendClient(session.clientId, icePayload);
+        }
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: session.state, createdAtMs: session.createdAtMs, endedAtMs: session.endedAtMs, terminationReason: session.terminationReason };
         this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
         if (!m.approved) { delete s.sessions[m.sessionId]; await this.save(s); }
