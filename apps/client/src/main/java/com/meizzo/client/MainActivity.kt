@@ -856,6 +856,21 @@ class MainActivity : Activity() {
                     result.put("accepted", true)
                 }
             }
+            "long_press" -> {
+                val x = parameters.optDouble("x", Double.NaN)
+                val y = parameters.optDouble("y", Double.NaN)
+                val durationMs = parameters.optLong("durationMs", 650L)
+                val accessibility = RemoteAccessibilityService.instance
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!x.isFinite() || !y.isFinite() || x !in 0.0..1.0 || y !in 0.0..1.0) {
+                    error = "Long-press coordinates must be normalized values between 0 and 1"
+                } else if (!accessibility.longPress(x, y, durationMs)) {
+                    error = "Android rejected the remote long-press gesture"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
             "tap" -> {
                 val x = parameters.optDouble("x", Double.NaN)
                 val y = parameters.optDouble("y", Double.NaN)
