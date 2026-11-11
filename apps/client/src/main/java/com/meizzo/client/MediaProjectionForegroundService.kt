@@ -17,7 +17,7 @@ class MediaProjectionForegroundService : Service() {
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "MEIZZO screen sharing", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, "MEIZZO remote media", NotificationManager.IMPORTANCE_LOW)
             )
         }
     }
