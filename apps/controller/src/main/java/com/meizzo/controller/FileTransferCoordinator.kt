@@ -2,6 +2,8 @@ package com.meizzo.controller
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
 import android.util.Base64
 import org.json.JSONObject
@@ -28,6 +30,25 @@ class FileTransferCoordinator(
     private var outgoingBytes = 0L
     private var incomingBytes = 0L
     private var incomingExpectedSequence = 0
+    private var pendingChunkMessage: JSONObject? = null
+    private var chunkRetryCount = 0
+    private val retryHandler = Handler(Looper.getMainLooper())
+    private val chunkRetryTask = object : Runnable {
+        override fun run() {
+            val pending = pendingChunkMessage ?: return
+            if (!waitingForAck) return
+            if (chunkRetryCount >= MAX_CHUNK_RETRIES) {
+                pendingChunkMessage = null
+                closeOutgoing()
+                send(JSONObject().put("type", "file_reject"))
+                onStatus("File transfer stopped · chunk acknowledgement timed out")
+                return
+            }
+            chunkRetryCount += 1
+            send(pending)
+            retryHandler.postDelayed(this, CHUNK_ACK_TIMEOUT_MS)
+        }
+    }
     private var outgoingDigest: MessageDigest? = null
     private var incomingDigest: MessageDigest? = null
     private var waitingForAck = false
@@ -92,6 +113,7 @@ class FileTransferCoordinator(
     fun close() {
         closeOutgoing()
         discardIncoming()
+        retryHandler.removeCallbacksAndMessages(null)
         try { channel.unregisterObserver() } catch (_: Exception) { }
     }
 
@@ -114,6 +136,7 @@ class FileTransferCoordinator(
                 sendNextChunk()
             }
             "file_reject" -> {
+                cancelChunkRetry()
                 closeOutgoing()
                 discardIncoming()
                 onStatus("The other device declined or could not complete the file")
@@ -122,6 +145,10 @@ class FileTransferCoordinator(
                 val sequence = message.optInt("sequence", -1)
                 val encoded = message.optString("data")
                 if (sequence < 0 || encoded.isBlank() || incomingOutput == null) return
+                if (sequence == incomingExpectedSequence - 1) {
+                    send(JSONObject().put("type", "file_ack").put("sequence", sequence))
+                    return
+                }
                 if (sequence != incomingExpectedSequence) {
                     discardIncoming()
                     send(JSONObject().put("type", "file_reject"))
@@ -149,6 +176,9 @@ class FileTransferCoordinator(
             }
             "file_ack" -> {
                 if (message.optInt("sequence", -1) == outgoingSequence) {
+                    cancelChunkRetry()
+                    pendingChunkMessage = null
+                    chunkRetryCount = 0
                     outgoingSequence++
                     waitingForAck = false
                     sendNextChunk()
@@ -172,6 +202,7 @@ class FileTransferCoordinator(
                 pendingSize = 0L
             }
             "file_complete" -> {
+                cancelChunkRetry()
                 closeOutgoing()
                 onStatus("File sent successfully")
             }
@@ -199,10 +230,14 @@ class FileTransferCoordinator(
                 return
             }
             val encoded = Base64.encodeToString(chunk.copyOf(count), Base64.NO_WRAP)
-            send(JSONObject().put("type", "file_chunk")
+            val chunkMessage = JSONObject().put("type", "file_chunk")
                 .put("sequence", outgoingSequence)
-                .put("data", encoded))
+                .put("data", encoded)
+            pendingChunkMessage = chunkMessage
+            chunkRetryCount = 0
             waitingForAck = true
+            send(chunkMessage)
+            retryHandler.postDelayed(chunkRetryTask, CHUNK_ACK_TIMEOUT_MS)
         } catch (error: Exception) {
             closeOutgoing()
             send(JSONObject().put("type", "file_reject"))
@@ -233,7 +268,14 @@ class FileTransferCoordinator(
 
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
+    private fun cancelChunkRetry() {
+        retryHandler.removeCallbacks(chunkRetryTask)
+        pendingChunkMessage = null
+        chunkRetryCount = 0
+    }
+
     private fun closeOutgoing() {
+        cancelChunkRetry()
         try { outgoingInput?.close() } catch (_: Exception) { }
         outgoingInput = null
         outgoingDigest = null
@@ -259,5 +301,7 @@ class FileTransferCoordinator(
     companion object {
         private const val CHUNK_SIZE = 12 * 1024
         private const val MAX_FILE_SIZE = 50L * 1024L * 1024L
+        private const val MAX_CHUNK_RETRIES = 3
+        private const val CHUNK_ACK_TIMEOUT_MS = 5_000L
     }
 }
