@@ -59,26 +59,26 @@ clearly marked as prerelease software.
 
 #### Stable release
 
-<sub>**STABLE CHANNEL** · `v2.5.0` · Integrated into `main`; signed release assets pending publication.</sub>
+<sub>**STABLE CHANNEL** · `v2.5.0` · Published 11 November 2026 · Signed APKs verified by the release workflow.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | ![Release pending](https://img.shields.io/badge/RELEASE%20PENDING-v2.5.0-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![Release pending](https://img.shields.io/badge/RELEASE%20PENDING-v2.5.0-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Client-v2.5.0.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Controller-v2.5.0.apk) |
 
-[![View releases](https://img.shields.io/badge/VIEW-ALL%20RELEASES-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
+[![View stable channel release](https://img.shields.io/badge/VIEW-STABLE%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 
 #### Beta
 
-<sub>**NEXT BETA LINE** · `v2.6.0-beta.1` · Development channel; not yet published.</sub>
+<sub>**BETA CHANNEL** · `v2.5.0` · Also available in the Beta channel, as requested.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Install on the operator device | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Client-v2.5.0.apk) |
+| **MEIZZO Controller** | Install on the operator device | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Controller-v2.5.0.apk) |
 
-> The next beta will be published after the v2.5.0 stable release is built,
-> signed, and verified.
+[![View beta channel build](https://img.shields.io/badge/VIEW-BETA%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
+
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -104,7 +104,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 ## Product capabilities
 
-### Available in the Android beta
+### Available in the Android Stable
 
 - Six-digit pairing codes with a short lifetime and single-use behavior.
 - Explicit approval on the Client before a Controller is paired.
@@ -293,13 +293,13 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The previous beta.5 Android release workflow completed successfully and published both signed APKs. The v2.5.0 release pipeline validates the version, requires release secrets and a WSS endpoint, builds Client and Controller independently, signs the APKs, verifies their signatures and package/version metadata, and creates checksums plus the updater manifest.
+The previous v2.5.0 Android release workflow completed successfully and published both signed APKs. The v2.5.0 release pipeline validates the version, requires release secrets and a WSS endpoint, builds Client and Controller independently, signs the APKs, verifies their signatures and package/version metadata, and creates checksums plus the updater manifest.
 
 Relevant workflow runs:
 
 - [Android and signaling CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246894)
 - [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
-- [Android beta.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
+- [Android Stable.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
 
 **Release provenance note:** beta.5 was built by workflow run `42948592178`
 from source commit `8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, while the
@@ -340,7 +340,7 @@ PORT=8080 npm start
 
 The local Node.js server is an in-memory development harness. Configure debug
 builds with the appropriate local WebSocket URL; do not point a release build
-at an emulator-only address. The published Android beta uses the configured
+at an emulator-only address. The published Android Stable uses the configured
 WSS endpoint.
 
 ### Documentation
@@ -361,7 +361,7 @@ See [development setup](docs/development.md) for complete instructions.
 - [x] Hosted WSS signaling with Durable Object state
 - [x] Authorization-only session lifecycle
 - [x] Android background connection services and reconnect handling
-- [x] Signed Android beta release pipeline and in-app update verification
+- [x] Signed Android Stable release pipeline and in-app update verification
 - [ ] Full Android physical-device and multi-instance runtime acceptance
 - [ ] Durable token hardening, rotation, audit events, and independent security review
 - [ ] WebRTC screen/camera media with explicit OS consent and STUN/TURN
