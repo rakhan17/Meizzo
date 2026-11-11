@@ -25,7 +25,7 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | Remote camera streaming | Android prototype implemented: Camera2 capture after runtime CAMERA permission, WebRTC video publishing, and Controller camera viewer. Rear/front camera selection and device compatibility need physical testing. |
 | Remote screen interaction | Android tap/swipe is wired to touch gestures on the live video surface. A separate approved interaction session is required; AccessibilityService must be enabled by the device owner. |
 | Remote lock screen | Android lock action is implemented through AccessibilityService on Android 9+. The user must explicitly enable MEIZZO in Android Accessibility settings and approve an interaction session. |
-| File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
+| File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, final SHA-256 verification, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
 
 ## Session and signaling foundation
 
@@ -40,7 +40,7 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 - WSS authenticates and authorizes signaling. It is not itself a media transport.
 - Media signaling is accepted only for an approved screen, camera, or file session and only from a session participant.
 - WebRTC media transport currently uses STUN only. TURN relay deployment, reconnection/recovery, bitrate adaptation, and end-to-end media security review remain before screen/camera streaming is production-ready.
-- File transfer currently uses stop-and-wait Base64 chunks over an ordered DTLS-protected WebRTC DataChannel; it is a functional prototype, not yet optimized for large files or resumable transfer.
+- File transfer currently uses stop-and-wait Base64 chunks over an ordered DTLS-protected WebRTC DataChannel; it is a functional prototype with SHA-256 completion checks, not yet optimized for large files or resumable transfer.
 - No iOS hosting capability is claimed. iOS capture and control require a separate platform implementation and Apple permission constraints.
 - Android permissions and Accessibility access remain controlled by the device owner and operating system.
 - A Device Owner grant must never be treated as silent consent or a bypass for MediaProjection.
