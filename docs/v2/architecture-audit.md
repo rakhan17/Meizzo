@@ -94,8 +94,13 @@ lifecycle only.
    transitions without recording secrets.
 3. Define data retention and account/device recovery semantics.
 4. Perform an independent security review and focused abuse/isolation tests.
-5. Add a release provenance check so the published tag points to the exact
-   source commit used to build its APK assets.
+5. Beta.5 provenance finding: workflow run `42948592178` built from commit
+   `8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, but tag `v0.1.0-beta.5`
+   resolves to `3894aba79f087974bef1bc2bacc345aed837afa2`. The APKs are the
+   successful workflow outputs, but the tag is not an exact source pointer.
+   The release workflow now sets `target_commitish: ${{ github.sha }}` for
+   future tags. Leave the existing published tag unchanged unless a deliberate
+   release-metadata correction is approved.
 
 ### P1: runtime acceptance and reliability
 
