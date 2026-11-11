@@ -27,6 +27,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import org.json.JSONArray
 import java.security.SecureRandom
 import java.io.File
 import java.util.Locale
@@ -69,6 +70,7 @@ class MainActivity : Activity() {
     private var activeMediaSessionId: String? = null
     private var rtcMediaClient: RtcMediaClient? = null
     private val pendingMediaSignals = mutableMapOf<String, MutableList<JSONObject>>()
+    private val iceServersBySession = mutableMapOf<String, JSONArray>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -333,6 +335,7 @@ class MainActivity : Activity() {
                                 }
                                 "rejected", "failed", "ended" -> runOnUiThread {
                                     pendingSessionDialogs.remove(sessionId)?.dismiss()
+                                    iceServersBySession.remove(sessionId)
                                     if (sessionId == activeMediaSessionId || sessionId == pendingMediaSessionId) {
                                         stopActiveOutputs()
                                     } else if (sessionType == "interaction") {
@@ -354,6 +357,10 @@ class MainActivity : Activity() {
                                 put("requestId", message.optString("requestId"))
                                 put("result", deviceMetrics())
                             }.toString())
+                        }
+                        "media.ice_servers" -> {
+                            val sessionId = message.optString("sessionId")
+                            message.optJSONArray("iceServers")?.let { iceServersBySession[sessionId] = it }
                         }
                         "media.signal" -> {
                             val sessionId = message.optString("sessionId")
@@ -514,7 +521,8 @@ class MainActivity : Activity() {
                         { message -> runOnUiThread { status.text = message } }
                     )
                 }
-            }
+            },
+            iceServersJson = iceServersBySession.remove(sessionId)
         )
         rtcMediaClient?.startFiles(sessionId)
         flushPendingMediaSignals(sessionId)
@@ -555,7 +563,8 @@ class MainActivity : Activity() {
                     terminateMediaSession(sessionId, "media_error")
                     stopMediaPublisher()
                 }
-            }
+            },
+            iceServersJson = iceServersBySession.remove(sessionId)
         )
         if (kind == "screen") MediaProjectionForegroundService.start(this)
         if (kind == "screen") {
