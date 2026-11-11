@@ -353,7 +353,9 @@ class MainActivity : Activity() {
                                 devices[id] = current
                                 renderDevices()
                                 }
-                                if (wasCommandPending) setConnection("Client confirmed · command completed", true)
+                                if (wasCommandPending && !commandResult.optBoolean("filesChanged")) {
+                                    setConnection("Client confirmed · command completed", true)
+                                }
                             }
                         }
                         "device.revoked" -> {
