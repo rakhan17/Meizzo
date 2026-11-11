@@ -17,7 +17,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), { stat
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/healthz") return json({ status: "ok", service: "meizzo-signaling", runtime: "cloudflare-workers", protocolVersion: PROTOCOL_VERSION });
+    if (url.pathname === "/healthz") return json({ status: "ok", service: "meizzo-signaling-v3", runtime: "cloudflare-workers", protocolVersion: PROTOCOL_VERSION });
     if (url.pathname !== "/" && url.pathname !== "/ws") return json({ error: "not_found" }, 404);
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") return json({ service: "meizzo-signaling", websocket: "available", health: "/healthz" });
     const stub = env.MEIZZO_SIGNALING.get(env.MEIZZO_SIGNALING.idFromName("global"));
