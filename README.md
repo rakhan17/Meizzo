@@ -115,7 +115,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Session request, approval, rejection, and termination state, including Client-initiated termination.
 - Live Android screen streaming prototype using MediaProjection and WebRTC.
 - Android camera streaming prototype using Camera2 and WebRTC, with Controller-triggered front/rear camera switching.
-- Optional one-way Client microphone audio alongside screen or camera streams, with per-session confirmation and Android microphone permission; Controller can mute local playback.
+- Optional two-way voice prototype: Client and Controller microphone audio tracks over WebRTC, each requiring runtime permission and an explicit in-session action. Controller uses a microphone foreground service and can mute either side locally.
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
 - Remote Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
 - Remote text insertion, Backspace, Enter, Tab, Escape, arrow keys, and newline for focused text editors. Android 13+ input-connection key support is used where available.
@@ -132,7 +132,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 ### Still in development / not release-ready
 
 - Production TURN secret configuration and reliable media connectivity across restrictive NATs.
-- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
+- Internal app/system audio capture, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
