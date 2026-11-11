@@ -338,6 +338,28 @@ export class MeizzoSignaling {
         if (!m.approved) { delete s.sessions[m.sessionId]; await this.save(s); }
         return;
       }
+      case "client.end_session": {
+        const session = s.sessions[m.sessionId];
+        if (!session || a.role !== "client" || session.clientId !== a.clientId ||
+            session.clientConnId !== a.connId || session.state !== "approved") {
+          return this.sendError(ws, "unauthorized", "Invalid Client session termination");
+        }
+        session.state = "ended";
+        session.endedAtMs = t;
+        session.terminationReason = validString(m.reason) ? m.reason : "client_ended";
+        await this.save(s);
+        const payload = {
+          type: "session.status", sessionId: session.sessionId, clientId: session.clientId,
+          controllerId: session.controllerId, sessionType: session.sessionType,
+          state: "ended", createdAtMs: session.createdAtMs, endedAtMs: t,
+          terminationReason: session.terminationReason
+        };
+        this.sendController(session.controllerId, payload);
+        this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+        delete s.sessions[m.sessionId];
+        await this.save(s);
+        return;
+      }
       case "controller.end_session": {
         const session = s.sessions[m.sessionId];
         if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || !(a.tokens || [a.token]).includes(session.controllerToken) || session.controllerConnId !== a.connId) return this.sendError(ws, "unauthorized", "Invalid session termination");
