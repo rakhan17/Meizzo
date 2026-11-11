@@ -62,10 +62,13 @@ Controller and at least two Clients.
 11. Test session pending, approve, reject, and end transitions.
 12. Verify an interaction command is rejected without an approved interaction
     session.
-13. Test revoke and confirm access is removed.
-14. Test notification, background, battery optimization, reboot, and network
+13. Verify the remote alarm rings continuously beyond 30 seconds, stops on
+    remote OFF, and can be stopped locally from its foreground notification.
+14. Confirm Controller status changes only after a Client command result arrives.
+15. Test revoke and confirm access is removed.
+16. Test notification, background, battery optimization, reboot, and network
     interruption behavior.
-15. Test updater checksum/package/signature checks using a valid release.
+17. Test updater checksum/package/signature checks using a valid release.
 
 Record exact results. Never record tokens, passwords, pairing codes, or private
 endpoint credentials in test reports.
