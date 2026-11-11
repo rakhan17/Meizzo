@@ -131,7 +131,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 ### Still in development / not release-ready
 
 - Production TURN secret configuration and reliable media connectivity across restrictive NATs.
-- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
+- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, remote directory browsing/rename/delete, resumable file transfer, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
