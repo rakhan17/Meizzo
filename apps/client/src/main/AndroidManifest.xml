@@ -32,7 +32,7 @@
             android:name=".MediaProjectionForegroundService"
             android:exported="false"
             android:stopWithTask="false"
-            android:foregroundServiceType="mediaProjection|microphone" />
+            android:foregroundServiceType="mediaProjection|camera|microphone" />
         <service
             android:name=".RemoteAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
