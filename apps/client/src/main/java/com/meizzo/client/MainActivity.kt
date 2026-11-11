@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     }
     private val pairingCode by lazy { "%06d".format(SecureRandom().nextInt(1_000_000)) }
     private lateinit var status: TextView
+    private val httpClient by lazy { OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build() }
     private var socket: WebSocket? = null
     private var heartbeatSocket: WebSocket? = null
     private var torchEnabled = false
@@ -207,8 +208,7 @@ class MainActivity : Activity() {
     }
 
     private fun connect() {
-        socket = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
-            .newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
+        socket = httpClient.newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     reconnectAttempt = 0
                     reconnectScheduled = false
@@ -219,7 +219,12 @@ class MainActivity : Activity() {
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    val message = JSONObject(text)
+                    val message = try {
+                        JSONObject(text)
+                    } catch (_: Exception) {
+                        runOnUiThread { status.text = "Received an invalid server message · connection remains protected" }
+                        return
+                    }
                     when (message.optString("type")) {
                         "auth.connected" -> {
                             startHeartbeat(webSocket)
@@ -281,7 +286,11 @@ class MainActivity : Activity() {
                                 put("result", deviceMetrics())
                             }.toString())
                         }
-                        "client.command" -> handleCommand(webSocket, message)
+                        "client.command" -> try {
+                            handleCommand(webSocket, message)
+                        } catch (error: Exception) {
+                            sendCommandFailure(webSocket, message, error.message ?: "Command could not be completed")
+                        }
                         "device.revoked" -> runOnUiThread {
                             secureStore.remove("auth_token")
                             registerPairingOffer(webSocket)
@@ -397,7 +406,11 @@ class MainActivity : Activity() {
         pendingTorchCommand = null
         if (pending == null) return
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-            handleCommand(pending.first, pending.second)
+            try {
+                handleCommand(pending.first, pending.second)
+            } catch (error: Exception) {
+                sendCommandFailure(pending.first, pending.second, error.message ?: "Flashlight could not be enabled")
+            }
         } else {
             sendCommandFailure(pending.first, pending.second, "Camera permission was denied; flashlight control is unavailable")
         }
