@@ -25,11 +25,11 @@ class SecureStore(private val context: Context) {
     }
 
     fun remove(key: String) {
-        activity.getPreferences(0).edit().remove("secure_$key").apply()
+        preferences.edit().remove("secure_$key").apply()
     }
 
     fun get(key: String): String? {
-        val payload = activity.getPreferences(0).getString("secure_$key", null) ?: return null
+        val payload = preferences.getString("secure_$key", null) ?: return null
         val parts = payload.split(':', limit = 2)
         if (parts.size != 2) return null
         return runCatching {
