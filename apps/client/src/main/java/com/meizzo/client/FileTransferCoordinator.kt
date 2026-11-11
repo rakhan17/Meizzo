@@ -96,6 +96,8 @@ class FileTransferCoordinator(
         })
     }
 
+    fun isReady(): Boolean = !closed && channel.state() == DataChannel.State.OPEN
+
     fun sendFile(uri: Uri) = sendFiles(listOf(uri))
 
     fun sendFiles(uris: List<Uri>) {
