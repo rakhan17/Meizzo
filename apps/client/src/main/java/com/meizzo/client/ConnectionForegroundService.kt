@@ -5,6 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -19,6 +22,9 @@ import androidx.core.app.NotificationCompat
  * that Android can guarantee survival after force-stop or OEM process eviction.
  */
 class ConnectionForegroundService : Service() {
+    private var alarmTrack: AudioTrack? = null
+    private var alarmActive = false
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -28,16 +34,21 @@ class ConnectionForegroundService : Service() {
         // A sticky restart has no live WebSocket owner to restore yet. Do not
         // show a misleading foreground notification after process recreation.
         if (intent == null) {
+            stopAlarm()
             stopSelf(startId)
             return START_NOT_STICKY
         }
+
+        when (intent.action) {
+            ACTION_ALARM_ON -> startAlarm()
+            ACTION_ALARM_OFF -> stopAlarm()
+        }
+
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            )
+            val serviceTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+                if (alarmActive) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
+            startForeground(NOTIFICATION_ID, notification, serviceTypes)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -45,6 +56,65 @@ class ConnectionForegroundService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        stopAlarm()
+        super.onDestroy()
+    }
+
+    private fun startAlarm() {
+        if (alarmTrack?.state == AudioTrack.STATE_INITIALIZED && alarmActive) return
+        stopAlarm()
+        val sampleRate = 22_050
+        val sampleCount = sampleRate
+        val samples = ShortArray(sampleCount) { index ->
+            val time = index.toDouble() / sampleRate
+            val pulse = if ((time % 0.8) < 0.55) 1.0 else 0.18
+            (kotlin.math.sin(2.0 * Math.PI * 880.0 * time) * 18_000.0 * pulse).toInt().toShort()
+        }
+        val format = AudioFormat.Builder()
+            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+            .setSampleRate(sampleRate)
+            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+            .build()
+        val attributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(attributes)
+            .setAudioFormat(format)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .setBufferSizeInBytes(samples.size * 2)
+            .build()
+        if (track.state != AudioTrack.STATE_INITIALIZED) {
+            track.release()
+            throw IllegalStateException("Android could not initialize alarm audio")
+        }
+        val written = track.write(samples, 0, samples.size)
+        if (written != samples.size) {
+            track.release()
+            throw IllegalStateException("Android could not prepare alarm audio")
+        }
+        track.setLoopPoints(0, samples.size, -1)
+        track.play()
+        alarmTrack = track
+        alarmActive = true
+    }
+
+    private fun stopAlarm() {
+        alarmActive = false
+        alarmTrack?.let { track ->
+            try {
+                if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+            } catch (_: IllegalStateException) {
+                // Audio may already have been stopped by the platform.
+            } finally {
+                track.release()
+            }
+        }
+        alarmTrack = null
+    }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -68,19 +138,30 @@ class ConnectionForegroundService : Service() {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("MEIZZO Client is active")
-            .setContentText("MEIZZO is active in the background")
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(if (alarmActive) android.R.drawable.ic_lock_idle_alarm else android.R.drawable.stat_notify_sync)
+            .setContentTitle(if (alarmActive) "MEIZZO remote alarm is ringing" else "MEIZZO Client is active")
+            .setContentText(if (alarmActive) "Alarm is playing · tap Stop alarm to silence this device" else "MEIZZO is active in the background")
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+        if (alarmActive) {
+            val stopAlarm = PendingIntent.getService(
+                this,
+                1,
+                Intent(this, ConnectionForegroundService::class.java).setAction(ACTION_ALARM_OFF),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            builder.addAction(android.R.drawable.ic_media_pause, "Stop alarm", stopAlarm)
+        }
+        return builder.build()
     }
 
     companion object {
+        const val ACTION_ALARM_ON = "com.meizzo.client.action.ALARM_ON"
+        const val ACTION_ALARM_OFF = "com.meizzo.client.action.ALARM_OFF"
         private const val CHANNEL_ID = "meizzo_device_connection"
         private const val NOTIFICATION_ID = 2501
     }
