@@ -124,6 +124,9 @@ class MainActivity : Activity() {
         content.addView(connectionCard, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(12)
         })
+        content.addView(uiActionButton("Enable remote interaction", false) {
+            startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) })
         content.addView(uiActionButton(
             if (preferences.getBoolean("find_my_location_enabled", false)) "Disable Find My location" else "Enable Find My location",
             false
@@ -542,6 +545,47 @@ class MainActivity : Activity() {
                     alarm = null
                 }
                 result.put("enabled", enabled)
+            }
+            "lock_screen" -> {
+                val accessibility = RemoteAccessibilityService.instance
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!accessibility.lockScreen()) {
+                    error = "Screen lock action is unavailable on this Android version"
+                } else {
+                    result.put("locked", true)
+                }
+            }
+            "tap" -> {
+                val x = parameters.optDouble("x", Double.NaN)
+                val y = parameters.optDouble("y", Double.NaN)
+                val accessibility = RemoteAccessibilityService.instance
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!x.isFinite() || !y.isFinite() || x !in 0.0..1.0 || y !in 0.0..1.0) {
+                    error = "Tap coordinates must be normalized values between 0 and 1"
+                } else if (!accessibility.tap(x, y)) {
+                    error = "Android rejected the remote tap gesture"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
+            "swipe" -> {
+                val startX = parameters.optDouble("startX", Double.NaN)
+                val startY = parameters.optDouble("startY", Double.NaN)
+                val endX = parameters.optDouble("endX", Double.NaN)
+                val endY = parameters.optDouble("endY", Double.NaN)
+                val accessibility = RemoteAccessibilityService.instance
+                val valid = listOf(startX, startY, endX, endY).all { it.isFinite() && it in 0.0..1.0 }
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!valid) {
+                    error = "Swipe coordinates must be normalized values between 0 and 1"
+                } else if (!accessibility.swipe(startX, startY, endX, endY, parameters.optLong("durationMs", 350L))) {
+                    error = "Android rejected the remote swipe gesture"
+                } else {
+                    result.put("accepted", true)
+                }
             }
             "emergency_message" -> {
                 val emergencyText = parameters.optString("message").trim()
