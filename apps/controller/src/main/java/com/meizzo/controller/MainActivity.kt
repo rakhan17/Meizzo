@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val pendingCommandClients = mutableSetOf<String>()
+    private val remoteFileBrowseStacks = mutableMapOf<String, MutableList<String>>()
     private val pendingMediaRequests = mutableSetOf<String>()
     private val activeMediaSessions = mutableMapOf<String, String>()
     private val iceServersBySession = mutableMapOf<String, JSONArray>()
@@ -326,6 +327,8 @@ class MainActivity : Activity() {
                                             }
                                             .show()
                                     }
+                                } else if (commandResult.has("files")) {
+                                    runOnUiThread { showRemoteFileBrowser(id, commandResult) }
                                 } else if (!commandResult.has("clipboardWritten") && !commandResult.has("accepted") && !commandResult.has("charactersInserted")) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
                                 val metadata = current.optJSONObject("metadata") ?: JSONObject()
@@ -602,10 +605,14 @@ class MainActivity : Activity() {
                 sendInteractionAction(id, "text_input", JSONObject().put("text", "\n"))
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Read Client clipboard", false) {
-                sendClipboardCommand(id, "clipboard_read", JSONObject())
+                sendClientCommand(id, "clipboard_read", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send text to Client clipboard", false) {
                 showClipboardWriteDialog(id)
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Browse Client files", false) {
+                remoteFileBrowseStacks.remove(id)
+                sendClientCommand(id, "file_browse", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Lock Client screen", false) {
                 sendInteractionAction(id, "lock_screen", JSONObject())
@@ -1166,6 +1173,74 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun showRemoteFileBrowser(clientId: String, result: JSONObject) {
+        val documentId = result.optString("documentId")
+        val rootDocumentId = result.optString("rootDocumentId")
+        val entries = result.optJSONArray("files") ?: org.json.JSONArray()
+        if (documentId.isBlank() || rootDocumentId.isBlank()) {
+            setConnection("Client returned an invalid folder listing", false)
+            return
+        }
+        val stack = remoteFileBrowseStacks.getOrPut(clientId) { mutableListOf(rootDocumentId) }
+        if (stack.isEmpty()) stack.add(rootDocumentId)
+        if (stack.last() != documentId) {
+            if (stack.contains(documentId)) {
+                while (stack.isNotEmpty() && stack.last() != documentId) stack.removeAt(stack.lastIndex)
+            } else {
+                stack.add(documentId)
+            }
+        }
+        val labels = ArrayList<String>()
+        val metadata = ArrayList<JSONObject>()
+        for (index in 0 until entries.length()) {
+            val item = entries.optJSONObject(index) ?: continue
+            val isDirectory = item.optBoolean("isDirectory")
+            val name = item.optString("name", "Unnamed")
+            val size = item.optLong("size", -1L)
+            labels.add(
+                (if (isDirectory) "▸  " else "   ") + name +
+                    if (!isDirectory && size >= 0L) "  ·  ${size / 1024} KB" else ""
+            )
+            metadata.add(item)
+        }
+        val message = buildString {
+            append("Read-only view · ")
+            append(if (documentId == rootDocumentId) "shared folder root" else "subfolder")
+            if (result.optBoolean("truncated")) append("\nShowing the first 80 entries")
+        }
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Client files")
+            .setMessage(message)
+            .setItems(labels.toTypedArray()) { _, index ->
+                val item = metadata[index]
+                if (item.optBoolean("isDirectory")) {
+                    val childId = item.optString("documentId")
+                    if (childId.isNotBlank()) {
+                        stack.add(childId)
+                        sendClientCommand(clientId, "file_browse", JSONObject().put("documentId", childId))
+                    }
+                } else {
+                    val name = item.optString("name", "File")
+                    val size = item.optLong("size", -1L)
+                    val mime = item.optString("mimeType", "Unknown type")
+                    AlertDialog.Builder(this)
+                        .setTitle(name)
+                        .setMessage("$mime\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}\n\nBrowsing currently exposes metadata only.")
+                        .setPositiveButton("Close", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Close", null)
+        if (stack.size > 1) {
+            builder.setPositiveButton("Up") { _, _ ->
+                stack.removeAt(stack.lastIndex)
+                val parentId = stack.last()
+                sendClientCommand(clientId, "file_browse", JSONObject().put("documentId", parentId))
+            }
+        }
+        builder.show()
+    }
+
     private fun showClipboardWriteDialog(clientId: String) {
         val input = EditText(this).apply {
             hint = "Text to place on the Client clipboard"
@@ -1182,14 +1257,14 @@ class MainActivity : Activity() {
             .setPositiveButton("Send") { _, _ ->
                 val value = input.text.toString()
                 if (value.isBlank()) setConnection("Clipboard text cannot be empty", false)
-                else sendClipboardCommand(clientId, "clipboard_write", JSONObject().put("text", value))
+                else sendClientCommand(clientId, "clipboard_write", JSONObject().put("text", value))
             }
             .show()
     }
 
-    private fun sendClipboardCommand(clientId: String, command: String, parameters: JSONObject) {
+    private fun sendClientCommand(clientId: String, command: String, parameters: JSONObject) {
         if (approvedInteractionSessions[clientId].isNullOrBlank()) {
-            setConnection("Request Client approval before clipboard access", false)
+            setConnection("Request Client approval before sending remote commands", false)
             return
         }
         if (clientId in pendingCommandClients) {
@@ -1198,7 +1273,7 @@ class MainActivity : Activity() {
         }
         val webSocket = socket
         if (webSocket == null) {
-            setConnection("Controller is disconnected · clipboard request not sent", false)
+            setConnection("Controller is disconnected · remote command not sent", false)
             return
         }
         pendingCommandClients.add(clientId)
@@ -1209,8 +1284,8 @@ class MainActivity : Activity() {
             put("parameters", parameters)
         }.toString())) {
             pendingCommandClients.remove(clientId)
-            setConnection("Clipboard request could not be queued", false)
-        } else setConnection("Waiting for Client clipboard approval", true)
+            setConnection("Remote command could not be queued", false)
+        } else setConnection("Waiting for Client approval · $command", true)
     }
 
     private fun showRemoteTextDialog(clientId: String) {
