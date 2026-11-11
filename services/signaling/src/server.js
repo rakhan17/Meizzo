@@ -759,11 +759,11 @@ wss.on('connection', (ws) => {
       }
     }
     if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
-      device.clientConnection = null;
-      device.status = 'offline';
-      device.lastSeen = nowMs();
-      logEvent('presence.disconnect', { clientId: device.clientId });
-      broadcastDeviceStatus(device.clientId);
+      // A WebSocket close is not proof that the device is offline. Mobile OSes can
+      // suspend or terminate an app process while the device remains reachable.
+      // Keep the last authenticated connection/heartbeat until prune() applies
+      // HEARTBEAT_TIMEOUT_MS. A reconnect replaces this connection in authenticate().
+      logEvent('presence.socket_closed', { clientId: device.clientId });
     }
   });
   sendJson(ws, {
