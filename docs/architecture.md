@@ -47,9 +47,10 @@ flowchart LR
   C <-->|WebRTC DataChannel · DTLS| O
 ```
 
-The current Android ICE configuration includes a public STUN server. TURN is
-not deployed yet, so direct media connectivity is not guaranteed through
-restrictive NATs, carrier-grade NAT, or firewalls.
+The default Android ICE configuration uses Cloudflare STUN. The Worker can
+issue short-lived Cloudflare Realtime TURN credentials when its server-side
+secrets are configured. Without TURN, direct media connectivity is not
+guaranteed through restrictive NATs, carrier-grade NAT, or firewalls.
 
 ## 2. Android application architecture
 
