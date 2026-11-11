@@ -5,7 +5,7 @@ MEIZZO includes two signaling runtimes:
 - **Cloudflare Workers + Durable Objects** for hosted beta deployments.
 - **Node.js + ws** for local development and regression tests.
 
-The Cloudflare Worker entry point is `services/signaling/cloudflare/worker.js`. The root `wrangler.toml` defines the stable Worker and its Durable Object binding. `wrangler.v3.toml` defines an isolated v3 Worker with its own Durable Object namespace.
+The Cloudflare Worker entry point is `services/signaling/cloudflare/worker.js`. The root `wrangler.toml` defines the stable Worker and its Durable Object binding. The v3 app also uses the same stable Worker endpoint; there is no separate beta Worker.
 
 ## Stable deployment
 
@@ -13,46 +13,13 @@ The stable Cloudflare Workers Builds project is connected to the repository's `m
 
 Keep that project on `main`. Do not change its branch or Wrangler config to v3.
 
-## MEIZZO v3 deployment with Cloudflare Workers Builds
+## MEIZZO v3 signaling
 
-The v3 branch uses a shared beta Worker named `meizzo-signaling-beta`. Deploy it using a **second Cloudflare Workers Builds project**, connected to the same GitHub repository but configured for branch `develop/v3`.
+The v3 Client and Controller use the existing `meizzo-signaling` Worker. Do not create a second Workers Builds project or deploy a separate Worker. Keep the current Cloudflare project connected to `main` and deploy the root `wrangler.toml`.
 
-One-time setup in Cloudflare Dashboard:
+Verify the endpoint at:
 
-1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages**.
-2. Choose **Create application → Workers → Connect to Git**.
-3. Select repository `rakhan17/Meizzo`.
-4. Set the production branch to `develop/v3`.
-5. Set the Worker name to `meizzo-signaling-beta` if Cloudflare asks for one. The authoritative name is already in `wrangler.v3.toml`.
-6. Keep the repository root as the root directory.
-7. Leave the build command blank.
-8. Set the deploy command to:
-
-   ```bash
-   npx --yes wrangler@4 deploy --config wrangler.v3.toml
-   ```
-
-9. Set Preview command to `npx --yes wrangler@4 preview --config wrangler.v3.toml` and leave Build command blank.
-10. Use Cloudflare Workers Builds' automatically generated API token. Do not create GitHub Actions secrets for Cloudflare and never commit a personal API token.
-10. Save and deploy.
-
-After this one-time setup, pushes to `develop/v3` automatically build and deploy only the v3 Worker. The existing `main` → `meizzo-signaling` project remains unchanged. GitHub Actions separately runs the Worker dry-run and regression tests.
-
-Expected v3 endpoint for the existing account subdomain:
-
-`wss://meizzo-signaling-beta.rakhanatanox.workers.dev`
-
-Treat that hostname as provisional until Cloudflare confirms the deployment URL in its dashboard. Verify `/healthz` and a WebSocket handshake before using it for real sessions or release builds.
-
-The v3 Worker adds approved-session WebRTC signaling and short-lived TURN credential delivery. If TURN relay is enabled, configure `REALTIME_TURN_TOKEN_ID` and `REALTIME_TURN_TOKEN_SECRET` as secrets on the v3 Worker in Cloudflare. These are TURN credentials, not Cloudflare deployment credentials.
-
-## Verify the deployment
-
-Open:
-
-`https://meizzo-signaling-beta.<your-subdomain>.workers.dev/healthz`
-
-Use the exact hostname Cloudflare assigns. The expected health response has `status: "ok"`, `service: "meizzo-signaling-beta"`, and `runtime: "cloudflare-workers"`.
+`https://meizzo-signaling.rakhanatanox.workers.dev/healthz`
 
 ## Runtime behavior and limitations
 
