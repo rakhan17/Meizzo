@@ -44,5 +44,6 @@ python scripts/check-doc-links.py
 mkdocs build --strict
 ```
 
-The site configuration is in [mkdocs.yml](../mkdocs.yml). Documentation CI
-checks internal links and builds the site in strict mode.
+The MkDocs Material configuration is stored in the repository-root
+`mkdocs.yml`. Documentation CI checks internal links and builds the site in
+strict mode.
