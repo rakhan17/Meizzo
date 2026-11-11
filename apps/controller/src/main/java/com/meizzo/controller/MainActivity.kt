@@ -845,7 +845,7 @@ class MainActivity : Activity() {
                                 incomingFileMime = mime
                                 AlertDialog.Builder(this)
                                     .setTitle("Receive file?")
-                                    .setMessage("$name · ${size / 1024} KB\nSave this file to the Controller?")
+                                    .setMessage("$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to the Controller?")
                                     .setNegativeButton("Decline") { _, _ ->
                                         fileTransferCoordinators[sessionId]?.rejectIncoming()
                                     }
