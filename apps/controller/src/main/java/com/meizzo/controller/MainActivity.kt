@@ -743,11 +743,13 @@ class MainActivity : Activity() {
         mediaViewers[sessionId] = viewer
         var touchStartX = 0f
         var touchStartY = 0f
+        var touchStartTime = 0L
         video.setOnTouchListener { _, event ->
             when (event.action) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     touchStartX = event.x
                     touchStartY = event.y
+                    touchStartTime = event.eventTime
                     true
                 }
                 android.view.MotionEvent.ACTION_UP -> {
@@ -784,7 +786,16 @@ class MainActivity : Activity() {
                     val endY = normalizedY(event.y)
                     if (kotlin.math.abs(event.x - touchStartX) < dp(12) &&
                         kotlin.math.abs(event.y - touchStartY) < dp(12)) {
-                        sendInteractionAction(clientId, "tap", JSONObject().put("x", endX).put("y", endY))
+                        val pressDuration = (event.eventTime - touchStartTime).coerceAtLeast(0L)
+                        if (pressDuration >= 500L) {
+                            sendInteractionAction(clientId, "long_press", JSONObject().apply {
+                                put("x", endX)
+                                put("y", endY)
+                                put("durationMs", pressDuration.coerceAtMost(2_000L))
+                            })
+                        } else {
+                            sendInteractionAction(clientId, "tap", JSONObject().put("x", endX).put("y", endY))
+                        }
                     } else {
                         sendInteractionAction(clientId, "swipe", JSONObject().apply {
                             put("startX", startX); put("startY", startY)
