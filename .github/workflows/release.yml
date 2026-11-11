@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "MEIZZO v3 prerelease tag (for example v3.0.0-beta.6)"
+        description: "MEIZZO v3 prerelease tag (for example v3.0.0-beta.N)"
         required: true
         type: string
         default: ""
