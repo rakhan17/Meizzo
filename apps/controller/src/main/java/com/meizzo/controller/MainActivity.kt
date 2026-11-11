@@ -567,6 +567,17 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Keyboard · Escape", false) {
                 sendInteractionAction(id, "key_escape", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            val keyboardArrows = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                listOf("←" to "key_left", "↑" to "key_up", "↓" to "key_down", "→" to "key_right").forEach { (label, command) ->
+                    addView(uiActionButton(label, false) {
+                        sendInteractionAction(id, command, JSONObject())
+                    }, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                        if (label != "←") leftMargin = dp(6)
+                    })
+                }
+            }
+            card.addView(keyboardArrows, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Keyboard · New line", false) {
                 sendInteractionAction(id, "text_input", JSONObject().put("text", "\n"))
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
