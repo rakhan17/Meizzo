@@ -49,16 +49,34 @@ Client until the Client approves the request.
 ## Downloads
 
 Choose the app based on the role of each device. Client and Controller are
-separate Android applications.
+separate applications. Published versions are organized by platform and
+release channel below.
+
+<div align="center">
+
+[![All Releases](https://img.shields.io/badge/ALL%20VERSIONS-BROWSE%20ALL%20RELEASES-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
+
+</div>
 
 ### Android
+
+#### Stable Release
+
+<sub>**STABLE** · No stable version published yet</sub>
+
+| App | Purpose | Download |
+|:--|:--|:--|
+| **MEIZZO Client** | Device receiving assistance | ![Coming Soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Controller** | Device managing connected Clients | ![Coming Soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
+
+#### Beta
 
 <sub>**LATEST BETA** · `v0.1.0-beta.4` · Version code `100304`</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/Download-Client%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/Download-Controller%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
 
 > **Beta software:** this build is for testing and may contain bugs. Install
 > Client on the device receiving assistance and Controller on the operator's
@@ -69,22 +87,33 @@ separate Android applications.
 > an in-place update. Back up any important app data before uninstalling an
 > older build; uninstalling removes that app's local data.
 
-**Latest release:** [MEIZZO v0.1.0-beta.4](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.4) ·
-**All versions:** [Browse every MEIZZO release](https://github.com/rakhan17/Meizzo/releases) ·
-**Stable:** <sub>Not released yet</sub>
-
 ### iOS
 
-<sub>**UNDER DEVELOPMENT** · Latest available simulator package: `v0.1.0-beta.3`</sub>
+iOS builds are not ready for public installation. Both release channels are
+shown for visibility, but downloads remain disabled until iOS development,
+signing, and device testing are complete.
 
-| App | Download |
-|:--|:--|
-| **MEIZZO Client for iOS** | [Download Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-client-iOS-simulator.zip) |
-| **MEIZZO Controller for iOS** | [Download Simulator ZIP](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-controller-iOS-simulator.zip) |
+#### Stable Release
 
-<sub>Unsigned Simulator packages for Xcode on Mac only. They cannot be
-installed directly on a physical iPhone. iOS is not part of the current
-Android beta and remains under development.</sub>
+<sub>**STABLE** · Under development</sub>
+
+| App | Purpose | Download |
+|:--|:--|:--|
+| **MEIZZO Client for iOS** | Device receiving assistance | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+| **MEIZZO Controller for iOS** | Device managing connected Clients | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+
+#### Beta
+
+<sub>**BETA** · Under development</sub>
+
+| App | Purpose | Download |
+|:--|:--|:--|
+| **MEIZZO Client for iOS** | Device receiving assistance | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+| **MEIZZO Controller for iOS** | Device managing connected Clients | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+
+<sub>Previous unsigned Simulator ZIPs were intended only for Xcode on Mac and
+cannot be installed directly on a physical iPhone. They are intentionally not
+presented as public iOS downloads.</sub>
 
 [Read the iOS development guide](docs/ios-guide.md)
 
