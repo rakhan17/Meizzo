@@ -25,6 +25,7 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | Remote camera streaming | Android prototype implemented: Camera2 capture after runtime CAMERA permission, WebRTC video publishing, and Controller camera viewer. Rear/front camera selection and device compatibility need physical testing. |
 | Remote screen interaction | Android tap/swipe is wired to touch gestures on the live video surface. A separate approved interaction session is required; AccessibilityService must be enabled by the device owner. |
 | Remote lock screen | Android lock action is implemented through AccessibilityService on Android 9+. The user must explicitly enable MEIZZO in Android Accessibility settings and approve an interaction session. |
+| Remote alarm | Continuous looped AudioTrack playback is hosted by the Client foreground service, with remote ON/OFF and a local notification stop action. Physical-device and OEM background acceptance is still required. |
 | File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, final SHA-256 verification, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
 
 ## Session and signaling foundation
