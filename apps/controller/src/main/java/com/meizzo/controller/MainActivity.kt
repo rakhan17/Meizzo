@@ -539,6 +539,18 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Alarm off", false) { sendDeviceCommand(id, "alarm", false) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Volume up", false) {
+                sendInteractionAction(id, "volume_up", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Volume down", false) {
+                sendInteractionAction(id, "volume_down", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Mute media volume", false) {
+                sendInteractionAction(id, "volume_mute", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Unmute media volume", false) {
+                sendInteractionAction(id, "volume_unmute", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send emergency message", false) { composeEmergencyMessage(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send text to focused field", false) { showRemoteTextDialog(id) },
