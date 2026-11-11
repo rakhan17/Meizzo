@@ -57,6 +57,12 @@ class MainActivity : Activity() {
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
     private val cameraPermissionRequestCode = 4102
+    private val mediaCameraPermissionRequestCode = 4107
+    private val screenCaptureRequestCode = 4106
+    private var pendingMediaSessionId: String? = null
+    private var pendingMediaKind: String? = null
+    private var activeMediaSessionId: String? = null
+    private var rtcMediaClient: RtcMediaClient? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -299,7 +305,12 @@ class MainActivity : Activity() {
                                     pendingSessionDialogs[sessionId] = dialog
                                     dialog.show()
                                 }
-                                "approved" -> runOnUiThread { status.text = "$sessionType session approved" }
+                                "approved" -> runOnUiThread {
+                                    status.text = "$sessionType session approved"
+                                    if (sessionType == "screen" || sessionType == "camera") {
+                                        beginMediaSession(sessionId, sessionType)
+                                    }
+                                }
                                 "rejected", "failed", "ended" -> runOnUiThread {
                                     pendingSessionDialogs.remove(sessionId)?.dismiss()
                                     stopActiveOutputs()
@@ -319,6 +330,11 @@ class MainActivity : Activity() {
                                 put("requestId", message.optString("requestId"))
                                 put("result", deviceMetrics())
                             }.toString())
+                        }
+                        "media.signal" -> {
+                            if (message.optString("sessionId") == activeMediaSessionId) {
+                                message.optJSONObject("signal")?.let { rtcMediaClient?.onSignal(it) }
+                            }
                         }
                         "client.command" -> handleCommand(webSocket, message)
                         "device.revoked" -> runOnUiThread {
@@ -417,6 +433,78 @@ class MainActivity : Activity() {
         }.toString())
     }
 
+    private fun beginMediaSession(sessionId: String, kind: String) {
+        pendingMediaSessionId = sessionId
+        pendingMediaKind = kind
+        if (kind == "screen") {
+            val manager = getSystemService(android.media.projection.MediaProjectionManager::class.java)
+            startActivityForResult(manager.createScreenCaptureIntent(), screenCaptureRequestCode)
+            status.text = "Waiting for Android screen-sharing consent"
+            return
+        }
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.CAMERA), mediaCameraPermissionRequestCode)
+        } else {
+            startMediaPublisher(sessionId, kind, null)
+        }
+    }
+
+    private fun startMediaPublisher(sessionId: String, kind: String, projectionData: android.content.Intent?) {
+        rtcMediaClient?.close()
+        activeMediaSessionId = sessionId
+        rtcMediaClient = RtcMediaClient(
+            this,
+            { signal ->
+                socket?.send(JSONObject().apply {
+                    put("type", "media.signal")
+                    put("sessionId", sessionId)
+                    put("signal", signal)
+                }.toString())
+            },
+            { reason ->
+                runOnUiThread { status.text = "Media session error · $reason" }
+            }
+        )
+        if (kind == "screen") MediaProjectionForegroundService.start(this)
+        if (kind == "screen") {
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (activeMediaSessionId == sessionId) rtcMediaClient?.start(sessionId, kind, projectionData)
+            }, 450)
+        } else {
+            rtcMediaClient?.start(sessionId, kind, projectionData)
+        }
+        status.text = "Publishing $kind stream · waiting for Controller"
+    }
+
+    private fun stopMediaPublisher() {
+        rtcMediaClient?.close()
+        rtcMediaClient = null
+        activeMediaSessionId = null
+        pendingMediaSessionId = null
+        pendingMediaKind = null
+        MediaProjectionForegroundService.stop(this)
+    }
+
+    @Deprecated("Deprecated in Android API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != screenCaptureRequestCode) return
+        val sessionId = pendingMediaSessionId
+        val kind = pendingMediaKind
+        if (resultCode == RESULT_OK && data != null && sessionId != null && kind == "screen") {
+            startMediaPublisher(sessionId, "screen", data)
+        } else {
+            status.text = "Screen sharing was not allowed"
+            pendingMediaSessionId = null
+            pendingMediaKind = null
+            socket?.send(JSONObject().apply {
+                put("type", "media.signal")
+                put("sessionId", sessionId ?: "")
+                put("signal", JSONObject().put("type", "error").put("message", "Client declined Android screen-capture consent"))
+            }.toString())
+        }
+    }
+
     private fun decideSession(webSocket: WebSocket, sessionId: String, approved: Boolean) {
         webSocket.send(JSONObject().apply {
             put("type", "client.session_decision")
@@ -442,6 +530,18 @@ class MainActivity : Activity() {
                 else "Find My location permission denied"
             return
         }
+        if (requestCode == mediaCameraPermissionRequestCode) {
+            val sessionId = pendingMediaSessionId
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED &&
+                sessionId != null && pendingMediaKind == "camera") {
+                startMediaPublisher(sessionId, "camera", null)
+            } else {
+                status.text = "Camera streaming permission was denied"
+                pendingMediaSessionId = null
+                pendingMediaKind = null
+            }
+            return
+        }
         if (requestCode != cameraPermissionRequestCode) return
         val pending = pendingTorchCommand
         pendingTorchCommand = null
@@ -454,6 +554,7 @@ class MainActivity : Activity() {
     }
 
     private fun stopActiveOutputs() {
+        stopMediaPublisher()
         alarm?.stopTone()
         alarm?.release()
         alarm = null
@@ -741,6 +842,13 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        stopMediaPublisher()
+        reconnectHandler.removeCallbacksAndMessages(null)
+        socket?.close(1000, "Client activity destroyed")
+        super.onDestroy()
     }
 
     private fun downloadUpdate(release: ClientReleaseInfo) {
