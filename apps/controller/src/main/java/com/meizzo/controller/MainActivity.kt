@@ -1327,8 +1327,10 @@ class MainActivity : Activity() {
                 val documentId = item.optString("documentId")
                 val flags = item.optLong("flags")
                 val isDirectory = item.optBoolean("isDirectory")
-                val canRename = (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong()) != 0L
-                val canDelete = !isDirectory &&
+                val canModify = result.optBoolean("writeAccess")
+                val canRename = canModify &&
+                    (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong()) != 0L
+                val canDelete = canModify && !isDirectory &&
                     (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_DELETE.toLong()) != 0L
                 val size = item.optLong("size", -1L)
                 val mime = item.optString("mimeType", "Unknown type")
