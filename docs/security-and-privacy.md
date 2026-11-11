@@ -71,4 +71,5 @@ and documented retention/incident-response procedures.
 ## Reporting a vulnerability
 
 Please do not publish exploitable details in a public issue. Follow the
-private reporting instructions in the repository's [SECURITY.md](../SECURITY.md).
+private reporting instructions in the repository's
+[SECURITY.md](https://github.com/rakhan17/Meizzo/blob/main/SECURITY.md).
