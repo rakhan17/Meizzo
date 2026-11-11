@@ -9,7 +9,7 @@ const PORT = Number(process.env.PORT || 8080);
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
 const PAIRING_WINDOW_MS = 60 * 1000;
 const PAIRING_MAX_ATTEMPTS_PER_WINDOW = 10;
-const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
+const HEARTBEAT_TIMEOUT_MS = Math.max(100, Number(process.env.HEARTBEAT_TIMEOUT_MS || 45_000));
 
 const pairingOffersByCode = new Map();
 const pairAttemptState = new Map();
@@ -711,7 +711,8 @@ const healthServer = http.createServer((req, res) => {
 });
 healthServer.listen(PORT, '0.0.0.0');
 const wss = new WebSocketServer({ server: healthServer, maxPayload: 64 * 1024 });
-setInterval(prune, 15 * 1000).unref();
+const PRUNE_INTERVAL_MS = Math.max(25, Number(process.env.PRUNE_INTERVAL_MS || 15_000));
+setInterval(prune, PRUNE_INTERVAL_MS).unref();
 
 wss.on('connection', (ws) => {
   ws.on('message', (payload) => routeMessage(ws, payload));
@@ -759,11 +760,11 @@ wss.on('connection', (ws) => {
       }
     }
     if (device && ws.auth?.role === 'client' && device.clientConnection === ws) {
-      device.clientConnection = null;
-      device.status = 'offline';
-      device.lastSeen = nowMs();
-      logEvent('presence.disconnect', { clientId: device.clientId });
-      broadcastDeviceStatus(device.clientId);
+      // A WebSocket close is not proof that the device is offline. Mobile OSes can
+      // suspend or terminate an app process while the device remains reachable.
+      // Keep the last authenticated connection/heartbeat until prune() applies
+      // HEARTBEAT_TIMEOUT_MS. A reconnect replaces this connection in authenticate().
+      logEvent('presence.socket_closed', { clientId: device.clientId });
     }
   });
   sendJson(ws, {

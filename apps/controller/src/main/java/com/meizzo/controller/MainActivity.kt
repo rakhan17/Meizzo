@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
+    private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,6 +115,8 @@ class MainActivity : Activity() {
         content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
         content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
+        content.addView(uiActionButton("Auto-Alert settings", false) { showAutoAlertSettings() },
+            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
 
         content.addView(uiEyebrow("YOUR DEVICES").apply {
             setPadding(dp(2), dp(28), 0, dp(8))
@@ -135,6 +138,58 @@ class MainActivity : Activity() {
         })
         renderDevices()
         connect()
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 5301)
+        }
+    }
+
+
+    private fun showAutoAlertSettings() {
+        val current = autoAlertManager.settings()
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(8), dp(22), 0)
+        }
+        fun field(label: String, value: String, inputType: Int): EditText {
+            form.addView(TextView(this).apply {
+                text = label; textSize = 13f; setTextColor(Color.LTGRAY)
+                setPadding(0, dp(10), 0, dp(4))
+            })
+            return EditText(this).apply {
+                setSingleLine(true); this.inputType = inputType; setText(value)
+                setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.GRAY)
+                form.addView(this)
+            }
+        }
+        val battery = field("Low battery threshold (%)", current.batteryPercent.toString(), 2)
+        val temperature = field("High temperature threshold (°C)", current.temperatureC.toString(), 8194)
+        val offline = field("Offline duration before alert (minutes)", current.offlineMinutes.toString(), 2)
+        val unplugged = android.widget.CheckBox(this).apply {
+            text = "Alert when charger is disconnected"; isChecked = current.chargerUnplugged
+            setTextColor(Color.WHITE); buttonTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            form.addView(this)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Auto-Alert thresholds")
+            .setMessage("Alerts are generated on this Controller while MEIZZO is running and receiving device status.")
+            .setView(form)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                val b = battery.text.toString().toIntOrNull()
+                val t = temperature.text.toString().toFloatOrNull()
+                val o = offline.text.toString().toIntOrNull()
+                if (b == null || t == null || o == null || b !in 1..100 || t !in 25f..80f || o !in 1..1440) {
+                    AlertDialog.Builder(this).setTitle("Invalid thresholds")
+                        .setMessage("Use battery 1–100%, temperature 25–80°C, and offline duration 1–1440 minutes.")
+                        .setPositiveButton("OK", null).show()
+                    return@setPositiveButton
+                }
+                autoAlertManager.updateSettings(AutoAlertManager.Settings(b, t, o, unplugged.isChecked))
+            }
+            .show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -354,6 +409,7 @@ class MainActivity : Activity() {
         if (message.has("lastSeen")) current.put("lastSeen", message.optLong("lastSeen"))
         if (message.optJSONObject("metadata") != null) current.put("metadata", message.getJSONObject("metadata"))
         devices[id] = current
+        autoAlertManager.evaluate(current)
     }
 
     private fun renderDevices() = runOnUiThread {
@@ -393,6 +449,10 @@ class MainActivity : Activity() {
             textSize = 14f; setTextColor(Color.LTGRAY); setPadding(0, 8, 0, 8)
         })
         card.addView(Button(this).apply { text = "Open device details"; setOnClickListener { showDetails(device) } })
+        telemetry.optJSONObject("lastKnownLocation")?.let { location ->
+            card.addView(uiActionButton("Open last known location", false) { openLastKnownLocation(location) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+        }
         val interactionSession = approvedInteractionSessions[id]
         val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
@@ -416,6 +476,8 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Alarm on", false) { sendDeviceCommand(id, "alarm", true) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Alarm off", false) { sendDeviceCommand(id, "alarm", false) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Send emergency message", false) { composeEmergencyMessage(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         }
         devicesLayout.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 12, 0, 0) })
@@ -448,6 +510,16 @@ class MainActivity : Activity() {
             append("Network: ${telemetry.optString("network").ifBlank { "Unavailable" }}\n")
             append("Available storage: $storage\n")
             append("Uptime: $uptime")
+            val location = telemetry.optJSONObject("lastKnownLocation")
+            append("\n\nFIND MY PHONE\n")
+            if (location != null) {
+                append("Coordinates: %.6f, %.6f\n".format(Locale.US, location.optDouble("latitude"), location.optDouble("longitude")))
+                val accuracy = location.optDouble("accuracyMeters", -1.0)
+                append("Accuracy: ${if (accuracy >= 0) "%.0f m".format(Locale.US, accuracy) else "Unavailable"}\n")
+                append("Captured: ${if (location.optLong("capturedAtMs") > 0) android.text.format.DateFormat.format("dd MMM yyyy, HH:mm:ss", location.optLong("capturedAtMs")) else "Unknown"}")
+            } else {
+                append("No location shared. Enable Find My location on the Client first.")
+            }
         }
         AlertDialog.Builder(this).setTitle(metadata.optString("alias").ifBlank { id }).setMessage(text)
             .setPositiveButton("Refresh telemetry") { _, _ -> sendSnapshot(id) }
@@ -478,6 +550,21 @@ class MainActivity : Activity() {
             days > 0L -> "${days}d ${hours}h"
             hours > 0L -> "${hours}h ${minutes}m"
             else -> "${minutes}m"
+        }
+    }
+
+    private fun openLastKnownLocation(location: JSONObject) {
+        val latitude = location.optDouble("latitude", Double.NaN)
+        val longitude = location.optDouble("longitude", Double.NaN)
+        if (!latitude.isFinite() || !longitude.isFinite()) {
+            setConnection("Last known location is unavailable", false)
+            return
+        }
+        val uri = android.net.Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude")
+        try {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+        } catch (_: Exception) {
+            setConnection("No map application is available", false)
         }
     }
 
@@ -537,6 +624,36 @@ class MainActivity : Activity() {
             put("sessionId", sessionId)
             put("reason", "controller_ended")
         }.toString())
+    }
+
+    private fun composeEmergencyMessage(clientId: String) {
+        val input = EditText(this).apply {
+            hint = "This phone is lost. Please call…"
+            minLines = 2
+            maxLines = 4
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(240))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Send emergency message")
+            .setMessage("MEIZZO will post this as a notification on the Client. Lock-screen visibility depends on that device's Android notification settings.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Send") { _, _ ->
+                val message = input.text.toString().trim()
+                if (message.isBlank()) {
+                    setConnection("Emergency message cannot be empty", false)
+                    return@setPositiveButton
+                }
+                socket?.send(JSONObject().apply {
+                    put("type", "controller.command")
+                    put("clientId", clientId)
+                    put("command", "emergency_message")
+                    put("parameters", JSONObject().put("message", message))
+                }.toString())
+                setConnection("Emergency message sent to Client", true)
+            }
+            .show()
     }
 
     private fun sendDeviceCommand(clientId: String, command: String, enabled: Boolean) {

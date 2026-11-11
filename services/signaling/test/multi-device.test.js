@@ -61,10 +61,11 @@ async function pair(client, controller, code, clientId) {
 async function run() {
   const server = spawn(process.execPath, ['src/server.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: '8101' },
+    env: { ...process.env, PORT: '8101', HEARTBEAT_TIMEOUT_MS: '500', PRUNE_INTERVAL_MS: '50' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   const sockets = [];
+  let heartbeatTimer;
   try {
     await wait(300);
     const controller = await openSocket('ws://127.0.0.1:8101');
@@ -74,6 +75,14 @@ async function run() {
 
     const pairedA = await pair(clientA, controller, '111111', 'client-a');
     const pairedB = await pair(clientB, controller, '222222', 'client-b');
+    // Keep test devices alive like the Android Client's real 15-second heartbeat.
+    heartbeatTimer = setInterval(() => {
+      for (const socket of sockets) {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'heartbeat' }));
+        }
+      }
+    }, 100);
 
     const listPromise = nextMessage(controller, (message) => message.type === 'controller.device_list');
     controller.send(JSON.stringify({ type: 'controller.list_devices' }));
@@ -145,7 +154,10 @@ async function run() {
     }));
     const command = await commandPromise;
     let clientBReceivedCommand = false;
-    clientB.once('message', () => { clientBReceivedCommand = true; });
+    clientB.on('message', (raw) => {
+      const message = JSON.parse(raw.toString());
+      if (message.type === 'client.command') clientBReceivedCommand = true;
+    });
     const resultPromise = nextMessage(controller, (message) => message.type === 'device.result');
     clientA.send(JSON.stringify({
       type: 'client.result',
@@ -159,10 +171,19 @@ async function run() {
     await wait(100);
     if (clientBReceivedCommand) throw new Error('Client B received Client A command');
 
-    const offlinePromise = nextMessage(controller, (message) => message.type === 'device.status' && message.clientId === 'client-a');
+    let wentOfflineOnSocketClose = false;
+    const onPresenceDuringClose = (raw) => {
+      const message = JSON.parse(raw.toString());
+      if (message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline') {
+        wentOfflineOnSocketClose = true;
+      }
+    };
+    controller.on('message', onPresenceDuringClose);
     clientA.close();
-    const offline = await offlinePromise;
-    if (offline.status !== 'offline') throw new Error('Client A did not transition offline');
+    await wait(100);
+    if (wentOfflineOnSocketClose) {
+      throw new Error('Client was marked offline immediately on WebSocket close');
+    }
 
     const clientAReconnect = await openSocket('ws://127.0.0.1:8101');
     sockets.push(clientAReconnect);
@@ -261,7 +282,8 @@ async function run() {
       message.type === 'session.status' && message.sessionId === disconnectSession.sessionId &&
       message.state === 'failed', 2000, 'session failed after Client disconnect');
     const clientDisconnectOfflinePromise = nextMessage(controller, (message) =>
-      message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline');
+      message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline',
+      2500, 'Client offline after heartbeat timeout');
     const pendingSnapshotResult = nextMessage(controller, (message) =>
       message.type === 'device.result' && message.clientId === 'client-a', 2000, 'pending snapshot fails on Client disconnect');
     controller.send(JSON.stringify({
@@ -378,6 +400,7 @@ async function run() {
 
     console.log('multi-device.test: OK');
   } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     sockets.forEach((socket) => socket.close());
     server.kill('SIGTERM');
   }

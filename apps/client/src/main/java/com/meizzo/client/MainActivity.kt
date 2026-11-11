@@ -126,8 +126,13 @@ class MainActivity : Activity() {
         })
         content.addView(uiActionButton("Stop pairing", false) {
             socket?.close(1000, "Pairing stopped")
+            stopService(android.content.Intent(this, ConnectionForegroundService::class.java))
             status.text = "Pairing stopped"
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
+        content.addView(uiActionButton(
+            if (preferences.getBoolean("find_my_location_enabled", false)) "Disable Find My location" else "Enable Find My location",
+            false
+        ) { toggleFindMyLocation() }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         content.addView(uiActionButton("Check for updates", true) {
             checkForUpdate()
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) })
@@ -144,7 +149,43 @@ class MainActivity : Activity() {
             addView(content)
             setBackgroundColor(Color.rgb(8, 8, 10))
         })
+        startConnectionForegroundService()
         connect()
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4103)
+        }
+    }
+
+    private fun toggleFindMyLocation() {
+        if (preferences.getBoolean("find_my_location_enabled", false)) {
+            preferences.edit().putBoolean("find_my_location_enabled", false).apply()
+            status.text = "Find My location disabled"
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Enable Find My location?")
+            .setMessage(
+                "When enabled, MEIZZO includes Android's last-known location in device telemetry visible to your paired Controllers. " +
+                    "It does not continuously request GPS updates. Coordinates can be approximate or stale, and Android may not have a cached location."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                requestPermissions(
+                    arrayOf(
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION
+                    ),
+                    4104
+                )
+            }
+            .show()
+    }
+
+    private fun startConnectionForegroundService() {
+        val intent = android.content.Intent(this, ConnectionForegroundService::class.java)
+        startForegroundService(intent)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -392,6 +433,17 @@ class MainActivity : Activity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 4104) {
+            val granted = permissions.indices.any { index ->
+                (permissions[index] == android.Manifest.permission.ACCESS_FINE_LOCATION ||
+                    permissions[index] == android.Manifest.permission.ACCESS_COARSE_LOCATION) &&
+                    grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
+            }
+            preferences.edit().putBoolean("find_my_location_enabled", granted).apply()
+            status.text = if (granted) "Find My location enabled · last-known location may be approximate or stale"
+                else "Find My location permission denied"
+            return
+        }
         if (requestCode != cameraPermissionRequestCode) return
         val pending = pendingTorchCommand
         pendingTorchCommand = null
@@ -496,6 +548,41 @@ class MainActivity : Activity() {
                 }
                 result.put("enabled", enabled)
             }
+            "emergency_message" -> {
+                val emergencyText = parameters.optString("message").trim()
+                if (emergencyText.isBlank() || emergencyText.length > 240) {
+                    error = "Emergency message must contain 1–240 characters"
+                } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    error = "Notification permission is required on this Client"
+                } else {
+                    val channelId = "meizzo_emergency_message"
+                    if (android.os.Build.VERSION.SDK_INT >= 26) {
+                        val channel = android.app.NotificationChannel(
+                            channelId, "Emergency phone messages",
+                            android.app.NotificationManager.IMPORTANCE_HIGH
+                        ).apply {
+                            description = "Messages sent by the paired MEIZZO Controller"
+                            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                        }
+                        getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
+                    }
+                    val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle("Emergency message")
+                        .setContentText(emergencyText)
+                        .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(emergencyText))
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+                        .setCategory(androidx.core.app.NotificationCompat.CATEGORY_MESSAGE)
+                        .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
+                        .setAutoCancel(true)
+                        .build()
+                    androidx.core.app.NotificationManagerCompat.from(this).notify(2601, notification)
+                    result.put("shown", true)
+                    result.put("visibility", "Android lock-screen settings apply")
+                }
+            }
             else -> error = "Unsupported command"
         }
         val response = JSONObject().apply {
@@ -535,6 +622,29 @@ class MainActivity : Activity() {
         memory.getMemoryInfo(memoryInfo)
         put("ramTotalBytes", memoryInfo.totalMem)
         put("ramAvailableBytes", memoryInfo.availMem)
+        if (preferences.getBoolean("find_my_location_enabled", false)) {
+            val fineGranted = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val coarseGranted = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (fineGranted || coarseGranted) {
+                try {
+                    val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+                    val lastLocation = locationManager.getProviders(true).mapNotNull { provider ->
+                        try { locationManager.getLastKnownLocation(provider) } catch (_: SecurityException) { null }
+                    }.maxByOrNull { it.time }
+                    if (lastLocation != null) {
+                        put("lastKnownLocation", JSONObject().apply {
+                            put("latitude", lastLocation.latitude)
+                            put("longitude", lastLocation.longitude)
+                            put("accuracyMeters", if (lastLocation.hasAccuracy()) lastLocation.accuracy else JSONObject.NULL)
+                            put("capturedAtMs", lastLocation.time)
+                            put("provider", lastLocation.provider ?: "unknown")
+                        })
+                    }
+                } catch (_: Exception) {
+                    // Location is optional; telemetry continues without it.
+                }
+            }
+        }
     }
 
     private fun BatteryManager.isChargingCompat(): Boolean {
