@@ -155,6 +155,21 @@ class FileTransferCoordinator(
         discardIncoming()
     }
 
+    fun cancelTransfer() {
+        if (closed) return
+        if (outgoingInput == null && incomingOutput == null && pendingName.isBlank()) {
+            onStatus("No active file transfer to cancel")
+            return
+        }
+        send(JSONObject().put("type", "file_reject"))
+        closeOutgoing()
+        outgoingQueue.clear()
+        discardIncoming()
+        pendingName = ""
+        pendingSize = 0L
+        onStatus("File transfer cancelled")
+    }
+
     fun close() {
         if (closed) return
         closed = true
