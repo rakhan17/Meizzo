@@ -60,6 +60,8 @@ class MainActivity : Activity() {
     private var incomingFileSessionId: String? = null
     private var incomingFileName: String? = null
     private var incomingFileMime: String = "application/octet-stream"
+    private var pendingControllerMicSessionId: String? = null
+    private val controllerMicPermissionRequestCode = 5304
     private val filePickRequestCode = 5302
     private val fileSaveRequestCode = 5303
     private val updateManager by lazy { ControllerUpdateManager(this) }
@@ -824,6 +826,14 @@ class MainActivity : Activity() {
                 setPadding(0, 0, 0, dp(8))
             })
             addView(video, LinearLayout.LayoutParams(-1, 0, 1f))
+            addView(uiActionButton("Enable Controller microphone", false) {
+                requestControllerMicrophone(sessionId)
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+            addView(uiActionButton("Mute Controller microphone", false) {
+                mediaViewers[sessionId]?.disableLocalMicrophone()
+                ControllerVoiceForegroundService.stop(this@MainActivity)
+                setConnection("Controller microphone muted", true)
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         }
         val dialog = AlertDialog.Builder(this)
             .setTitle(if (kind == "screen") "Live screen" else "Remote camera")
@@ -972,7 +982,11 @@ class MainActivity : Activity() {
         }
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
-            mediaViewers.remove(sessionId)?.close()
+            val closingViewer = mediaViewers.remove(sessionId)
+            if (closingViewer?.isLocalMicrophoneEnabled() == true) {
+                ControllerVoiceForegroundService.stop(this)
+            }
+            closingViewer?.close()
             if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
         }
         dialog.show()
@@ -1160,6 +1174,57 @@ class MainActivity : Activity() {
         }
         dialog.show()
         viewer.startFiles()
+    }
+
+    private fun requestControllerMicrophone(sessionId: String) {
+        if (android.os.Build.VERSION.SDK_INT >= 23 &&
+            checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingControllerMicSessionId = sessionId
+            requestPermissions(
+                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                controllerMicPermissionRequestCode
+            )
+            return
+        }
+        enableControllerMicrophone(sessionId)
+    }
+
+    private fun enableControllerMicrophone(sessionId: String) {
+        val viewer = mediaViewers[sessionId]
+        if (viewer == null) {
+            setConnection("The remote media session is no longer active", false)
+            return
+        }
+        try {
+            ControllerVoiceForegroundService.start(this)
+            if (viewer.enableLocalMicrophone()) {
+                setConnection("Two-way voice active · Controller microphone is shared with the Client", true)
+            } else {
+                ControllerVoiceForegroundService.stop(this)
+                setConnection("Could not enable the Controller microphone", false)
+            }
+        } catch (error: Exception) {
+            ControllerVoiceForegroundService.stop(this)
+            setConnection("Microphone error · ${error.message ?: "permission or audio device unavailable"}", false)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != controllerMicPermissionRequestCode) return
+        val sessionId = pendingControllerMicSessionId
+        pendingControllerMicSessionId = null
+        if (sessionId == null) return
+        if (grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            enableControllerMicrophone(sessionId)
+        } else {
+            setConnection("Controller microphone permission was denied", false)
+        }
     }
 
     private fun handleMediaSignal(message: JSONObject) {
