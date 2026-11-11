@@ -339,42 +339,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun startHeartbeat(webSocket: WebSocket) {
-        if (heartbeatSocket === webSocket) return
-        heartbeatSocket = webSocket
-        Thread {
-            while (socket === webSocket && heartbeatSocket === webSocket) {
-                try {
-                    Thread.sleep(15_000)
-                } catch (_: InterruptedException) {
-                    return@Thread
-                }
-                if (socket === webSocket && heartbeatSocket === webSocket) {
-                    val heartbeat = runCatching {
-                        JSONObject().apply {
-                            put("type", "heartbeat")
-                            put("telemetry", deviceMetrics())
-                        }
-                    }.getOrElse {
-                        JSONObject().put("type", "heartbeat")
-                    }
-                    webSocket.send(heartbeat.toString())
-                }
-            }
-        }.start()
-    }
-
-    private fun scheduleReconnect() {
-        if (!shouldMaintainConnection || reconnectScheduled) return
-        reconnectScheduled = true
-        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
-        val delay = (1L shl reconnectAttempt) * 1000L
-        reconnectHandler.postDelayed({
-            reconnectScheduled = false
-            if (shouldMaintainConnection) connect()
-        }, delay)
-    }
-
     private fun registerPairingOffer(webSocket: WebSocket) {
         webSocket.send(JSONObject().apply {
             put("type", "client.register_pairing_offer")
