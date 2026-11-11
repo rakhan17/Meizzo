@@ -37,15 +37,18 @@ jobs:
           fi
 
       - name: Configure optional TURN credentials
-        if: ${{ secrets.REALTIME_TURN_TOKEN_ID != '' && secrets.REALTIME_TURN_TOKEN_SECRET != '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           REALTIME_TURN_TOKEN_ID: ${{ secrets.REALTIME_TURN_TOKEN_ID }}
           REALTIME_TURN_TOKEN_SECRET: ${{ secrets.REALTIME_TURN_TOKEN_SECRET }}
         run: |
-          printf '%s' "$REALTIME_TURN_TOKEN_ID" | npx --yes wrangler@4 secret put REALTIME_TURN_TOKEN_ID --config wrangler.toml
-          printf '%s' "$REALTIME_TURN_TOKEN_SECRET" | npx --yes wrangler@4 secret put REALTIME_TURN_TOKEN_SECRET --config wrangler.toml
+          if [ -n "$REALTIME_TURN_TOKEN_ID" ] && [ -n "$REALTIME_TURN_TOKEN_SECRET" ]; then
+            printf '%s' "$REALTIME_TURN_TOKEN_ID" | npx --yes wrangler@4 secret put REALTIME_TURN_TOKEN_ID --config wrangler.toml
+            printf '%s' "$REALTIME_TURN_TOKEN_SECRET" | npx --yes wrangler@4 secret put REALTIME_TURN_TOKEN_SECRET --config wrangler.toml
+          else
+            echo "TURN secrets not configured; Worker will use STUN fallback."
+          fi
 
       - name: Deploy Worker
         env:
