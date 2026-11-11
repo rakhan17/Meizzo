@@ -486,7 +486,7 @@ class MainActivity : Activity() {
         card.addView(uiActionButton("Request file transfer", false) {
             if (online) requestMediaSession(id, "files")
             else setConnection("Client is offline", false)
-        }, LinearLayout.LayoutParams(-1, dp(6)).apply { topMargin = dp(6) })
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         val interactionSession = approvedInteractionSessions[id]
         val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
