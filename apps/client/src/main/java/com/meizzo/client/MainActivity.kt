@@ -35,6 +35,7 @@ import java.io.File
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentHashMap
 import android.os.Handler
 import android.os.Looper
 
@@ -58,7 +59,7 @@ class MainActivity : Activity() {
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
-    private val pendingAlarmCommands = mutableMapOf<String, WebSocket>()
+    private val pendingAlarmCommands = ConcurrentHashMap<String, WebSocket>()
     private val alarmResultReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val requestId = intent?.getStringExtra(ConnectionForegroundService.EXTRA_REQUEST_ID) ?: return
