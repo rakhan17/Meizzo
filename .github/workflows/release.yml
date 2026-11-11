@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Test release version derivation
         run: python3 tests/test_release_version.py -v
       - uses: actions/setup-java@v4
@@ -45,6 +47,11 @@ jobs:
             release_tag="${{ inputs.release_tag }}"
           else
             release_tag="$GITHUB_REF_NAME"
+            git fetch --no-tags origin develop/v3:refs/remotes/origin/develop/v3
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop/v3; then
+              echo "::error::A v3 prerelease tag must point to a commit reachable from develop/v3."
+              exit 1
+            fi
           fi
           if [[ ! "$release_tag" =~ ^v3\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[1-9][0-9]{0,2}$ ]]; then
             echo "::error::The develop/v3 release workflow only accepts v3 prerelease tags; received: $release_tag"
