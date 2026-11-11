@@ -89,6 +89,7 @@ class MainActivity : Activity() {
     private var pendingAudioKind: String? = null
     private var pendingAudioProjectionData: android.content.Intent? = null
     private var activeMediaSessionId: String? = null
+    private var activeMediaKind: String? = null
     private var rtcMediaClient: RtcMediaClient? = null
     private val pendingMediaSignals = mutableMapOf<String, MutableList<JSONObject>>()
     private val iceServersBySession = mutableMapOf<String, JSONArray>()
@@ -508,6 +509,7 @@ class MainActivity : Activity() {
         rtcMediaClient?.close()
         rtcMediaClient = null
         activeMediaSessionId = sessionId
+        activeMediaKind = kind
         rtcMediaClient = RtcMediaClient(
             this,
             { signal ->
@@ -663,6 +665,7 @@ class MainActivity : Activity() {
         rtcMediaClient?.close()
         rtcMediaClient = null
         activeMediaSessionId = null
+        activeMediaKind = null
         pendingMediaSessionId = null
         pendingMediaKind = null
         pendingAudioSessionId = null
@@ -940,6 +943,15 @@ class MainActivity : Activity() {
                             .show()
                     }
                     return
+                }
+            }
+            "camera_flip" -> {
+                if (activeMediaKind != "camera") {
+                    error = "Start an approved remote camera session before switching cameras"
+                } else if (rtcMediaClient?.switchCamera() != true) {
+                    error = "Remote camera switching is unavailable on this device"
+                } else {
+                    result.put("accepted", true)
                 }
             }
             "volume_up", "volume_down", "volume_mute", "volume_unmute" -> {
