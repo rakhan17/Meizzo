@@ -942,6 +942,25 @@ class MainActivity : Activity() {
                     return
                 }
             }
+            "volume_up", "volume_down", "volume_mute", "volume_unmute" -> {
+                try {
+                    val manager = getSystemService(android.media.AudioManager::class.java)
+                    val adjustment = when (message.optString("command")) {
+                        "volume_up" -> android.media.AudioManager.ADJUST_RAISE
+                        "volume_down" -> android.media.AudioManager.ADJUST_LOWER
+                        "volume_mute" -> android.media.AudioManager.ADJUST_MUTE
+                        else -> android.media.AudioManager.ADJUST_UNMUTE
+                    }
+                    manager.adjustStreamVolume(
+                        android.media.AudioManager.STREAM_MUSIC,
+                        adjustment,
+                        android.media.AudioManager.FLAG_SHOW_UI
+                    )
+                    result.put("accepted", true)
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Android volume control failed"
+                }
+            }
             "key_backspace" -> {
                 val accessibility = RemoteAccessibilityService.instance
                 if (accessibility == null) {
