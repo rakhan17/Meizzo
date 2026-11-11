@@ -1189,7 +1189,8 @@ class MainActivity : Activity() {
                         .getString("tree_uri", null)?.let(android.net.Uri::parse)
                     runOnUiThread {
                         val pickerAction = {
-                            pendingRemoteFileBrowse = webSocket to message
+                            val rootRequest = JSONObject(message.toString()).put("parameters", JSONObject())
+                            pendingRemoteFileBrowse = webSocket to rootRequest
                             startActivityForResult(
                                 android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE),
                                 remoteFileTreeRequestCode
