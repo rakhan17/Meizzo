@@ -9,7 +9,7 @@ const PORT = Number(process.env.PORT || 8080);
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
 const PAIRING_WINDOW_MS = 60 * 1000;
 const PAIRING_MAX_ATTEMPTS_PER_WINDOW = 10;
-const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
+const HEARTBEAT_TIMEOUT_MS = Math.max(100, Number(process.env.HEARTBEAT_TIMEOUT_MS || 45_000));
 
 const pairingOffersByCode = new Map();
 const pairAttemptState = new Map();
