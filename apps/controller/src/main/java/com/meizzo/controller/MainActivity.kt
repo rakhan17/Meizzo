@@ -4,6 +4,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -16,6 +18,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -87,6 +90,50 @@ class MainActivity : ComponentActivity() {
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private var pendingUpdateApk: File? = null
 
+    private var connectionReceiverRegistered = false
+    private val connectionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            if (intent == null) return
+            when (intent.action) {
+                ControllerConnectionForegroundService.ACTION_MESSAGE -> {
+                    socket = ControllerConnectionForegroundService.activeSocket
+                    val payload = intent.getStringExtra(ControllerConnectionForegroundService.EXTRA_MESSAGE) ?: return
+                    val active = socket ?: return
+                    handleServerMessage(active, payload)
+                }
+                ControllerConnectionForegroundService.ACTION_STATE -> {
+                    socket = ControllerConnectionForegroundService.activeSocket
+                    val label = intent.getStringExtra(ControllerConnectionForegroundService.EXTRA_STATE).orEmpty()
+                    if (label.isNotBlank()) {
+                        setConnection(label, intent.getBooleanExtra(ControllerConnectionForegroundService.EXTRA_CONNECTED, false))
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!connectionReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(ControllerConnectionForegroundService.ACTION_MESSAGE)
+                addAction(ControllerConnectionForegroundService.ACTION_STATE)
+            }
+            ContextCompat.registerReceiver(this, connectionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            connectionReceiverRegistered = true
+        }
+        socket = ControllerConnectionForegroundService.activeSocket
+        startService(Intent(this, ControllerConnectionForegroundService::class.java).setAction(ControllerConnectionForegroundService.ACTION_REFRESH))
+    }
+
+    override fun onStop() {
+        if (connectionReceiverRegistered) {
+            runCatching { unregisterReceiver(connectionReceiver) }
+            connectionReceiverRegistered = false
+        }
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         connectionLabel = TextView(this).apply {
@@ -122,7 +169,7 @@ class MainActivity : ComponentActivity() {
         }
         renderDevices()
         startConnectionKeepAlive()
-        connect()
+        socket = ControllerConnectionForegroundService.activeSocket
     }
 
     private fun startConnectionKeepAlive() {
@@ -188,21 +235,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun connect() {
-        connectionLabel.text = "● Connecting to MEIZZO"
-        connectionLabel.setTextColor(Color.rgb(238, 190, 100))
-        socket = httpClient.newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    reconnectAttempt = 0
-                    reconnectScheduled = false
-                    runOnUiThread {
-                        connectionLabel.text = "● Connected to MEIZZO"
-                        connectionLabel.setTextColor(Color.rgb(120, 210, 170))
-                    }
-                    authenticateExisting(webSocket)
-                }
-
-                override fun onMessage(webSocket: WebSocket, text: String) {
+    private fun handleServerMessage(webSocket: WebSocket, text: String) {
                     val message = try {
                         JSONObject(text)
                     } catch (_: Exception) {
@@ -259,25 +292,6 @@ class MainActivity : ComponentActivity() {
                             connectionLabel.setTextColor(Color.rgb(240, 120, 120))
                         }
                     }
-                }
-
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    if (socket === webSocket && shouldMaintainConnection) {
-                        setConnection("Connection closed · reconnecting", false)
-                        scheduleReconnect()
-                    }
-                }
-
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    runOnUiThread {
-                        approvedInteractionSessions.clear()
-                        pendingInteractionSessions.clear()
-                        renderDevices()
-                    }
-                    setConnection(connectionFailureLabel(t), false)
-                    if (socket === webSocket && shouldMaintainConnection) scheduleReconnect()
-                }
-            })
     }
 
     private fun connectionFailureLabel(error: Throwable): String {
