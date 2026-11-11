@@ -2,22 +2,17 @@
 
 MEIZZO uses JSON messages over WebSocket. The hosted Worker accepts upgrades
 at `/` and `/ws`, and exposes `GET /healthz`. The server greeting
-(`system.hello`) advertises protocol version 2 and the currently implemented
-capabilities.
+(`system.hello`) advertises protocol version 2 and server capabilities.
 
-The hosted Worker implementation in
-`services/signaling/cloudflare/worker.js` is authoritative for the deployed
-endpoint. The Node.js harness in `services/signaling/src/server.js` is used
-for local development and tests; keep both implementations compatible when
-changing message contracts.
+The hosted Worker in `services/signaling/cloudflare/worker.js` and the local
+Node.js harness in `services/signaling/src/server.js` must remain compatible.
 
 ## Connection
 
-- Transport: WebSocket Secure (WSS) for the published Android release.
-- Health: `GET /healthz`.
+- Transport: WSS for signaling in the hosted Android configuration.
+- Media: WebRTC peer-to-peer video and DataChannel after Client approval.
 - Protocol version: `2`.
-- Server capabilities: pairing, token authentication, presence, telemetry,
-  device commands, and multi-device routing.
+- Session authorization is participant- and connection-bound.
 
 ## Client messages
 
@@ -27,8 +22,10 @@ changing message contracts.
 | `client.pairing_decision` | Approve or reject a pending pairing request |
 | `auth.connect` | Authenticate as Client using its issued token |
 | `heartbeat` | Refresh presence and optionally send telemetry |
-| `client.session_decision` | Approve or reject a session request |
+| `client.session_decision` | Approve or reject a pending session |
+| `client.end_session` | End an approved media session from the Client side |
 | `client.result` | Return a snapshot or command result |
+| `media.signal` | Send WebRTC offer/answer/ICE or stream metadata for an approved media session |
 
 ## Controller messages
 
@@ -37,12 +34,13 @@ changing message contracts.
 | `controller.request_pairing` | Submit a Client's six-digit code |
 | `auth.connect` | Authenticate as Controller using its issued token |
 | `controller.list_devices` | Retrieve authorized paired Clients |
-| `controller.rename_device` | Set a local display alias for an authorized Client |
+| `controller.rename_device` | Set a local display alias |
 | `controller.revoke_device` | Revoke the Controller's relationship with a Client |
 | `controller.request_snapshot` | Request the current Client snapshot |
 | `controller.start_session` | Request a scoped session from a Client |
 | `controller.end_session` | End a session owned by the authenticated Controller |
 | `controller.command` | Send a supported command, subject to authorization/session checks |
+| `media.signal` | Send WebRTC offer/answer/ICE for an approved media session |
 
 ## Server events
 
@@ -62,19 +60,49 @@ changing message contracts.
 | `device.revoked` | Relationship revoked |
 | `session.status` | Controller-side session state |
 | `client.session_status` | Client-side session state |
+| `media.signal` | Authenticated peer's WebRTC signaling payload |
 | `heartbeat.ack` | Heartbeat acknowledgement |
 | `error` | Machine-readable error code and message |
 
 ## Session types and states
 
 The Worker recognizes `monitoring`, `screen`, `camera`, `interaction`,
-and `files` as session type labels. The current session lifecycle includes
-`pending`, `approved`, `rejected`, `failed`, and `ended` states.
+and `files`. Session states include `pending`, `approved`, `rejected`,
+`failed`, and `ended`.
 
-Session approval is authorization metadata. It does not create a WebRTC
-connection or implement screen capture, camera streaming, file transfer, or
-general input control. The current interaction command path requires an
-approved `interaction` session.
+- `screen`: Client MediaProjection video track.
+- `camera`: Client Camera2 video track.
+- `interaction`: authorization for supported remote input and lock commands.
+- `files`: ordered WebRTC DataChannel for user-selected file transfer.
+- `monitoring`: telemetry/monitoring authorization.
+
+Only approved screen, camera, or files sessions accept `media.signal`.
+The Worker checks that the sender is the authenticated session participant
+and relays only signaling messages. It does not relay media or file bytes.
+
+## WebRTC signal payloads
+
+The `media.signal` envelope is:
+
+```json
+{
+  "type": "media.signal",
+  "sessionId": "approved-session-id",
+  "signal": {
+    "type": "offer",
+    "sdp": "..."
+  }
+}
+```
+
+Supported signal payload types include:
+
+- `offer` and `answer` with SDP text.
+- `candidate` with `sdpMid`, `sdpMLineIndex`, and ICE candidate text.
+- `stream_info` with the Client display width and height.
+- `error` with a short failure message.
+
+Payloads must be JSON objects and are size-limited by the Worker.
 
 ## Pairing and authorization notes
 
@@ -84,16 +112,11 @@ approved `interaction` session.
 - Client and Controller receive separate random authentication tokens.
 - Controller access is checked against the specific Client relationship.
 - Revocation removes the relevant Controller tokens and relationship.
+- Session signaling is bound to the session participants and their current
+  authenticated socket connections.
 
-## Errors
+## Errors and compatibility
 
 Errors use `type: "error"` with a machine-readable `code` and a
-human-readable `message`. Pairing failures may be returned through
-`controller.pairing_result` with a status such as `failed`,
-`rejected`, or `rate_limited`.
-
-## Compatibility rule
-
-Do not add a message type to this document until it exists in the deployed
-Worker and corresponding tests. Do not treat the session type list as proof
-that the related media or device capability is implemented.
+human-readable `message`. Do not add a message type to this document until
+it exists in both the hosted Worker, local harness, and automated tests.
