@@ -147,6 +147,11 @@ class MainActivity : Activity() {
         })
         startConnectionForegroundService()
         connect()
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4103)
+        }
     }
 
     private fun startConnectionForegroundService() {
@@ -502,6 +507,41 @@ class MainActivity : Activity() {
                     alarm = null
                 }
                 result.put("enabled", enabled)
+            }
+            "emergency_message" -> {
+                val emergencyText = parameters.optString("message").trim()
+                if (emergencyText.isBlank() || emergencyText.length > 240) {
+                    error = "Emergency message must contain 1–240 characters"
+                } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    error = "Notification permission is required on this Client"
+                } else {
+                    val channelId = "meizzo_emergency_message"
+                    if (android.os.Build.VERSION.SDK_INT >= 26) {
+                        val channel = android.app.NotificationChannel(
+                            channelId, "Emergency phone messages",
+                            android.app.NotificationManager.IMPORTANCE_HIGH
+                        ).apply {
+                            description = "Messages sent by the paired MEIZZO Controller"
+                            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+                        }
+                        getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(channel)
+                    }
+                    val notification = androidx.core.app.NotificationCompat.Builder(this, channelId)
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle("Emergency message")
+                        .setContentText(emergencyText)
+                        .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(emergencyText))
+                        .setPriority(androidx.core.app.NotificationCompat.PRIORITY_MAX)
+                        .setCategory(androidx.core.app.NotificationCompat.CATEGORY_MESSAGE)
+                        .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PUBLIC)
+                        .setAutoCancel(true)
+                        .build()
+                    androidx.core.app.NotificationManagerCompat.from(this).notify(2601, notification)
+                    result.put("shown", true)
+                    result.put("visibility", "Android lock-screen settings apply")
+                }
             }
             else -> error = "Unsupported command"
         }

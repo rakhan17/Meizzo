@@ -473,6 +473,8 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Alarm off", false) { sendDeviceCommand(id, "alarm", false) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Send emergency message", false) { composeEmergencyMessage(id) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         }
         devicesLayout.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 12, 0, 0) })
     }
@@ -593,6 +595,36 @@ class MainActivity : Activity() {
             put("sessionId", sessionId)
             put("reason", "controller_ended")
         }.toString())
+    }
+
+    private fun composeEmergencyMessage(clientId: String) {
+        val input = EditText(this).apply {
+            hint = "This phone is lost. Please call…"
+            minLines = 2
+            maxLines = 4
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(240))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Send emergency message")
+            .setMessage("MEIZZO will post this as a notification on the Client. Lock-screen visibility depends on that device's Android notification settings.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Send") { _, _ ->
+                val message = input.text.toString().trim()
+                if (message.isBlank()) {
+                    setConnection("Emergency message cannot be empty", false)
+                    return@setPositiveButton
+                }
+                socket?.send(JSONObject().apply {
+                    put("type", "controller.command")
+                    put("clientId", clientId)
+                    put("command", "emergency_message")
+                    put("parameters", JSONObject().put("message", message))
+                }.toString())
+                setConnection("Emergency message sent to Client", true)
+            }
+            .show()
     }
 
     private fun sendDeviceCommand(clientId: String, command: String, enabled: Boolean) {
