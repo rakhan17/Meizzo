@@ -7,6 +7,7 @@ import org.json.JSONObject
 import org.webrtc.Camera2Enumerator
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.DataChannel
 import org.webrtc.EglBase
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
@@ -27,7 +28,8 @@ import org.webrtc.MediaConstraints
 class RtcMediaClient(
     private val context: Context,
     private val sendSignal: (JSONObject) -> Unit,
-    private val onFailure: (String) -> Unit
+    private val onFailure: (String) -> Unit,
+    private val onDataChannel: (DataChannel) -> Unit = {}
 ) {
     private val egl = EglBase.create()
     private val factory: PeerConnectionFactory
@@ -85,6 +87,19 @@ class RtcMediaClient(
         capture.initialize(textureHelper, context, videoSource!!.capturerObserver)
         capture.startCapture(if (kind == "screen") 1280 else 960, if (kind == "screen") 720 else 540, 15)
 
+        if (!createPeerConnection()) return
+        val track = factory.createVideoTrack("MEIZZO_VIDEO_$sessionId", videoSource)
+        track.setEnabled(true)
+        peer?.addTrack(track, listOf("MEIZZO_STREAM_$sessionId"))
+    }
+
+    fun startFiles(sessionId: String) {
+        this.sessionId = sessionId
+        createPeerConnection()
+    }
+
+    private fun createPeerConnection(): Boolean {
+        if (peer != null) return true
         val configuration = PeerConnection.RTCConfiguration(
             listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
         ).apply {
@@ -109,17 +124,16 @@ class RtcMediaClient(
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>) = Unit
             override fun onAddStream(stream: org.webrtc.MediaStream?) = Unit
             override fun onRemoveStream(stream: org.webrtc.MediaStream?) = Unit
-            override fun onDataChannel(channel: org.webrtc.DataChannel?) = Unit
+            override fun onDataChannel(channel: DataChannel?) { channel?.let(onDataChannel) }
             override fun onRenegotiationNeeded() = Unit
             override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) = Unit
             override fun onTrack(transceiver: org.webrtc.RtpTransceiver?) = Unit
-        }) ?: run {
+        })
+        if (peer == null) {
             onFailure("Unable to create WebRTC peer connection")
-            return
+            return false
         }
-        val track = factory.createVideoTrack("MEIZZO_VIDEO_$sessionId", videoSource)
-        track.setEnabled(true)
-        peer?.addTrack(track, listOf("MEIZZO_STREAM_$sessionId"))
+        return true
     }
 
     fun onSignal(signal: JSONObject) {
