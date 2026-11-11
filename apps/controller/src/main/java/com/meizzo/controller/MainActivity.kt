@@ -326,7 +326,7 @@ class MainActivity : Activity() {
                                             }
                                             .show()
                                     }
-                                } else if (!commandResult.has("clipboardWritten")) {
+                                } else if (!commandResult.has("clipboardWritten") && !commandResult.has("accepted") && !commandResult.has("charactersInserted")) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
                                 val metadata = current.optJSONObject("metadata") ?: JSONObject()
                                 val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
