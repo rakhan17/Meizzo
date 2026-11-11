@@ -107,6 +107,12 @@ async function run() {
   await signaling.webSocketMessage(client, JSON.stringify({
     type: 'client.session_decision', sessionId: screenPending.sessionId, approved: true
   }));
+  const controllerIce = controller.take(m => m.type === 'media.ice_servers' && m.sessionId === screenPending.sessionId, 'Controller ICE server configuration');
+  const clientIce = client.take(m => m.type === 'media.ice_servers' && m.sessionId === screenPending.sessionId, 'Client ICE server configuration');
+  if (!controllerIce.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478')) ||
+      !clientIce.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478'))) {
+    throw new Error('Cloudflare STUN fallback was not delivered to both media peers');
+  }
   controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'approved', 'screen session approved');
 
   await signaling.webSocketMessage(controller, JSON.stringify({
