@@ -134,11 +134,13 @@ class RtcMediaClient(
             return
         }
         if (includeAudio) {
-            audioSource = factory.createAudioSource(MediaConstraints())
-            audioTrack = factory.createAudioTrack("MEIZZO_AUDIO_$sessionId", audioSource).apply {
+            val source = factory.createAudioSource(MediaConstraints())
+            audioSource = source
+            val microphoneTrack = factory.createAudioTrack("MEIZZO_AUDIO_$sessionId", source).apply {
                 setEnabled(true)
             }
-            if (peer?.addTrack(audioTrack, listOf("MEIZZO_AUDIO_STREAM_$sessionId")) == null) {
+            audioTrack = microphoneTrack
+            if (peer?.addTrack(microphoneTrack, listOf("MEIZZO_AUDIO_STREAM_$sessionId")) == null) {
                 onFailure("Unable to attach the microphone audio track to WebRTC")
                 return
             }
