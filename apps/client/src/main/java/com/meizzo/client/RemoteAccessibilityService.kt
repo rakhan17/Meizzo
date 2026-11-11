@@ -94,6 +94,22 @@ class RemoteAccessibilityService : AccessibilityService() {
     }
 
     /**
+     * Converts a two-finger Controller trackpad movement into an Android scroll
+     * gesture. Positive deltas represent the fingers moving toward the top/left.
+     */
+    fun scroll(deltaX: Double, deltaY: Double): Boolean {
+        if (!deltaX.isFinite() || !deltaY.isFinite() ||
+            deltaX !in -0.35..0.35 || deltaY !in -0.35..0.35 ||
+            (kotlin.math.abs(deltaX) < 0.01 && kotlin.math.abs(deltaY) < 0.01)
+        ) return false
+        val startX = (0.5 + deltaX / 2.0).coerceIn(0.15, 0.85)
+        val endX = (0.5 - deltaX / 2.0).coerceIn(0.15, 0.85)
+        val startY = (0.5 + deltaY / 2.0).coerceIn(0.15, 0.85)
+        val endY = (0.5 - deltaY / 2.0).coerceIn(0.15, 0.85)
+        return swipe(startX, startY, endX, endY, 220L)
+    }
+
+    /**
      * Appends text to the currently focused, non-password input field.
      * Accessibility cannot safely or reliably type into every custom keyboard/editor;
      * report failure instead of pretending the text was entered.
