@@ -11,6 +11,7 @@ on:
   pull_request:
     paths:
       - "wrangler.toml"
+      - "wrangler.v3.toml"
       - "services/signaling/cloudflare/**"
       - ".github/workflows/meizzo-cloudflare.yml"
   workflow_dispatch:
