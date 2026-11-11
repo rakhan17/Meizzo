@@ -214,7 +214,7 @@ class RtcMediaClient(
         cameraCapturer.switchCamera(object : CameraVideoCapturer.CameraSwitchHandler {
             override fun onCameraSwitchDone(isFrontCamera: Boolean) = Unit
             override fun onCameraSwitchError(errorDescription: String?) {
-                onFailure(errorDescription ?: "Unable to switch remote camera")
+                Log.e("MEIZZO_MEDIA", errorDescription ?: "Unable to switch remote camera")
             }
         })
         return true
