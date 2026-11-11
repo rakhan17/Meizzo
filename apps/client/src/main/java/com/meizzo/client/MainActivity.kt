@@ -952,7 +952,7 @@ class MainActivity : Activity() {
             "text_input" -> {
                 val text = parameters.optString("text")
                 val accessibility = RemoteAccessibilityService.instance
-                if (text.isBlank() || text.length > 2_000) {
+                if (text.isEmpty() || text.length > 2_000) {
                     error = "Text input must contain 1–2,000 characters"
                 } else if (accessibility == null) {
                     error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
