@@ -1278,7 +1278,7 @@ class MainActivity : Activity() {
                     .setTitle(name)
                     .setMessage(
                         if (isDirectory) "Folder · open, or rename if this storage provider allows it."
-                        else "$mime\\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}"
+                        else "$mime\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}"
                     )
                 if (isDirectory) {
                     entryDialog.setPositiveButton("Open") { _, _ ->
