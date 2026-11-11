@@ -101,7 +101,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 ## Product capabilities
 
-### Available in the Android beta
+### Android v3 development capabilities (not in v2.5.0 stable)
 
 - Six-digit pairing codes with a short lifetime and single-use behavior.
 - Explicit approval on the Client before a Controller is paired.
