@@ -106,16 +106,14 @@ class FileTransferCoordinator(
 
     fun sendFiles(uris: List<Uri>) {
         if (closed) {
-            onStatus("File transfer session has ended")
-            return
+            throw IllegalStateException("File transfer session has ended")
         }
         if (channel.state() != DataChannel.State.OPEN) {
             throw IllegalStateException("File channel is not connected yet")
         }
         if (uris.isEmpty()) return
         if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
-            onStatus("Finish or cancel the current file transfer before starting another")
-            return
+            throw IllegalStateException("Finish or cancel the current file transfer before starting another")
         }
         outgoingQueue.clear()
         outgoingQueue.addAll(uris)
