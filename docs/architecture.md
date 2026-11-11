@@ -153,7 +153,7 @@ metadata offer; the receiver chooses a destination; content is sent in 12 KiB
 Base64-encoded chunks with one acknowledgement per chunk. The current maximum
 file size is 50 MiB.
 
-Transfer resume, parallel chunking, large-file optimization, and independent
+Transfer resume, parallel chunking, large-file optimization, and signed
 integrity manifests are not implemented yet.
 
 ## 7. Security boundaries and limitations
