@@ -31,7 +31,7 @@ build does not prove runtime behavior on every Android vendor or network.
 - File transfer prototype:
   - Bidirectional send/receive over an ordered WebRTC DataChannel.
   - Android Storage Access Framework for source and destination selection.
-  - 12 KiB stop-and-wait chunks with per-chunk acknowledgements.
+  - 12 KiB stop-and-wait chunks with per-chunk acknowledgements and SHA-256 verification.
   - 50 MiB maximum file size; transfer resume is not implemented.
 - Android Keystore-backed AES-GCM credential storage, foreground connection
   services, reconnect backoff, and updater verification.
