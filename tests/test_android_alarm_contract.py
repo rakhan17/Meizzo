@@ -31,6 +31,7 @@ class AndroidAlarmContractTests(unittest.TestCase):
     def test_local_notification_can_stop_alarm(self):
         self.assertIn('builder.addAction(android.R.drawable.ic_media_pause, "Stop alarm", stopAlarm)', self.service)
         self.assertIn("ACTION_ALARM_OFF", self.service)
+        self.assertIn("Stop alarm on this device", self.client)
 
     def test_client_acknowledges_only_after_service_result(self):
         self.assertIn("ACTION_ALARM_RESULT", self.service)
