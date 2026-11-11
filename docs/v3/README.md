@@ -39,7 +39,7 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 
 - WSS authenticates and authorizes signaling. It is not itself a media transport.
 - Media signaling is accepted only for an approved screen, camera, or file session and only from a session participant.
-- WebRTC media transport currently uses STUN only. TURN relay deployment, reconnection/recovery, bitrate adaptation, and end-to-end media security review remain before screen/camera streaming is production-ready.
+- WebRTC uses Cloudflare STUN by default and supports short-lived Cloudflare Realtime TURN credentials when Worker secrets are configured. Production TURN setup, reconnection/recovery, bitrate adaptation, and end-to-end media security review remain before screen/camera streaming is production-ready.
 - File transfer currently uses stop-and-wait Base64 chunks over an ordered DTLS-protected WebRTC DataChannel; it is a functional prototype with SHA-256 completion checks, not yet optimized for large files or resumable transfer.
 - No iOS hosting capability is claimed. iOS capture and control require a separate platform implementation and Apple permission constraints.
 - Android permissions and Accessibility access remain controlled by the device owner and operating system.
