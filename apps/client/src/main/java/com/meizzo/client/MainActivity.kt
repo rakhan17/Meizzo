@@ -1178,7 +1178,14 @@ class MainActivity : Activity() {
                     val savedTree = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
                         .getString("tree_uri", null)?.let(android.net.Uri::parse)
                     runOnUiThread {
-                        AlertDialog.Builder(this)
+                        val pickerAction = {
+                            pendingRemoteFileBrowse = webSocket to message
+                            startActivityForResult(
+                                android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE),
+                                remoteFileTreeRequestCode
+                            )
+                        }
+                        val dialog = AlertDialog.Builder(this)
                             .setTitle("Allow remote folder browsing?")
                             .setMessage(
                                 "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. File contents are not exposed by browsing."
@@ -1186,13 +1193,9 @@ class MainActivity : Activity() {
                             .setNegativeButton("Deny") { _, _ ->
                                 sendCommandFailure(webSocket, message, "Remote folder browsing was denied")
                             }
-                            .setPositiveButton("Continue") { _, _ ->
+                            .setPositiveButton(if (savedTree == null) "Choose folder" else "Browse") { _, _ ->
                                 if (savedTree == null) {
-                                    pendingRemoteFileBrowse = webSocket to message
-                                    startActivityForResult(
-                                        android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE),
-                                        remoteFileTreeRequestCode
-                                    )
+                                    pickerAction()
                                 } else {
                                     try {
                                         val rootId = android.provider.DocumentsContract.getTreeDocumentId(savedTree)
@@ -1207,7 +1210,10 @@ class MainActivity : Activity() {
                             .setOnCancelListener {
                                 sendCommandFailure(webSocket, message, "Remote folder browsing was cancelled")
                             }
-                            .show()
+                        if (savedTree != null) {
+                            dialog.setNeutralButton("Change folder") { _, _ -> pickerAction() }
+                        }
+                        dialog.show()
                     }
                     return
                 }
