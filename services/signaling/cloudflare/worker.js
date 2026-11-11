@@ -260,6 +260,16 @@ export class MeizzoSignaling {
         if (!d) return this.sendError(ws, "unauthorized", "Not authorized for this device");
         if (!SESSION_TYPES.has(m.sessionType)) return this.sendError(ws, "invalid_session_type", "Unsupported session type");
         if (d.status !== "online") return this.sendError(ws, "offline", "Client is offline");
+        const activeDuplicate = Object.values(s.sessions).some(session =>
+          session.clientId === d.clientId &&
+          ["pending", "approved"].includes(session.state) &&
+          (m.sessionType === "interaction"
+            ? session.sessionType === "interaction"
+            : session.controllerId === a.controllerId && session.sessionType === m.sessionType)
+        );
+        if (activeDuplicate) {
+          return this.sendError(ws, "session_already_active", "An equivalent session is already active for this Client");
+        }
         const sessionId = id();
         const session = { sessionId, clientId: d.clientId, controllerId: a.controllerId, controllerToken: a.token, sessionType: m.sessionType, state: "pending", createdAtMs: t };
         s.sessions[sessionId] = session; await this.save(s);
@@ -340,14 +350,45 @@ export class MeizzoSignaling {
 
   async webSocketClose(ws) {
     const a = this.attachment(ws);
+    const s = await this.state();
+
+    // A Controller disconnect ends sessions owned by that live connection.
+    // This mirrors the local signaling server and prevents an orphaned
+    // approved session from blocking a fresh Client consent request.
+    if (a.role === "controller" && a.controllerId) {
+      const tokens = new Set(a.tokens || [a.token].filter(Boolean));
+      let changed = false;
+      for (const [sessionId, session] of Object.entries(s.sessions)) {
+        if (session.controllerId !== a.controllerId ||
+            (tokens.size && !tokens.has(session.controllerToken)) ||
+            !["pending", "approved"].includes(session.state)) continue;
+        session.state = "ended";
+        session.endedAtMs = now();
+        session.terminationReason = "controller_disconnected";
+        const payload = {
+          type: "session.status",
+          sessionId,
+          clientId: session.clientId,
+          controllerId: session.controllerId,
+          sessionType: session.sessionType,
+          state: "ended",
+          createdAtMs: session.createdAtMs,
+          endedAtMs: session.endedAtMs,
+          terminationReason: session.terminationReason
+        };
+        this.sendController(session.controllerId, payload);
+        this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+        delete s.sessions[sessionId];
+        changed = true;
+      }
+      if (changed) await this.save(s);
+      return;
+    }
+
     if (a.role !== "client" || !a.clientId) return;
 
-    // A WebSocket close can be caused by Android background suspension or a
-    // transient network handoff. Do not equate socket closure with device
-    // unavailability. The durable-object alarm marks the device offline only
-    // after its authenticated heartbeat has exceeded HEARTBEAT_TIMEOUT_MS.
-    // A reconnect updates clientConnId and refreshes clientHeartbeat.
-    const s = await this.state();
+    // A Client socket close may be a transient Android/network handoff.
+    // Presence is changed only after the heartbeat timeout in alarm().
     const d = s.devices[a.clientId];
     if (d && d.clientConnId === a.connId) {
       console.log(JSON.stringify({
