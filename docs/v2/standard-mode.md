@@ -1,9 +1,20 @@
 # Standard Mode
 
-Standard Mode is the current beta trust model: a user opens Client, presents
-an expiring six-digit code, enters it in Controller, and explicitly approves
-the pairing request. The resulting relationship can be revoked and is
-independent for each Client.
+Standard Mode is the current beta trust model:
 
-V2 will add session-scoped consent and a visible trusted-controller list before
-screen, camera, location, file, or interaction features are enabled.
+1. Client opens and presents a temporary six-digit pairing code.
+2. Controller submits the code.
+3. Client explicitly approves or rejects the pairing request.
+4. Signaling issues separate credentials for Client and Controller.
+5. Controller can monitor the paired Client's presence and available telemetry.
+6. A Controller requests a scoped session before supported interaction
+   commands can be routed.
+7. Client explicitly approves or rejects each session request.
+
+Pairing and session approval are separate decisions. A paired Controller does
+not gain silent access to sensitive device capabilities.
+
+The current session lifecycle is authorization metadata only. Screen capture,
+camera streaming, file transfer, location sharing, and general remote input
+remain unavailable until their platform permissions, transports, and
+capability-specific consent flows are implemented and tested.
