@@ -73,7 +73,7 @@ state. It is for local development and automated tests, not production.
   so direct connectivity can fail behind restrictive NATs, carrier-grade NAT,
   or firewalls.
 - File transfer is a stop-and-wait prototype with a 50 MiB per-file limit.
-  It does not yet support resume or independent integrity manifests.
+  It verifies a final SHA-256 hash but does not yet support resume or signed manifests.
 - Physical-device and cross-network acceptance testing remains outstanding.
 
 ## Security assurance and certifications
