@@ -29,10 +29,11 @@ One-time setup in Cloudflare Dashboard:
 8. Set the deploy command to:
 
    ```bash
-   npx wrangler deploy --config wrangler.v3.toml
+   npx --yes wrangler@4 deploy --config wrangler.v3.toml
    ```
 
-9. Use Cloudflare Workers Builds' automatically generated API token. Do not create GitHub Actions secrets for Cloudflare and never commit a personal API token.
+9. Set Preview command to `npx --yes wrangler@4 preview --config wrangler.v3.toml` and leave Build command blank.
+10. Use Cloudflare Workers Builds' automatically generated API token. Do not create GitHub Actions secrets for Cloudflare and never commit a personal API token.
 10. Save and deploy.
 
 After this one-time setup, pushes to `develop/v3` automatically build and deploy only the v3 Worker. The existing `main` → `meizzo-signaling` project remains unchanged. GitHub Actions separately runs the Worker dry-run and regression tests.
