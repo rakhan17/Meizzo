@@ -237,7 +237,6 @@ class RtcMediaController(
         localAudioTrack = null
         localAudioSource?.dispose()
         localAudioSource = null
-        localAudioSender = null
         localAudioEnabled = false
     }
 
