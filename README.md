@@ -20,7 +20,7 @@ session-scoped authorization.
 
 [Downloads](#downloads) · [Documentation](#documentation) ·
 [Architecture](#architecture) · [Security](#security-and-assurance) ·
-[Releases](https://github.com/rakhan17/Meizzo/releases)
+[Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
