@@ -156,6 +156,7 @@ function terminateSessionsForConnection(connection, role, identity, reason) {
       ? session.clientConnection === connection && session.clientId === identity
       : session.controllerConnection === connection && session.controllerId === identity;
     if (!matches || !['pending', 'approved'].includes(session.state)) continue;
+    if (session.state === 'approved') continue;
     session.state = 'failed';
     session.endedAtMs = nowMs();
     session.terminationReason = reason;
@@ -743,6 +744,11 @@ wss.on('connection', (ws) => {
     }
     for (const [sessionId, session] of sessions) {
       if (session.controllerConnection !== ws && session.clientConnection !== ws) continue;
+      if (session.state === 'approved') {
+        if (session.clientConnection === ws) session.clientConnection = null;
+        if (session.controllerConnection === ws) session.controllerConnection = null;
+        continue;
+      }
       session.state = 'failed';
       session.endedAtMs = nowMs();
       session.terminationReason = session.clientConnection === ws
