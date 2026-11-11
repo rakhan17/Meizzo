@@ -999,6 +999,28 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            "key_shortcut" -> {
+                val shortcut = parameters.optString("shortcut")
+                val keyCode = when (shortcut) {
+                    "select_all" -> android.view.KeyEvent.KEYCODE_A
+                    "copy" -> android.view.KeyEvent.KEYCODE_C
+                    "paste" -> android.view.KeyEvent.KEYCODE_V
+                    "cut" -> android.view.KeyEvent.KEYCODE_X
+                    "undo" -> android.view.KeyEvent.KEYCODE_Z
+                    "redo" -> android.view.KeyEvent.KEYCODE_Y
+                    else -> -1
+                }
+                val accessibility = RemoteAccessibilityService.instance
+                if (keyCode < 0) {
+                    error = "Unsupported keyboard shortcut"
+                } else if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!accessibility.sendShortcut(keyCode)) {
+                    error = "Android 13+ active text input connection is required for this shortcut"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
             "text_input" -> {
                 val text = parameters.optString("text")
                 val accessibility = RemoteAccessibilityService.instance
