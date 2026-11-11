@@ -961,14 +961,29 @@ class MainActivity : Activity() {
                     error = exception.message ?: "Android volume control failed"
                 }
             }
-            "key_backspace" -> {
+            "key_backspace", "key_enter", "key_tab", "key_escape",
+            "key_left", "key_right", "key_up", "key_down" -> {
                 val accessibility = RemoteAccessibilityService.instance
+                val keyCode = when (message.optString("command")) {
+                    "key_backspace" -> android.view.KeyEvent.KEYCODE_DEL
+                    "key_enter" -> android.view.KeyEvent.KEYCODE_ENTER
+                    "key_tab" -> android.view.KeyEvent.KEYCODE_TAB
+                    "key_escape" -> android.view.KeyEvent.KEYCODE_ESCAPE
+                    "key_left" -> android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                    "key_right" -> android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+                    "key_up" -> android.view.KeyEvent.KEYCODE_DPAD_UP
+                    else -> android.view.KeyEvent.KEYCODE_DPAD_DOWN
+                }
                 if (accessibility == null) {
                     error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
-                } else if (!accessibility.deleteBackward()) {
-                    error = "No editable non-password field is focused, or Android rejected Backspace"
                 } else {
-                    result.put("accepted", true)
+                    val sent = accessibility.sendKey(keyCode)
+                    val fallback = message.optString("command") == "key_backspace" && accessibility.deleteBackward()
+                    if (!sent && !fallback) {
+                        error = "Android 13+ active text input connection is required for this key, or the editor rejected it"
+                    } else {
+                        result.put("accepted", true)
+                    }
                 }
             }
             "text_input" -> {
