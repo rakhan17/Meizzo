@@ -98,6 +98,38 @@ async function run() {
     m.state === 'ended' && m.terminationReason === 'controller_disconnected', 'Client cleanup after Controller disconnect');
   if (Object.keys(stored.sessions).length !== 0) throw new Error('Controller disconnect left an orphaned session');
 
+  const screenStart = await signaling.webSocketMessage(controller, JSON.stringify({
+    type: 'controller.start_session', clientId: 'client-1', sessionType: 'screen'
+  }));
+  const screenPending = controller.take(m => m.type === 'session.status' && m.sessionType === 'screen' && m.state === 'pending', 'screen session pending');
+  client.take(m => m.type === 'client.session_status' && m.sessionId === screenPending.sessionId, 'screen consent request');
+  await signaling.webSocketMessage(client, JSON.stringify({
+    type: 'client.session_decision', sessionId: screenPending.sessionId, approved: true
+  }));
+  controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'approved', 'screen session approved');
+
+  await signaling.webSocketMessage(controller, JSON.stringify({
+    type: 'media.signal', sessionId: screenPending.sessionId,
+    signal: { type: 'offer', sdp: 'v=0\\r\\no=worker-test' }
+  }));
+  const workerOffer = client.take(m => m.type === 'media.signal' && m.sessionId === screenPending.sessionId, 'WebRTC offer forwarded to Client');
+  if (workerOffer.fromRole !== 'controller' || workerOffer.signal.type !== 'offer') {
+    throw new Error('Cloudflare Worker did not relay the authorized media offer');
+  }
+  await signaling.webSocketMessage(client, JSON.stringify({
+    type: 'media.signal', sessionId: screenPending.sessionId,
+    signal: { type: 'answer', sdp: 'v=0\\r\\na=worker-answer' }
+  }));
+  const workerAnswer = controller.take(m => m.type === 'media.signal' && m.sessionId === screenPending.sessionId, 'WebRTC answer forwarded to Controller');
+  if (workerAnswer.fromRole !== 'client' || workerAnswer.signal.type !== 'answer') {
+    throw new Error('Cloudflare Worker did not relay the authorized media answer');
+  }
+  await signaling.webSocketMessage(controller, JSON.stringify({
+    type: 'controller.end_session', sessionId: screenPending.sessionId
+  }));
+  controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'screen session ended');
+  client.take(m => m.type === 'client.session_status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'Client screen session ended');
+
   console.log('worker-sessions.test: OK');
 }
 
