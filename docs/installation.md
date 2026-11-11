@@ -2,21 +2,29 @@
 
 ## Android
 
-Download the Client and Controller APK separately from the verified GitHub
-release. Android may require the user to confirm installation from the browser
-or file manager that opened the APK. Never install an APK whose package ID or
-signature is not expected.
+Download the latest Client and Controller APKs separately from the
+[beta.5 GitHub Release](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5).
 
-The in-app updater uses Android Package Installer after HTTPS download,
-checksum validation, package validation, and signing-certificate comparison.
+- Install **MEIZZO Client** on the device receiving assistance.
+- Install **MEIZZO Controller** on the operator device.
+- Android may ask you to allow installation from the browser or file manager
+  used to open the APK.
+- Review the app identity and requested permissions before continuing.
 
-## iOS Simulator
+The in-app updater downloads the app-specific release asset over HTTPS,
+validates its SHA-256, package identity, and signing certificate, then
+delegates installation to Android Package Installer. Android still requires
+user confirmation.
 
-Download the matching Simulator ZIP, extract the `.app`, and install it with
-Xcode/Simulator tooling on macOS. This artifact is not an iPhone package.
+If an older installation was signed with a different certificate, Android
+will reject an in-place update. Do not bypass the signature check.
 
-## iPhone/iPad
+## iOS
 
-Use TestFlight, App Store, development distribution, or a signed Ad Hoc IPA
-with matching provisioning. The repository does not publish an IPA until the
-manual Apple credential workflow succeeds.
+iOS is still under development. CI Simulator builds are for engineering
+validation and are not public physical-device downloads.
+
+A physical iPhone/iPad build requires Apple signing and matching provisioning.
+Use TestFlight, App Store, development distribution, or a properly signed
+Ad Hoc IPA when that workflow is ready. A Simulator ZIP must never be renamed
+to `.ipa`.
