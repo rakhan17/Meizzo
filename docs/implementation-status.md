@@ -17,6 +17,8 @@ build does not prove runtime behavior on every Android vendor or network.
   - Android MediaProjection system consent.
   - Foreground media-projection service.
   - WebRTC video publishing from Client and video rendering in Controller.
+  - Stats-driven sender bitrate ceiling adapts to available outgoing bandwidth, remote packet loss, and RTT while retaining WebRTC's native congestion control.
+  - Controller initiates bounded ICE-restart renegotiation after sustained disconnection or ICE failure.
   - ICE offer/answer/candidate exchange through authenticated WSS signaling.
   - Display-aspect-aware touch mapping on the Controller video surface.
 - Remote camera streaming prototype:
@@ -85,8 +87,7 @@ for real Android device testing, network traversal testing, or a security audit.
   Worker can issue short-lived Cloudflare Realtime TURN credentials when
   configured; without them, restrictive NATs, carrier-grade NAT, and firewalls
   may prevent connectivity.
-- Adaptive bitrate, congestion control tuning, stream recovery, and network
-  handover behavior.
+- Physical tuning of adaptive bitrate thresholds, congestion behavior, stream recovery, and Wi-Fi/mobile handover across real networks.
 - Resumable transfers, large-file optimization, and signed transfer manifests.
 - Physical-device acceptance across Android OEMs, screen sizes, and Android
   versions, including backgrounding and battery-management behavior.
