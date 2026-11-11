@@ -310,10 +310,14 @@ export class MeizzoSignaling {
         if (activeDuplicate) {
           return this.sendError(ws, "session_already_active", "An equivalent session is already active for this Client");
         }
+        const controllerToken = Object.entries(d.controllerTokens).find(([token, owner]) =>
+          owner === a.controllerId && (a.tokens || [a.token]).includes(token)
+        )?.[0];
+        if (!controllerToken) return this.sendError(ws, "unauthorized", "No active Controller credential for this device");
         const sessionId = id();
         const session = {
           sessionId, clientId: d.clientId, controllerId: a.controllerId,
-          controllerToken: a.token, controllerConnId: a.connId,
+          controllerToken, controllerConnId: a.connId,
           clientConnId: d.clientConnId, sessionType: m.sessionType,
           state: "pending", createdAtMs: t
         };
@@ -336,7 +340,7 @@ export class MeizzoSignaling {
       }
       case "controller.end_session": {
         const session = s.sessions[m.sessionId];
-        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || session.controllerToken !== a.token || session.controllerConnId !== a.connId) return this.sendError(ws, "unauthorized", "Invalid session termination");
+        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || !(a.tokens || [a.token]).includes(session.controllerToken) || session.controllerConnId !== a.connId) return this.sendError(ws, "unauthorized", "Invalid session termination");
         session.state = "ended"; session.endedAtMs = t; session.terminationReason = validString(m.reason) ? m.reason : "controller_ended";
         await this.save(s);
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: "ended", createdAtMs: session.createdAtMs, endedAtMs: t, terminationReason: session.terminationReason };
@@ -373,7 +377,7 @@ export class MeizzoSignaling {
         if (!d) return this.sendError(ws, "unauthorized", "Not authorized for this device");
         if (d.status !== "online") return this.sendError(ws, "offline", "Client is offline");
         if (m.type === "controller.command") {
-          const allowed = Object.values(s.sessions).some(x => x.clientId === d.clientId && x.controllerId === a.controllerId && x.controllerToken === a.token && x.sessionType === "interaction" && x.state === "approved");
+          const allowed = Object.values(s.sessions).some(x => x.clientId === d.clientId && x.controllerId === a.controllerId && (a.tokens || [a.token]).includes(x.controllerToken) && x.sessionType === "interaction" && x.state === "approved");
           if (!allowed) return this.sendError(ws, "session_required", "An approved interaction session is required");
           if (!validString(m.command)) return this.sendError(ws, "invalid_command", "Command is required");
         }
