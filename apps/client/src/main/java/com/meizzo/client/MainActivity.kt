@@ -133,7 +133,12 @@ class MainActivity : ComponentActivity() {
                 onCheckUpdates = { checkForUpdate() }
             )
         }
+        startConnectionKeepAlive()
         connect()
+    }
+
+    private fun startConnectionKeepAlive() {
+        startForegroundService(Intent(this, ConnectionForegroundService::class.java))
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
