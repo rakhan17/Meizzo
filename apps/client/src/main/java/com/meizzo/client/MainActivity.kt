@@ -63,6 +63,7 @@ class MainActivity : Activity() {
     private var pendingMediaKind: String? = null
     private var activeMediaSessionId: String? = null
     private var rtcMediaClient: RtcMediaClient? = null
+    private val pendingMediaSignals = mutableMapOf<String, MutableList<JSONObject>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -332,8 +333,12 @@ class MainActivity : Activity() {
                             }.toString())
                         }
                         "media.signal" -> {
-                            if (message.optString("sessionId") == activeMediaSessionId) {
-                                message.optJSONObject("signal")?.let { rtcMediaClient?.onSignal(it) }
+                            val sessionId = message.optString("sessionId")
+                            val signal = message.optJSONObject("signal")
+                            if (signal != null && (sessionId == activeMediaSessionId || sessionId == pendingMediaSessionId)) {
+                                val media = rtcMediaClient
+                                if (media != null && sessionId == activeMediaSessionId) media.onSignal(signal)
+                                else pendingMediaSignals.getOrPut(sessionId) { mutableListOf() }.add(signal)
                             }
                         }
                         "client.command" -> handleCommand(webSocket, message)
@@ -468,15 +473,24 @@ class MainActivity : Activity() {
         if (kind == "screen") MediaProjectionForegroundService.start(this)
         if (kind == "screen") {
             Handler(Looper.getMainLooper()).postDelayed({
-                if (activeMediaSessionId == sessionId) rtcMediaClient?.start(sessionId, kind, projectionData)
+                if (activeMediaSessionId == sessionId) {
+                    rtcMediaClient?.start(sessionId, kind, projectionData)
+                    flushPendingMediaSignals(sessionId)
+                }
             }, 450)
         } else {
             rtcMediaClient?.start(sessionId, kind, projectionData)
+            flushPendingMediaSignals(sessionId)
         }
         status.text = "Publishing $kind stream · waiting for Controller"
     }
 
+    private fun flushPendingMediaSignals(sessionId: String) {
+        pendingMediaSignals.remove(sessionId)?.forEach { rtcMediaClient?.onSignal(it) }
+    }
+
     private fun stopMediaPublisher() {
+        pendingMediaSignals.clear()
         rtcMediaClient?.close()
         rtcMediaClient = null
         activeMediaSessionId = null
