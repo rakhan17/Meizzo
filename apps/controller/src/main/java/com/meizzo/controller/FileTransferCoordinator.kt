@@ -23,6 +23,7 @@ class FileTransferCoordinator(
     private var incomingOutput: OutputStream? = null
     private var outgoingInput: InputStream? = null
     private var outgoingSequence = 0
+    private var outgoingBytes = 0L
     private var waitingForAck = false
     private var pendingName = ""
     private var pendingSize = 0L
@@ -53,6 +54,7 @@ class FileTransferCoordinator(
             ?: throw IllegalStateException("Android could not open the selected file")
         outgoingInput = input
         outgoingSequence = 0
+        outgoingBytes = 0L
         waitingForAck = true
         send(JSONObject().apply {
             put("type", "file_offer")
@@ -89,7 +91,7 @@ class FileTransferCoordinator(
                 pendingName = message.optString("name").take(128)
                 pendingSize = message.optLong("size", -1L)
                 val mime = message.optString("mimeType", "application/octet-stream")
-                if (pendingName.isBlank() || pendingSize < 0L || pendingSize > MAX_FILE_SIZE) {
+                if (pendingName.isBlank() || pendingSize < -1L || pendingSize > MAX_FILE_SIZE) {
                     send(JSONObject().put("type", "file_reject"))
                     onStatus("Rejected invalid or oversized file offer")
                     return
@@ -150,6 +152,12 @@ class FileTransferCoordinator(
                 waitingForAck = true
                 return
             }
+            outgoingBytes += count
+            if (outgoingBytes > MAX_FILE_SIZE) {
+                closeOutgoing()
+                onStatus("File exceeds the 50 MiB transfer limit")
+                return
+            }
             val encoded = Base64.encodeToString(chunk.copyOf(count), Base64.NO_WRAP)
             send(JSONObject().put("type", "file_chunk")
                 .put("sequence", outgoingSequence)
@@ -173,7 +181,7 @@ class FileTransferCoordinator(
                     if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
                 }
             }
-        if (size < 0L || size > MAX_FILE_SIZE) throw IllegalArgumentException("File must be smaller than 50 MiB")
+        if (size > MAX_FILE_SIZE) throw IllegalArgumentException("File must be smaller than 50 MiB")
         return name.take(128) to size
     }
 
