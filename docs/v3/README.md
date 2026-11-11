@@ -36,10 +36,10 @@ The stable Cloudflare Workers Builds project remains connected to `main` and dep
 The v3 branch uses an isolated Worker configuration, `wrangler.v3.toml`, with its own Durable Object namespace. Create a **second Cloudflare Workers Builds project** for the same GitHub repository, set its production branch to `develop/v3`, leave the build command blank, and use this deploy command:
 
 ```bash
-npx wrangler deploy --config wrangler.v3.toml
+npx --yes wrangler@4 deploy --config wrangler.v3.toml
 ```
 
-Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../backend-deployment.md#isolated-meizzo-v3-worker).
+Set Preview command to `npx --yes wrangler@4 preview --config wrangler.v3.toml`. Leave Build command blank. Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../backend-deployment.md#isolated-meizzo-v3-worker).
 
 The expected hostname is `meizzo-signaling-beta.rakhanatanox.workers.dev`, but Cloudflare's dashboard is authoritative. Confirm the actual deployment URL and health endpoint before treating the Worker as live. Configure Cloudflare Realtime TURN secrets on the v3 Worker separately if relay is enabled.
 
