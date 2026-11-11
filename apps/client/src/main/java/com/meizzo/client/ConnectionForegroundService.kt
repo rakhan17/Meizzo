@@ -58,10 +58,14 @@ class ConnectionForegroundService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_REFRESH -> {
-                activeSocket?.send(JSONObject().put("type", "client.register_pairing_offer")
-                    .put("clientId", clientId()).put("pairingCode", pairingCode())
-                    .put("expiresAtMs", System.currentTimeMillis() + 600_000)
-                    .put("pairingAcceptanceEnabled", true).put("metadata", deviceMetadata()).toString())
+                activeSocket?.let {
+                    registerPairingOffer(it)
+                    broadcastState("Connected · waiting for Controller", true)
+                }
+                preferences.getString("pending_server_message", null)?.let { pending ->
+                    broadcastMessage(pending)
+                    preferences.edit().remove("pending_server_message").apply()
+                }
             }
         }
         startInForeground()
