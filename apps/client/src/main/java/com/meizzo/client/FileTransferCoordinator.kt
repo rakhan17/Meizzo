@@ -71,12 +71,15 @@ class FileTransferCoordinator(
                     when (channel.state()) {
                         DataChannel.State.OPEN -> onStatus("Secure file channel ready")
                         DataChannel.State.CLOSING, DataChannel.State.CLOSED -> {
+                            closed = true
+                            retryHandler.removeCallbacksAndMessages(null)
                             cancelChunkRetry()
                             closeOutgoing()
                             outgoingQueue.clear()
                             discardIncoming()
                             pendingName = ""
                             pendingSize = 0L
+                            try { channel.unregisterObserver() } catch (_: Exception) { }
                             onStatus("File channel closed · transfer stopped")
                         }
                         else -> Unit
