@@ -621,6 +621,9 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Send text to Client clipboard", false) {
                 showClipboardWriteDialog(id)
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Send Controller clipboard", false) {
+                sendControllerClipboard(id)
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Browse Client files", false) {
                 remoteFileBrowseStacks.remove(id)
                 sendClientCommand(id, "file_browse", JSONObject())
@@ -1452,6 +1455,21 @@ class MainActivity : Activity() {
             }
         }
         builder.show()
+    }
+
+    private fun sendControllerClipboard(clientId: String) {
+        val clipboard = getSystemService(android.content.ClipboardManager::class.java)
+        val clip = clipboard.primaryClip
+        val value = if (clip != null && clip.itemCount > 0) {
+            clip.getItemAt(0).coerceToText(this)?.toString()
+        } else null
+        if (value.isNullOrBlank()) {
+            setConnection("Controller clipboard is empty or contains no text", false)
+        } else if (value.length > 10_000) {
+            setConnection("Controller clipboard exceeds the 10,000-character transfer limit", false)
+        } else {
+            sendClientCommand(clientId, "clipboard_write", JSONObject().put("text", value))
+        }
     }
 
     private fun showClipboardWriteDialog(clientId: String) {
