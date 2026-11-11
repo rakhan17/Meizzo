@@ -27,6 +27,7 @@ class FileTransferCoordinator(
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
     private var incomingBytes = 0L
+    private var incomingExpectedSequence = 0
     private var outgoingDigest: MessageDigest? = null
     private var incomingDigest: MessageDigest? = null
     private var waitingForAck = false
@@ -76,6 +77,7 @@ class FileTransferCoordinator(
             ?: throw IllegalStateException("Android could not create the destination file")
         incomingUri = uri
         incomingBytes = 0L
+        incomingExpectedSequence = 0
         incomingDigest = MessageDigest.getInstance("SHA-256")
         send(JSONObject().put("type", "file_accept"))
         onStatus("Receiving $pendingName")
@@ -120,6 +122,12 @@ class FileTransferCoordinator(
                 val sequence = message.optInt("sequence", -1)
                 val encoded = message.optString("data")
                 if (sequence < 0 || encoded.isBlank() || incomingOutput == null) return
+                if (sequence != incomingExpectedSequence) {
+                    discardIncoming()
+                    send(JSONObject().put("type", "file_reject"))
+                    onStatus("File transfer stopped · unexpected chunk sequence")
+                    return
+                }
                 try {
                     val bytes = Base64.decode(encoded, Base64.NO_WRAP)
                     incomingBytes += bytes.size
@@ -131,6 +139,7 @@ class FileTransferCoordinator(
                     }
                     incomingDigest?.update(bytes)
                     incomingOutput?.write(bytes)
+                    incomingExpectedSequence += 1
                     send(JSONObject().put("type", "file_ack").put("sequence", sequence))
                 } catch (error: Exception) {
                     discardIncoming()
@@ -148,11 +157,13 @@ class FileTransferCoordinator(
             "file_end" -> {
                 val expectedHash = message.optString("sha256")
                 val actualHash = incomingDigest?.digest()?.toHex().orEmpty()
-                val hashMatches = expectedHash.isNotBlank() && actualHash.equals(expectedHash, ignoreCase = true)
+                val sizeMatches = pendingSize < 0L || incomingBytes == pendingSize
+                val hashMatches = sizeMatches && expectedHash.isNotBlank() &&
+                    actualHash.equals(expectedHash, ignoreCase = true)
                 if (hashMatches) closeIncoming() else discardIncoming()
                 if (!hashMatches) {
                     send(JSONObject().put("type", "file_reject"))
-                    onStatus("File integrity check failed for $pendingName")
+                    onStatus(if (sizeMatches) "File integrity check failed for $pendingName" else "File size mismatch for $pendingName")
                 } else {
                     send(JSONObject().put("type", "file_complete"))
                     onStatus("Received $pendingName · SHA-256 verified")
