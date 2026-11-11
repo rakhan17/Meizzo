@@ -994,7 +994,7 @@ class MainActivity : Activity() {
                     result.put("locked", true)
                 }
             }
-            "back", "home", "recents" -> {
+            "back", "home", "recents", "notifications", "quick_settings", "power_dialog" -> {
                 val accessibility = RemoteAccessibilityService.instance
                 if (accessibility == null) {
                     error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
