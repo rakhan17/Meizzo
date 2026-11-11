@@ -317,6 +317,13 @@ Relevant workflow runs:
 - [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
 - [Android beta.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
 
+**Release provenance note:** beta.5 was built by workflow run `42948592178`
+from source commit `8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, while the
+published tag currently resolves to `3894aba79f087974bef1bc2bacc345aed837afa2`.
+The APK assets are the outputs of the successful workflow, but the tag is not
+an exact source pointer. The release workflow now pins future tags to the
+workflow commit; the existing beta.5 tag is left unchanged.
+
 Automated success does not replace real-device acceptance testing. See
 [testing](docs/testing.md) for the manual multi-device matrix and known gaps.
 
