@@ -55,6 +55,7 @@ class MainActivity : Activity() {
     private val mediaViewers = mutableMapOf<String, RtcMediaController>()
     private val mediaDialogs = mutableMapOf<String, AlertDialog>()
     private val fileTransferCoordinators = mutableMapOf<String, FileTransferCoordinator>()
+    private val activeFileTransferSessions = mutableMapOf<String, String>()
     private var selectedFileSessionId: String? = null
     private var incomingFileSessionId: String? = null
     private var incomingFileName: String? = null
@@ -826,6 +827,7 @@ class MainActivity : Activity() {
             .setPositiveButton("Mute remote audio", null)
             .create()
         mediaDialogs[sessionId] = dialog
+        activeFileTransferSessions[clientId] = sessionId
         val viewer = RtcMediaController(
             this,
             { signal ->
@@ -1090,6 +1092,7 @@ class MainActivity : Activity() {
         mediaViewers[sessionId] = viewer
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
+            if (activeFileTransferSessions[clientId] == sessionId) activeFileTransferSessions.remove(clientId)
             mediaViewers.remove(sessionId)?.close()
             fileTransferCoordinators.remove(sessionId)?.close()
             if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
@@ -1225,8 +1228,21 @@ class MainActivity : Activity() {
                     val mime = item.optString("mimeType", "Unknown type")
                     AlertDialog.Builder(this)
                         .setTitle(name)
-                        .setMessage("$mime\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}\n\nBrowsing currently exposes metadata only.")
-                        .setPositiveButton("Close", null)
+                        .setMessage("$mime\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}\n\nThe Client will ask for permission before sending this file.")
+                        .setNegativeButton("Close", null)
+                        .setPositiveButton("Download to Controller") { _, _ ->
+                            val fileSessionId = activeFileTransferSessions[clientId]
+                            if (fileSessionId.isNullOrBlank()) {
+                                setConnection("Start an approved file-transfer session before downloading", false)
+                            } else {
+                                sendClientCommand(
+                                    clientId,
+                                    "file_send",
+                                    JSONObject().put("documentId", item.optString("documentId"))
+                                        .put("sessionId", fileSessionId)
+                                )
+                            }
+                        }
                         .show()
                 }
             }
