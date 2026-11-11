@@ -1,101 +1,194 @@
-# MEIZZO Architecture
+# MEIZZO architecture
 
-## 1) Technology Selection
+**Scope:** architecture shipped in the Android beta and the hosted signaling
+implementation. Future media and enterprise components are explicitly marked
+as planned.
 
-### Android
-- **Language**: Kotlin (best Android ecosystem support, safety, maintainability)
-- **UI**: Jetpack Compose + Material 3 (fast iteration, modern UX)
-- **Architecture**: Clean modular architecture + MVVM + use-cases
-- **Networking**: Ktor client or OkHttp WebSocket for signaling
-- **Media**: WebRTC (screen/camera streaming), CameraX, MediaProjection
-- **Background work**: Foreground Services + WorkManager + network callbacks
-- **Secure storage**: Android Keystore + EncryptedSharedPreferences
+## 1. System overview
 
-### Backend Signaling
-- **Runtime**: Node.js
-- **Protocol**: Secure WebSocket (WSS)
-- **State**: In-memory only (no persistent cloud DB by default)
-- **Reasoning**: Meets low-latency signaling requirement while honoring no persistent server DB requirement
+MEIZZO separates the device roles and the control plane:
 
-### Build/Release
-- **Android build**: Gradle + AGP
-- **CI/CD**: GitHub Actions
-- **Distribution**: GitHub Releases per app (independent Client/Controller channels)
+- **Client:** runs on the device receiving assistance. It owns pairing
+  approval, session consent, telemetry collection, and supported local actions.
+- **Controller:** runs on the operator device. It manages paired Clients,
+  receives presence and telemetry, requests sessions, and sends supported
+  commands.
+- **Signaling control plane:** authenticates both roles and routes pairing,
+  presence, telemetry, session state, and commands.
+- **Media plane:** not implemented. A WebSocket connection or approved
+  authorization session does not itself provide screen/camera media.
 
-## 2) Cloud Infrastructure (No Persistent DB)
+```mermaid
+flowchart LR
+  subgraph Android["Android devices"]
+    C[Client UI]
+    CS[Client foreground service]
+    O[Controller UI]
+    OS[Controller foreground service]
+    C <--> CS
+    O <--> OS
+  end
 
-Required minimal components:
-- 1 signaling service instance (or small HA pair)
-- TURN service for relay fallback in restricted NAT/mobile carrier networks
-- Optional reverse proxy + TLS termination
+  subgraph Hosted["Hosted control plane"]
+    W[Cloudflare Worker<br/>WSS endpoint]
+    DO[Durable Object<br/>MeizzoSignaling]
+    DB[(Durable Object storage)]
+    W --> DO
+    DO <--> DB
+  end
 
-State handling:
-- Pairing offers, connection heartbeats, and session routing exist in memory only
-- State expires via TTL and heartbeat timeout
-- No permanent storage of camera streams/screen captures/device personal data
+  CS <-->|WSS / protocol v2| W
+  OS <-->|WSS / protocol v2| W
+  DO --> F[Pairing and authorization]
+  DO --> P[Presence and telemetry]
+  DO --> R[Per-device command routing]
+  DO --> S[Authorization-only sessions]
+```
 
-Estimated early-stage monthly cost (small pilot):
-- Signaling VM/container: ~USD 5–20
-- TURN VM/container + bandwidth-dependent relay costs: ~USD 10–100+
-- TLS/domain: ~USD 0–15
+## 2. Android application architecture
 
-## 3) Cross-Network Connectivity Design
+Client and Controller are separate Kotlin applications:
 
-1. Client and Controller each open WSS to signaling service.
-2. Pairing/auth/session messages are routed over signaling.
-3. Real-time media uses WebRTC:
-   - Prefer P2P via STUN
-   - Fallback to TURN relay when direct path fails
-4. Heartbeats maintain liveness and status transitions.
-5. Reconnect logic maps to explicit device states:
-   - Waiting for Connection
-   - Connecting
-   - Connected
-   - Reconnecting
-   - Offline
-   - Pairing Expired
-   - Connection Error
+| App | Application ID | Responsibilities |
+|---|---|---|
+| Client | `com.meizzo.client` | Pairing offer, approval UI, telemetry, supported local commands, session decisions |
+| Controller | `com.meizzo.controller` | Pairing requests, paired-device list, presence, telemetry, session requests, supported commands |
 
-## 4) Android Permission & Capability Limitations
+Each application uses a foreground connection service to own its WebSocket
+lifecycle independently of the Activity. The services reconnect with
+backoff, restore credentials, and publish state/messages back to the UI.
+Boot receivers are present to restore the connection path where Android and
+device policy permit it.
 
-- Runtime permissions can be revoked anytime.
-- MediaProjection requires explicit user approval per new session.
-- Accessibility must be user-enabled in system settings (cannot be silently enabled).
-- Background connectivity depends on OEM battery policies and Android restrictions.
-- Capability labels must reflect actual runtime state: Ready / Needs Attention / Not Supported.
+This does **not** guarantee an always-on connection. Android force-stop,
+battery optimization, OEM autostart policy, revoked permissions, and network
+availability can interrupt background execution.
 
-## 5) Update Architecture
+### Local credential storage
 
-- Separate app IDs and versions for Client and Controller
-- Independent release channels (Stable/Beta)
-- GitHub Releases metadata consumed by each app
-- APK SHA-256 verification + signing certificate verification before install prompt
-- Installation only via Android package installer (no silent install)
-- Compatibility matrix check (client/controller minimum supported versions)
+Android app credentials are encrypted using AES-GCM with app-specific keys
+generated by Android Keystore. The Client and Controller use separate aliases
+and separate app sandboxes. Non-secret device metadata is stored separately
+from encrypted credentials.
 
-## 6) Security Controls
+## 3. Signaling service
 
-- TLS in transit for signaling
-- One-time six-digit pairing code with short expiration
-- Code consumption on successful pairing
-- Rate limiting on pairing attempts
-- Replay protection via request nonce tracking
-- Session timeout + revocation support
-- No sensitive tokens/codes in logs
+### Hosted implementation
 
-## 7) Monorepo Structure
+The deployed endpoint is a Cloudflare Worker configured in root
+`wrangler.toml`. The Worker upgrades WebSocket requests and forwards them to
+the `MeizzoSignaling` Durable Object. The Durable Object owns the live socket
+set and persists its state through Durable Object storage.
 
-- `apps/client` (Android Client)
-- `apps/controller` (Android Controller)
-- `shared` (protocol/domain)
-- `services/signaling` (cloud signaling service)
-- `docs` (architecture, protocol, roadmap)
+Current responsibilities include:
 
-## 8) Development Roadmap
+- Protocol hello and capability advertisement (protocol version 2).
+- Six-digit pairing offers, expiry, one-time consumption, and rate limiting.
+- Client and Controller token authentication.
+- Per-Client authorization and multi-Controller relationships.
+- Heartbeat, online/offline presence, and telemetry snapshots.
+- Device list, rename, revoke, snapshot, and supported command routing.
+- Session request, Client approval/rejection, reconnect restoration, and end
+  state.
 
-1. **Phase 1 (implemented)**: Android pairing apps and signaling authorization
-2. Phase 2: production TLS deployment, reconnect, and multi-client lifecycle hardening
-3. Phase 3: device info/tools (battery/storage/network/alarm/flashlight)
-4. Phase 4: screen/camera/location/files with session isolation
-5. Phase 5: complete updater pipeline and compatibility gating
-6. Phase 6: optimization, compatibility hardening, release readiness
+The current Worker uses a single named Durable Object instance for the
+signaling namespace. This is a simple beta topology, not a claim of horizontal
+sharding or high availability.
+
+### Local development implementation
+
+`services/signaling/src/server.js` is a Node.js + `ws` harness for local
+development and automated tests. It uses process-local Maps. Its state is
+lost when the process restarts and it must not be confused with the hosted
+Durable Object persistence model.
+
+## 4. Pairing and authentication
+
+1. Client registers a six-digit pairing offer with an expiry of up to ten
+   minutes.
+2. Controller submits the code.
+3. Signaling checks the offer, expiry, and attempt limits.
+4. Client receives a pairing request and must explicitly approve it.
+5. Signaling consumes the offer and issues role-specific random credentials.
+6. Both apps authenticate using their own credential.
+7. Controller receives the authorized Client list and presence updates.
+
+A pairing code is an invitation, not a permanent credential. The hosted
+Worker applies per-Controller and per-IP attempt limits. The current protocol
+uses random bearer tokens; server-side token hashing, rotation workflows, and
+formal audit trails remain security-hardening work.
+
+## 5. Presence and telemetry
+
+Client sends heartbeat telemetry periodically. The signaling service updates
+the Client's last-seen timestamp and broadcasts the state only to Controllers
+authorized for that Client. The current Android heartbeat cadence is 15
+seconds; the server uses a 45-second heartbeat timeout.
+
+A missing or stale telemetry field must be shown as unavailable, not as zero.
+See [device monitoring](device-monitoring.md).
+
+## 6. Session authorization
+
+The protocol supports session types including monitoring, screen, camera,
+interaction, and files as authorization labels. The current implementation
+supports session lifecycle state:
+
+- Controller requests a session for one authorized Client.
+- Client explicitly approves or rejects it.
+- Approved session state can be restored after reconnect.
+- Controller can end its own session.
+- Interaction commands require an approved interaction session.
+
+**Important:** these session types do not mean that the corresponding media
+or OS capability is implemented. Screen capture, camera transport, file
+transfer, location, and general input injection are not available in the
+current beta. An approved session is not a WebRTC connection.
+
+## 7. Update architecture
+
+Android apps query GitHub Releases for their own app asset. The release
+pipeline publishes a manifest with package identity, version, file size,
+SHA-256, and signing-certificate digest. The updater validates the candidate
+before handing installation to Android's Package Installer. It does not
+silently install an APK or bypass Android user confirmation.
+
+Client and Controller are separately versioned APKs but currently share the
+same release tag and release-signing identity.
+
+## 8. iOS architecture
+
+The repository contains native SwiftUI Client and Controller targets and
+shared networking/Keychain code. CI builds and smoke-launches Simulator
+targets. Physical-device distribution still requires Apple signing and
+provisioning. iOS feature parity and runtime compatibility are not claimed.
+
+## 9. Security boundaries
+
+- WSS is required for the published Android release configuration.
+- Pairing requires explicit Client approval.
+- Credentials are role- and device-scoped.
+- Android credentials use Keystore-backed AES-GCM encryption.
+- Sensitive actions require a scoped session approval where implemented.
+- The Worker stores device relationships and token records in Durable Object
+  state. Server-side token hashing/rotation and audit-event hardening remain
+  open work.
+- The Node.js harness is in-memory and development-only.
+
+See [security and privacy](security-and-privacy.md) and
+[V2 security model](v2/security-model.md).
+
+## 10. Planned architecture, not shipped
+
+The following are future work and must not be represented as current features:
+
+- WebRTC media plane with STUN/TURN.
+- MediaProjection screen capture and camera streaming.
+- Accessibility-backed interaction with explicit user enablement.
+- Scoped file transfer, location sharing, and session audit history.
+- Android Enterprise enrollment and managed policy.
+- Durable account/device identity, token hashing/rotation, and operational
+  security controls.
+
+See the [V2 architecture audit](v2/architecture-audit.md) for gaps and
+migration priorities.
