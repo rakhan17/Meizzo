@@ -7,7 +7,7 @@ val releaseVersionName = providers.gradleProperty("meizzo.releaseVersionName")
     .orElse("3.0.0-beta.1").get()
 val releaseVersionCode = providers.gradleProperty("meizzo.releaseVersionCode")
     .orElse("30300001").get().toInt()
-val defaultSignalingUrl = "wss://meizzo-signaling.rakhanatanox.workers.dev"
+val defaultSignalingUrl = "wss://meizzo-signaling-v3.rakhanatanox.workers.dev"
 val debugSignalingUrl = providers.gradleProperty("meizzo.debugSignalingUrl")
     .orElse(defaultSignalingUrl).get()
 val releaseSignalingUrl = providers.gradleProperty("meizzo.releaseSignalingUrl")
