@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
@@ -8,6 +9,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application android:theme="@style/AppTheme" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:label="MEIZZO Client" android:allowBackup="false" android:supportsRtl="true" android:usesCleartextTraffic="${allowCleartext}" android:networkSecurityConfig="@xml/network_security_config">
+        <receiver android:name=".ClientBootReceiver" android:enabled="true" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
+        </receiver>
         <service android:name=".ConnectionForegroundService" android:exported="false" android:stopWithTask="false" android:foregroundServiceType="connectedDevice" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
