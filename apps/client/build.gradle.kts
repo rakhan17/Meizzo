@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 val releaseVersionName = providers.gradleProperty("meizzo.releaseVersionName")
@@ -15,7 +16,7 @@ val releaseSignalingUrl = providers.gradleProperty("meizzo.releaseSignalingUrl")
 
 android {
     namespace = "com.meizzo.client"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.meizzo.client"
         minSdk = 26
@@ -33,7 +34,10 @@ android {
             buildConfigField("String", "SIGNALING_URL", "\"$releaseSignalingUrl\"")
         }
     }
-    buildFeatures { buildConfig = true }
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -44,4 +48,10 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core:1.15.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(platform("androidx.compose:compose-bom:2025.10.00"))
+    implementation("androidx.activity:activity-compose:1.11.0")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.material3:material3")
+    implementation("io.github.kyant0:backdrop:1.0.0")
 }
