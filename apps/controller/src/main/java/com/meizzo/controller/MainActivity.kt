@@ -22,6 +22,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import org.json.JSONArray
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -48,6 +49,7 @@ class MainActivity : Activity() {
     private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val pendingMediaRequests = mutableSetOf<String>()
     private val activeMediaSessions = mutableMapOf<String, String>()
+    private val iceServersBySession = mutableMapOf<String, JSONArray>()
     private val mediaViewers = mutableMapOf<String, RtcMediaController>()
     private val mediaDialogs = mutableMapOf<String, AlertDialog>()
     private val fileTransferCoordinators = mutableMapOf<String, FileTransferCoordinator>()
@@ -296,6 +298,10 @@ class MainActivity : Activity() {
                             renderDevices()
                         }
                         "session.status" -> handleSessionStatus(message)
+                        "media.ice_servers" -> {
+                            val sessionId = message.optString("sessionId")
+                            message.optJSONArray("iceServers")?.let { iceServersBySession[sessionId] = it }
+                        }
                         "media.signal" -> handleMediaSignal(message)
                         "device.result" -> {
                             val id = message.optString("clientId")
@@ -659,6 +665,7 @@ class MainActivity : Activity() {
                 "failed", "rejected", "ended" -> {
                     pendingMediaRequests.remove(clientId)
                     activeMediaSessions.remove(sessionId)
+                    iceServersBySession.remove(sessionId)
                     closeMediaViewer(sessionId)
                     setConnection("$sessionType session $state", false)
                 }
@@ -715,7 +722,8 @@ class MainActivity : Activity() {
             },
             { reason ->
                 runOnUiThread { setConnection("Media stream error · $reason", false) }
-            }
+            },
+            iceServersJson = iceServersBySession.remove(sessionId)
         )
         mediaViewers[sessionId] = viewer
         var touchStartX = 0f
@@ -865,7 +873,8 @@ class MainActivity : Activity() {
                         { message -> runOnUiThread { setConnection(message, true) } }
                     )
                 }
-            }
+            },
+            iceServersJson = iceServersBySession.remove(sessionId)
         )
         mediaViewers[sessionId] = viewer
         dialog.setOnDismissListener {
