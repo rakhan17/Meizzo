@@ -3,6 +3,9 @@ package com.meizzo.client
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.net.ConnectivityManager
@@ -19,6 +22,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -54,6 +58,21 @@ class MainActivity : Activity() {
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
+    private val pendingAlarmCommands = mutableMapOf<String, WebSocket>()
+    private val alarmResultReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val requestId = intent?.getStringExtra(ConnectionForegroundService.EXTRA_REQUEST_ID) ?: return
+            val webSocket = pendingAlarmCommands.remove(requestId) ?: return
+            val error = intent.getStringExtra(ConnectionForegroundService.EXTRA_ALARM_ERROR)
+            val enabled = intent.getBooleanExtra(ConnectionForegroundService.EXTRA_ALARM_ENABLED, false)
+            webSocket.send(JSONObject().apply {
+                put("type", "client.result")
+                put("requestId", requestId)
+                put("result", JSONObject().put("enabled", enabled))
+                if (!error.isNullOrBlank()) put("error", error)
+            }.toString())
+        }
+    }
     private val cameraPermissionRequestCode = 4102
     private val mediaCameraPermissionRequestCode = 4107
     private val screenCaptureRequestCode = 4106
@@ -171,6 +190,12 @@ class MainActivity : Activity() {
             addView(content)
             setBackgroundColor(Color.rgb(8, 8, 10))
         })
+        ContextCompat.registerReceiver(
+            this,
+            alarmResultReceiver,
+            IntentFilter(ConnectionForegroundService.ACTION_ALARM_RESULT),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         startConnectionForegroundService()
         connect()
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
@@ -782,19 +807,27 @@ class MainActivity : Activity() {
             }
             "alarm" -> {
                 val enabled = parameters.optBoolean("enabled")
-                try {
-                    val action = if (enabled) {
-                        ConnectionForegroundService.ACTION_ALARM_ON
-                    } else {
-                        ConnectionForegroundService.ACTION_ALARM_OFF
+                val requestId = message.optString("requestId")
+                if (requestId.isBlank()) {
+                    error = "Alarm command is missing its request identifier"
+                } else {
+                    try {
+                        val action = if (enabled) {
+                            ConnectionForegroundService.ACTION_ALARM_ON
+                        } else {
+                            ConnectionForegroundService.ACTION_ALARM_OFF
+                        }
+                        pendingAlarmCommands[requestId] = webSocket
+                        startForegroundService(
+                            Intent(this, ConnectionForegroundService::class.java)
+                                .setAction(action)
+                                .putExtra(ConnectionForegroundService.EXTRA_REQUEST_ID, requestId)
+                        )
+                        return
+                    } catch (exception: Exception) {
+                        pendingAlarmCommands.remove(requestId)
+                        error = exception.message ?: "Unable to control the remote alarm"
                     }
-                    startForegroundService(
-                        android.content.Intent(this, ConnectionForegroundService::class.java).setAction(action)
-                    )
-                    result.put("enabled", enabled)
-                    result.put("playback", "foreground_service")
-                } catch (exception: Exception) {
-                    error = exception.message ?: "Unable to control the remote alarm"
                 }
             }
             "lock_screen" -> {
@@ -996,6 +1029,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         stopMediaPublisher()
+        unregisterReceiver(alarmResultReceiver)
+        pendingAlarmCommands.clear()
         reconnectHandler.removeCallbacksAndMessages(null)
         socket?.close(1000, "Client activity destroyed")
         super.onDestroy()
