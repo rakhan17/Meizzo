@@ -9,7 +9,7 @@ on:
       debug_signaling_url:
         description: "Debug WebSocket URL for a manually generated Android artifact"
         required: false
-        default: "wss://meizzo-signaling.rakhanatanox.workers.dev"
+        default: "wss://meizzo-signaling-v3.rakhanatanox.workers.dev"
         type: string
 
 permissions:
@@ -57,7 +57,7 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: yes | sdkmanager --licenses >/dev/null || true
-      - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'wss://meizzo-signaling.rakhanatanox.workers.dev' }}" :apps:${{ matrix.module }}:assembleDebug
+      - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'wss://meizzo-signaling-v3.rakhanatanox.workers.dev' }}" :apps:${{ matrix.module }}:assembleDebug
       - run: |
           mkdir -p dist
           if [ "${{ matrix.module }}" = "client" ]; then
