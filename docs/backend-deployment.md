@@ -19,12 +19,9 @@ The deployment configuration is:
 
 The Worker exposes `GET /healthz` and WebSocket upgrades at `/` and
 `/ws`. The Worker validation workflow performs a Wrangler dry-run only.
-Production deployment is available through the manual
-[`Deploy MEIZZO Cloudflare Worker`](https://github.com/rakhan17/Meizzo/blob/develop/v3/.github/workflows/deploy-cloudflare.yml)
-workflow. It requires the GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID`; TURN support additionally requires
-`REALTIME_TURN_TOKEN_ID` and `REALTIME_TURN_TOKEN_SECRET`. Run it against
-`develop/v3` only after reviewing the deployment diff.
+Production deployment must be run from an authorized Cloudflare environment
+after reviewing the branch diff. The deploy identity needs permission to
+publish the Worker. The Worker validation workflow is not a production deploy.
 
 ### Deployment checklist
 
