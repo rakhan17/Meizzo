@@ -9,6 +9,7 @@ import org.webrtc.DataChannel
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 
 /**
  * Stop-and-wait file transfer over an already consented WebRTC data channel.
@@ -25,6 +26,8 @@ class FileTransferCoordinator(
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
     private var incomingBytes = 0L
+    private var outgoingDigest: MessageDigest? = null
+    private var incomingDigest: MessageDigest? = null
     private var waitingForAck = false
     private var pendingName = ""
     private var pendingSize = 0L
@@ -56,6 +59,7 @@ class FileTransferCoordinator(
         outgoingInput = input
         outgoingSequence = 0
         outgoingBytes = 0L
+        outgoingDigest = MessageDigest.getInstance("SHA-256")
         waitingForAck = true
         send(JSONObject().apply {
             put("type", "file_offer")
@@ -70,6 +74,7 @@ class FileTransferCoordinator(
         incomingOutput = context.contentResolver.openOutputStream(uri, "wt")
             ?: throw IllegalStateException("Android could not create the destination file")
         incomingBytes = 0L
+        incomingDigest = MessageDigest.getInstance("SHA-256")
         send(JSONObject().put("type", "file_accept"))
         onStatus("Receiving $pendingName")
     }
@@ -121,6 +126,7 @@ class FileTransferCoordinator(
                         onStatus("Incoming file exceeded the 50 MiB transfer limit")
                         return
                     }
+                    incomingDigest?.update(bytes)
                     incomingOutput?.write(bytes)
                     send(JSONObject().put("type", "file_ack").put("sequence", sequence))
                 } catch (error: Exception) {
@@ -137,9 +143,16 @@ class FileTransferCoordinator(
                 }
             }
             "file_end" -> {
+                val expectedHash = message.optString("sha256")
+                val actualHash = incomingDigest?.digest()?.toHex().orEmpty()
                 closeIncoming()
-                send(JSONObject().put("type", "file_complete"))
-                onStatus("Received $pendingName successfully")
+                if (expectedHash.isBlank() || !actualHash.equals(expectedHash, ignoreCase = true)) {
+                    send(JSONObject().put("type", "file_reject"))
+                    onStatus("File integrity check failed for $pendingName")
+                } else {
+                    send(JSONObject().put("type", "file_complete"))
+                    onStatus("Received $pendingName · SHA-256 verified")
+                }
                 pendingName = ""
                 pendingSize = 0L
             }
@@ -157,11 +170,13 @@ class FileTransferCoordinator(
             val chunk = ByteArray(CHUNK_SIZE)
             val count = input.read(chunk)
             if (count < 0) {
-                send(JSONObject().put("type", "file_end"))
+                val hash = outgoingDigest?.digest()?.toHex().orEmpty()
+                send(JSONObject().put("type", "file_end").put("sha256", hash))
                 waitingForAck = true
                 return
             }
             outgoingBytes += count
+            outgoingDigest?.update(chunk, 0, count)
             if (outgoingBytes > MAX_FILE_SIZE) {
                 closeOutgoing()
                 send(JSONObject().put("type", "file_reject"))
@@ -201,9 +216,12 @@ class FileTransferCoordinator(
         channel.send(DataChannel.Buffer(ByteBuffer.wrap(message.toString().toByteArray(Charsets.UTF_8)), false))
     }
 
+    private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
+
     private fun closeOutgoing() {
         try { outgoingInput?.close() } catch (_: Exception) { }
         outgoingInput = null
+        outgoingDigest = null
         waitingForAck = false
     }
 
@@ -211,6 +229,7 @@ class FileTransferCoordinator(
         try { incomingOutput?.flush(); incomingOutput?.close() } catch (_: Exception) { }
         incomingOutput = null
         incomingBytes = 0L
+        incomingDigest = null
     }
 
     companion object {
