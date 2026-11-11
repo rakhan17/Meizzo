@@ -120,7 +120,12 @@ class MainActivity : ComponentActivity() {
             )
         }
         renderDevices()
+        startConnectionKeepAlive()
         connect()
+    }
+
+    private fun startConnectionKeepAlive() {
+        startForegroundService(Intent(this, ControllerConnectionForegroundService::class.java))
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
