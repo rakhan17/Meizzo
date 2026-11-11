@@ -114,6 +114,9 @@ class MainActivity : Activity() {
         content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
         content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
+        content.addView(uiActionButton("Preview Liquid Glass", false) {
+            startActivity(android.content.Intent(this, LiquidGlassPreviewActivity::class.java))
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
 
         content.addView(uiEyebrow("YOUR DEVICES").apply {
             setPadding(dp(2), dp(28), 0, dp(8))
