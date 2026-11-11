@@ -1,6 +1,7 @@
 # Release notes
 
-See [CHANGELOG.md](../CHANGELOG.md) for the verified release history and
+See [CHANGELOG.md](https://github.com/rakhan17/Meizzo/blob/main/CHANGELOG.md)
+for the verified release history and
 [GitHub Releases](https://github.com/rakhan17/Meizzo/releases) for published
 assets.
 
