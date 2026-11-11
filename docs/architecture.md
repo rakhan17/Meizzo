@@ -1,49 +1,55 @@
 # MEIZZO architecture
 
-**Scope:** architecture shipped in the Android beta and the hosted signaling
-implementation. Future media and enterprise components are explicitly marked
-as planned.
+**Scope:** Android v3 development branch and hosted signaling implementation.
+This document distinguishes code implementation from production readiness.
 
 ## 1. System overview
 
-MEIZZO separates the device roles and the control plane:
+MEIZZO separates the control plane from the peer-to-peer media plane:
 
-- **Client:** runs on the device receiving assistance. It owns pairing
-  approval, session consent, telemetry collection, and supported local actions.
-- **Controller:** runs on the operator device. It manages paired Clients,
-  receives presence and telemetry, requests sessions, and sends supported
-  commands.
-- **Signaling control plane:** authenticates both roles and routes pairing,
-  presence, telemetry, session state, and commands.
-- **Media plane:** not implemented. A WebSocket connection or approved
-  authorization session does not itself provide screen/camera media.
+- **Client:** runs on the Android device being assisted. It owns pairing
+  approval, session consent, telemetry, screen capture, camera capture,
+  file-transfer consent, and local actions.
+- **Controller:** runs on the operator's Android device. It manages paired
+  Clients, requests scoped sessions, renders live video, sends approved
+  touch gestures, and transfers files.
+- **Signaling control plane:** Cloudflare Worker and Durable Object authenticate
+  both roles and route pairing, presence, telemetry, commands, session state,
+  and WebRTC offer/answer/ICE messages.
+- **Media plane:** Android Client and Controller establish WebRTC peer
+  connections after Client approval. Video uses WebRTC media tracks. File
+  content uses an ordered WebRTC DataChannel. WSS carries signaling only.
 
 ```mermaid
 flowchart LR
   subgraph Android["Android devices"]
-    C[Client UI]
-    CS[Client foreground service]
-    O[Controller UI]
-    OS[Controller foreground service]
-    C <--> CS
-    O <--> OS
+    C[Client app]
+    O[Controller app]
+    MP[MediaProjection / Camera2]
+    AS[AccessibilityService]
+    SAF[Storage Access Framework]
+    C --> MP
+    C --> AS
+    C --> SAF
   end
 
-  subgraph Hosted["Hosted control plane"]
+  subgraph Hosted["MEIZZO signaling control plane"]
     W[Cloudflare Worker<br/>WSS endpoint]
-    DO[Durable Object<br/>MeizzoSignaling]
+    DO[Durable Object<br/>session and auth state]
     DB[(Durable Object storage)]
     W --> DO
     DO <--> DB
   end
 
-  CS <-->|WSS / protocol v2| W
-  OS <-->|WSS / protocol v2| W
-  DO --> F[Pairing and authorization]
-  DO --> P[Presence and telemetry]
-  DO --> R[Per-device command routing]
-  DO --> S[Authorization-only sessions]
+  C <-->|WSS · pairing / auth / session / ICE| W
+  O <-->|WSS · pairing / auth / session / ICE| W
+  C <-->|WebRTC video · DTLS-SRTP| O
+  C <-->|WebRTC DataChannel · DTLS| O
 ```
+
+The current Android ICE configuration includes a public STUN server. TURN is
+not deployed yet, so direct media connectivity is not guaranteed through
+restrictive NATs, carrier-grade NAT, or firewalls.
 
 ## 2. Android application architecture
 
@@ -51,25 +57,25 @@ Client and Controller are separate Kotlin applications:
 
 | App | Application ID | Responsibilities |
 |---|---|---|
-| Client | `com.meizzo.client` | Pairing offer, approval UI, telemetry, supported local commands, session decisions |
-| Controller | `com.meizzo.controller` | Pairing requests, paired-device list, presence, telemetry, session requests, supported commands |
+| Client | `com.meizzo.client` | Pairing, session consent, MediaProjection, Camera2, AccessibilityService, SAF file selection |
+| Controller | `com.meizzo.controller` | Pairing, device list, session requests, WebRTC video viewer, touch input, file picker |
 
-Each application uses a foreground connection service to own its WebSocket
-lifecycle independently of the Activity. The services reconnect with
-backoff, restore credentials, and publish state/messages back to the UI.
-Boot receivers are present to restore the connection path where Android and
-device policy permit it.
+The Client uses Android's system MediaProjection consent dialog before screen
+capture. Screen sharing runs through a foreground service declared with the
+`mediaProjection` service type. Camera streaming requires runtime CAMERA
+permission. The user must manually enable MEIZZO's AccessibilityService before
+remote gestures and lock-screen actions can run.
 
-This does **not** guarantee an always-on connection. Android force-stop,
-battery optimization, OEM autostart policy, revoked permissions, and network
-availability can interrupt background execution.
+The apps use foreground connection services to maintain signaling while
+Android permits background execution. This does not override force-stop,
+battery optimization, OEM autostart policy, revoked permissions, or network
+availability.
 
 ### Local credential storage
 
 Android app credentials are encrypted using AES-GCM with app-specific keys
 generated by Android Keystore. The Client and Controller use separate aliases
-and separate app sandboxes. Non-secret device metadata is stored separately
-from encrypted credentials.
+and separate app sandboxes.
 
 ## 3. Signaling service
 
@@ -77,8 +83,8 @@ from encrypted credentials.
 
 The deployed endpoint is a Cloudflare Worker configured in root
 `wrangler.toml`. The Worker upgrades WebSocket requests and forwards them to
-the `MeizzoSignaling` Durable Object. The Durable Object owns the live socket
-set and persists its state through Durable Object storage.
+the `MeizzoSignaling` Durable Object. The Durable Object owns live sockets
+and persists state through Durable Object storage.
 
 Current responsibilities include:
 
@@ -88,24 +94,22 @@ Current responsibilities include:
 - Per-Client authorization and multi-Controller relationships.
 - Heartbeat, online/offline presence, and telemetry snapshots.
 - Device list, rename, revoke, snapshot, and supported command routing.
-- Session request, Client approval/rejection, reconnect restoration, and end
-  state.
+- Session request, Client approval/rejection, Client or Controller termination,
+  and reconnect cleanup.
+- Participant-bound WebRTC offer, answer, and ICE candidate relay for approved
+  `screen`, `camera`, and `files` sessions.
 
-The current Worker uses a single named Durable Object instance for the
-signaling namespace. This is a simple beta topology, not a claim of horizontal
-sharding or high availability.
+The Worker routes signaling. It does not relay the actual video or file bytes.
 
 ### Local development implementation
 
 `services/signaling/src/server.js` is a Node.js + `ws` harness for local
-development and automated tests. It uses process-local Maps. Its state is
-lost when the process restarts and it must not be confused with the hosted
-Durable Object persistence model.
+development and automated tests. It uses process-local Maps and loses state
+when the process restarts.
 
 ## 4. Pairing and authentication
 
-1. Client registers a six-digit pairing offer with an expiry of up to ten
-   minutes.
+1. Client registers a six-digit pairing offer with an expiry.
 2. Controller submits the code.
 3. Signaling checks the offer, expiry, and attempt limits.
 4. Client receives a pairing request and must explicitly approve it.
@@ -113,82 +117,68 @@ Durable Object persistence model.
 6. Both apps authenticate using their own credential.
 7. Controller receives the authorized Client list and presence updates.
 
-A pairing code is an invitation, not a permanent credential. The hosted
-Worker applies per-Controller and per-IP attempt limits. The current protocol
-uses random bearer tokens; server-side token hashing, rotation workflows, and
-formal audit trails remain security-hardening work.
+Pairing authorizes a relationship, not every capability. Screen, camera, file,
+and interaction sessions each require a separate Client decision.
 
-## 5. Presence and telemetry
+## 5. Session authorization and media negotiation
 
-Client sends heartbeat telemetry periodically. The signaling service updates
-the Client's last-seen timestamp and broadcasts the state only to Controllers
-authorized for that Client. The current Android heartbeat cadence is 15
-seconds; the server uses a 45-second heartbeat timeout.
+The signaling protocol recognizes `monitoring`, `screen`, `camera`,
+`interaction`, and `files` session types.
 
-A missing or stale telemetry field must be shown as unavailable, not as zero.
-See [device monitoring](device-monitoring.md).
+For a screen, camera, or file session:
 
-## 6. Session authorization
+1. Controller sends `controller.start_session`.
+2. Client receives a pending session request and explicitly approves or denies.
+3. Only an approved session may exchange `media.signal` messages.
+4. Controller and Client exchange WebRTC offer, answer, and ICE candidates
+   through the authenticated WSS signaling channel.
+5. Media or file content travels directly over WebRTC, not through WSS.
+6. Either participant can terminate an approved media session.
 
-The protocol supports session types including monitoring, screen, camera,
-interaction, and files as authorization labels. The current implementation
-supports session lifecycle state:
+Screen capture additionally requires MediaProjection system consent. Camera
+capture additionally requires CAMERA permission. File transfer requires the
+receiving user to select a destination through Android's Storage Access
+Framework.
 
-- Controller requests a session for one authorized Client.
-- Client explicitly approves or rejects it.
-- Approved session state can be restored after reconnect.
-- Controller can end its own session.
-- Interaction commands require an approved interaction session.
+Remote tap and swipe input is sent from the live video surface. It requires a
+separately approved `interaction` session and an enabled AccessibilityService.
+The video touch mapper accounts for aspect-fit letterboxing. Lock-screen action
+uses Android's global Accessibility action.
 
-**Important:** these session types do not mean that the corresponding media
-or OS capability is implemented. Screen capture, camera transport, file
-transfer, location, and general input injection are not available in the
-current beta. An approved session is not a WebRTC connection.
+## 6. File transfer protocol
 
-## 7. Update architecture
+The current Android prototype uses an ordered, reliable WebRTC DataChannel.
+Files are selected through Android document pickers. The sender transmits a
+metadata offer; the receiver chooses a destination; content is sent in 12 KiB
+Base64-encoded chunks with one acknowledgement per chunk. The current maximum
+file size is 50 MiB.
+
+Transfer resume, parallel chunking, large-file optimization, and independent
+integrity manifests are not implemented yet.
+
+## 7. Security boundaries and limitations
+
+- WSS protects signaling and authentication traffic.
+- WebRTC uses DTLS-SRTP for media and DTLS-protected DataChannels for file
+  content.
+- The Worker validates approved session membership before relaying signaling.
+- STUN is configured; TURN relay is not deployed.
+- Media and file transfer have not received an independent security audit.
+- Android permissions and Accessibility access remain controlled by the user.
+- The local Node.js harness is development-only.
+- Server-side token hashing/rotation and formal audit trails remain open work.
+
+## 8. Update and iOS architecture
 
 Android apps query GitHub Releases for their own app asset. The release
 pipeline publishes a manifest with package identity, version, file size,
 SHA-256, and signing-certificate digest. The updater validates the candidate
-before handing installation to Android's Package Installer. It does not
-silently install an APK or bypass Android user confirmation.
+before handing installation to Android's Package Installer.
 
-Client and Controller are separately versioned APKs but currently share the
-same release tag and release-signing identity.
+The repository contains SwiftUI iOS Client and Controller targets and shared
+networking/Keychain code. CI builds Simulator targets. iOS screen hosting,
+camera hosting, remote input, and file transfer are not claimed as implemented.
 
-## 8. iOS architecture
-
-The repository contains native SwiftUI Client and Controller targets and
-shared networking/Keychain code. CI builds and smoke-launches Simulator
-targets. Physical-device distribution still requires Apple signing and
-provisioning. iOS feature parity and runtime compatibility are not claimed.
-
-## 9. Security boundaries
-
-- WSS is required for the published Android release configuration.
-- Pairing requires explicit Client approval.
-- Credentials are role- and device-scoped.
-- Android credentials use Keystore-backed AES-GCM encryption.
-- Sensitive actions require a scoped session approval where implemented.
-- The Worker stores device relationships and token records in Durable Object
-  state. Server-side token hashing/rotation and audit-event hardening remain
-  open work.
-- The Node.js harness is in-memory and development-only.
-
-See [security and privacy](security-and-privacy.md) and
-[V2 security model](v2/security-model.md).
-
-## 10. Planned architecture, not shipped
-
-The following are future work and must not be represented as current features:
-
-- WebRTC media plane with STUN/TURN.
-- MediaProjection screen capture and camera streaming.
-- Accessibility-backed interaction with explicit user enablement.
-- Scoped file transfer, location sharing, and session audit history.
-- Android Enterprise enrollment and managed policy.
-- Durable account/device identity, token hashing/rotation, and operational
-  security controls.
-
-See the [V2 architecture audit](v2/architecture-audit.md) for gaps and
-migration priorities.
+See [v3 implementation status](v3/README.md),
+[upstream/license notes](v3/UPSTREAM_AND_LICENSES.md), and
+[security and privacy](security-and-privacy.md).
