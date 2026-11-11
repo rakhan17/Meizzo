@@ -1,30 +1,44 @@
 # Device monitoring
 
-Telemetry is sent in authenticated Client heartbeats every 15 seconds on
-Android. The backend stores the latest snapshot in memory and broadcasts it
-only to authorized Controller connections. iOS currently reports only fields
-exposed by its public APIs and implemented by the target.
+The Android Client sends telemetry through authenticated heartbeats. The
+current Android heartbeat cadence is 15 seconds. The hosted signaling Worker
+uses a 45-second heartbeat timeout to mark a Client offline when fresh
+heartbeats stop arriving.
 
-| Field | Meaning and source | Android | iOS | Availability |
-|---|---|---:|---:|---|
-| Battery percentage | `BatteryManager` capacity | Yes | Limited | Current snapshot |
-| Charging | Battery status receiver | Yes | Limited | Current snapshot |
-| Battery health/temp | Battery intent fields | When exposed | No verified implementation | Permission/API dependent |
-| Network type | `ConnectivityManager` transport | Yes | Not equivalent | Current snapshot |
-| Wi-Fi SSID/signal/IP | OS network APIs | Not currently sent | Not currently sent | Permission/API dependent |
-| Internet connectivity | Active network capability | Partial | Not currently sent | Platform dependent |
-| Latency | No production measurement field yet | Not available | Not available | Do not interpret as zero |
-| Storage | `StatFs` app filesystem totals | Yes | Not currently sent | Current snapshot |
-| RAM | `ActivityManager.MemoryInfo` | Yes | Not currently sent | Current snapshot |
-| Manufacturer/model | Android build metadata | Yes | Platform metadata varies | Registration + heartbeat |
-| OS/app version | Build metadata | Yes | App metadata | Registration + heartbeat |
-| Uptime | `SystemClock.elapsedRealtime` | Yes | Not currently sent | Current snapshot |
-| Thermal state | No verified production field | Not available | Not available | Do not fabricate |
+Telemetry is a snapshot, not a continuous diagnostic stream. Values depend
+on OS APIs, permissions, hardware, and app implementation.
 
-The Controller should show the last update time and treat old data as stale.
-An unavailable field means the operating system, permission, hardware, or
-current implementation did not provide it. It must not be rendered as zero.
+| Field | Android beta | Notes |
+|---|---|---|
+| Battery percentage | Implemented | Read from Android battery APIs |
+| Charging state | Implemented | Reports charging/not charging when available |
+| Storage | Implemented | App/device filesystem totals as exposed by the implementation |
+| Uptime | Implemented | Device uptime snapshot |
+| Network transport | Implemented | Active network transport category |
+| Manufacturer/model | Implemented | Android build metadata |
+| App/OS version | Partial | Depends on registration and platform metadata |
+| RAM | Not guaranteed | Show only if the current app snapshot provides it |
+| Battery health/temperature | Not guaranteed | Not a stable cross-device telemetry contract |
+| Wi-Fi SSID/signal/IP | Not implemented as a general telemetry contract | Permission and OS restrictions apply |
+| Latency | Not implemented | Do not display a fabricated zero |
+| Thermal state | Not implemented as a verified field | Do not infer from device temperature |
+| Location | Not implemented | Requires a separate consent and permission design |
 
-Location, arbitrary file access, screen capture, and unrestricted remote
-control are not implemented monitoring fields. Explicit platform permissions
-and iOS privacy restrictions remain binding.
+## Presence semantics
+
+- **Online:** authenticated Client connection with a heartbeat inside the
+  server timeout window.
+- **Offline:** connection closed or no heartbeat received before timeout.
+- **Stale telemetry:** last snapshot is older than the UI freshness threshold.
+- **Unavailable:** the OS, permission, hardware, or current implementation
+  did not provide the field.
+
+Unavailable is not the same as zero. The Controller should show the last
+update time and avoid presenting stale values as live.
+
+## Privacy
+
+Telemetry is delivered to Controllers authorized for that Client. Do not
+include pairing codes, authentication tokens, private content, or unnecessary
+personal data in telemetry or logs. See
+[security and privacy](security-and-privacy.md).
