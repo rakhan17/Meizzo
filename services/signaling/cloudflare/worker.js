@@ -200,6 +200,16 @@ export class MeizzoSignaling {
           d.status = "online"; d.lastSeen = t; d.clientHeartbeat = t; d.clientConnId = a.connId;
           await this.save(s);
           this.broadcastDevice(s, d);
+          for (const session of Object.values(s.sessions)) {
+            if (session.clientId === d.clientId && session.state === "approved") {
+              this.send(ws, {
+                type: "client.session_status", sessionId: session.sessionId,
+                clientId: session.clientId, controllerId: session.controllerId,
+                sessionType: session.sessionType, state: "approved",
+                createdAtMs: session.createdAtMs, endedAtMs: null, terminationReason: null
+              });
+            }
+          }
           this.send(ws, { type: "auth.connected", protocolVersion: PROTOCOL_VERSION, capabilities: SERVER_CAPABILITIES, clientId: d.clientId, role: "client", status: d.status });
           return;
         }
@@ -211,6 +221,16 @@ export class MeizzoSignaling {
           this.setAuth(ws, { role: "controller", controllerId, token: m.authToken, tokens });
           this.send(ws, { type: "controller.status", status: "connected", timestamp: t });
           const d = Object.values(s.devices).find(x => x.controllerTokens[m.authToken]);
+          for (const active of Object.values(s.sessions)) {
+            if (active.controllerToken === m.authToken && active.state === "approved") {
+              this.send(ws, {
+                type: "session.status", sessionId: active.sessionId,
+                clientId: active.clientId, controllerId: active.controllerId,
+                sessionType: active.sessionType, state: "approved",
+                createdAtMs: active.createdAtMs, endedAtMs: null, terminationReason: null
+              });
+            }
+          }
           this.send(ws, { type: "auth.connected", protocolVersion: PROTOCOL_VERSION, capabilities: SERVER_CAPABILITIES, clientId: d?.clientId || "", role: "controller", status: "connected" });
           return;
         }
@@ -362,7 +382,9 @@ export class MeizzoSignaling {
     for (const d of Object.values(s.devices)) {
       if (d.status === "online" && t - d.clientHeartbeat > HEARTBEAT_TIMEOUT_MS) {
         d.status = "offline"; d.lastSeen = t; this.broadcastDevice(s, d);
-        for (const [sid, session] of Object.entries(s.sessions)) if (session.clientId === d.clientId && ["pending", "approved"].includes(session.state)) {
+        // Offline devices retain approved session permissions. Commands remain
+        // unavailable while offline, and the same session is restored on auth reconnect.
+        for (const [sid, session] of Object.entries(s.sessions)) if (session.clientId === d.clientId && session.state === "pending") {
           session.state = "failed"; session.endedAtMs = t; session.terminationReason = "client_heartbeat_timeout";
           const payload = { type: "session.status", sessionId: sid, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: "failed", createdAtMs: session.createdAtMs, endedAtMs: t, terminationReason: session.terminationReason };
           this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" }); delete s.sessions[sid];
