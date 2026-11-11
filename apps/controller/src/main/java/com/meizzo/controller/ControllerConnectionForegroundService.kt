@@ -88,12 +88,15 @@ class ControllerConnectionForegroundService : Service() {
                         }.toString())
                     }
                 }
-                webSocket.send(JSONObject().put("type", "controller.list_devices").toString())
                 broadcastState("Connected to MEIZZO", true)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 if (activeSocket !== webSocket) return
+                val type = runCatching { JSONObject(text).optString("type") }.getOrDefault("")
+                if (type == "auth.connected") {
+                    webSocket.send(JSONObject().put("type", "controller.list_devices").toString())
+                }
                 broadcastMessage(text)
             }
 
