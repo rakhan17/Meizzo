@@ -60,27 +60,30 @@ release channel below.
 
 ### Android
 
-#### Stable Release
+#### Release
 
-<sub>**STABLE** · No stable version published yet</sub>
-
-| App | Purpose | Download |
-|:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | ![Coming Soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![Coming Soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
-
-#### Beta
-
-<sub>**LATEST BETA** · `v0.1.0-beta.4` · Version code `100304`</sub>
+<sub>**LATEST RELEASE** · `v0.1.0-beta.4` · Version code `100304` · Published and runtime-tested</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
 | **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
 | **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
 
-> **Beta software:** this build is for testing and may contain bugs. Install
-> Client on the device receiving assistance and Controller on the operator's
-> device. Pairing still requires explicit approval on the Client.
+[![View Android Release](https://img.shields.io/badge/VIEW-ANDROID%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.4)
+
+#### Beta
+
+<sub>**BETA CHANNEL** · New preview builds will appear here when published.</sub>
+
+| App | Purpose | Download |
+|:--|:--|:--|
+| **MEIZZO Client** | Device receiving assistance | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Controller** | Device managing connected Clients | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
+
+> **Beta software:** v0.1.0-beta.4 is a prerelease build intended for testing
+> and may contain bugs. Install Client on the device receiving assistance and
+> Controller on the operator's device. Pairing still requires explicit
+> approval on the Client.
 >
 > **Upgrade note:** beta.4 is signed with the project's current release key.
 > If an older installation was signed with a different key, Android may reject
