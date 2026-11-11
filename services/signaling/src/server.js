@@ -511,6 +511,20 @@ function onClientSessionDecision(ws, message) {
   if (!message.approved) sessions.delete(session.sessionId);
 }
 
+function onClientSessionEnd(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || ws.auth?.role !== 'client' ||
+      session.clientId !== ws.auth.clientId ||
+      session.clientConnection !== ws || session.state !== 'approved') {
+    return sendError(ws, 'unauthorized', 'Invalid Client session termination');
+  }
+  session.state = 'ended';
+  session.endedAtMs = nowMs();
+  session.terminationReason = isNonEmptyString(message.reason) ? message.reason : 'client_ended';
+  notifySession(session);
+  sessions.delete(session.sessionId);
+}
+
 function onSessionEnd(ws, message) {
   const session = sessions.get(message.sessionId);
   if (!session || ws.auth?.role !== 'controller' ||
@@ -715,6 +729,7 @@ function routeMessage(ws, rawPayload) {
     case 'heartbeat': return onHeartbeat(ws, message);
     case 'controller.start_session': return onSessionStart(ws, message);
     case 'client.session_decision': return onClientSessionDecision(ws, message);
+    case 'client.end_session': return onClientSessionEnd(ws, message);
     case 'controller.end_session': return onSessionEnd(ws, message);
     case 'media.signal': return onMediaSignal(ws, message);
     case 'controller.list_devices': return onDeviceList(ws);
