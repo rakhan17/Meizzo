@@ -47,7 +47,10 @@ class ControllerConnectionForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
-            ACTION_REFRESH -> activeSocket?.send(JSONObject().put("type", "controller.list_devices").toString())
+            ACTION_REFRESH -> activeSocket?.let {
+                it.send(JSONObject().put("type", "controller.list_devices").toString())
+                broadcastState("Connected to MEIZZO", true)
+            }
         }
         startInForeground()
         maintainConnection = true
