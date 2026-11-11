@@ -1270,13 +1270,21 @@ class MainActivity : Activity() {
             setConnection("Request Client approval before sending controls", false)
             return
         }
-        socket?.send(JSONObject().apply {
+        val webSocket = socket
+        if (webSocket == null) {
+            setConnection("Controller is disconnected · action not sent", false)
+            return
+        }
+        val sent = webSocket.send(JSONObject().apply {
             put("type", "controller.command")
             put("clientId", clientId)
             put("command", command)
             put("parameters", parameters)
         }.toString())
-        setConnection("Remote action sent · $command", true)
+        setConnection(
+            if (sent) "Remote action queued · $command" else "Remote action could not be queued",
+            sent
+        )
     }
 
     private fun sendSnapshot(clientId: String) {
