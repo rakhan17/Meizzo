@@ -107,6 +107,21 @@ export class MeizzoSignaling {
     this.sendTag("controller:" + controllerId, payload);
   }
 
+  sendSessionPeer(session, role, payload) {
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = this.attachment(ws);
+      if (role === "client" && a.role === "client" &&
+          a.clientId === session.clientId && a.connId === session.clientConnId) {
+        this.send(ws, payload);
+      }
+      if (role === "controller" && a.role === "controller" &&
+          a.controllerId === session.controllerId && a.connId === session.controllerConnId &&
+          (a.tokens || [a.token]).includes(session.controllerToken)) {
+        this.send(ws, payload);
+      }
+    }
+  }
+
   sendError(ws, code, message) {
     this.send(ws, { type: "error", code, message });
   }
@@ -363,8 +378,8 @@ export class MeizzoSignaling {
         if (m.approved && ["screen", "camera", "files"].includes(session.sessionType)) {
           const iceServers = await this.getIceServers();
           const icePayload = { type: "media.ice_servers", sessionId: session.sessionId, iceServers };
-          this.sendController(session.controllerId, icePayload);
-          this.sendClient(session.clientId, icePayload);
+          this.sendSessionPeer(session, "controller", icePayload);
+          this.sendSessionPeer(session, "client", icePayload);
         }
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: session.state, createdAtMs: session.createdAtMs, endedAtMs: session.endedAtMs, terminationReason: session.terminationReason };
         this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
@@ -412,16 +427,12 @@ export class MeizzoSignaling {
         }
         const payload = { type: "media.signal", sessionId: session.sessionId, fromRole: a.role, signal: m.signal };
         if (a.role === "client" && a.clientId === session.clientId && a.connId === session.clientConnId) {
-          for (const peer of this.ctx.getWebSockets()) {
-            const peerAuth = this.attachment(peer);
-            if (peerAuth.role === "controller" && peerAuth.controllerId === session.controllerId &&
-                (peerAuth.tokens || [peerAuth.token]).includes(session.controllerToken)) this.send(peer, payload);
-          }
+          this.sendSessionPeer(session, "controller", payload);
           return;
         }
         if (a.role === "controller" && a.controllerId === session.controllerId &&
             session.controllerConnId === a.connId && (a.tokens || [a.token]).includes(session.controllerToken)) {
-          this.sendClient(session.clientId, payload);
+          this.sendSessionPeer(session, "client", payload);
           return;
         }
         return this.sendError(ws, "unauthorized", "Not a participant in this media session");
