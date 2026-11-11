@@ -294,33 +294,9 @@ class MainActivity : ComponentActivity() {
                     }
     }
 
-    private fun connectionFailureLabel(error: Throwable): String {
-        val detail = error.message.orEmpty().lowercase()
-        return when {
-            detail.contains("cleartext") -> "Cleartext blocked · use debug or WSS"
-            detail.contains("unable to resolve") || detail.contains("unknownhost") ->
-                "Backend host not found"
-            detail.contains("failed to connect") || detail.contains("refused") ->
-                "Backend unreachable"
-            detail.contains("ssl") || detail.contains("certificate") ->
-                "TLS validation failed"
-            else -> "Backend connection failed · retrying"
-        }
-    }
-
     private fun setConnection(label: String, connected: Boolean) = runOnUiThread {
         connectionLabel.text = "● $label"
         connectionLabel.setTextColor(if (connected) Color.rgb(120, 210, 170) else Color.rgb(238, 190, 100))
-    }
-
-    private fun scheduleReconnect() {
-        if (!shouldMaintainConnection || reconnectScheduled) return
-        reconnectScheduled = true
-        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
-        reconnectHandler.postDelayed({
-            reconnectScheduled = false
-            if (shouldMaintainConnection) connect()
-        }, (1L shl reconnectAttempt) * 1000L)
     }
 
     private fun authenticateExisting(webSocket: WebSocket) {
