@@ -1,0 +1,3 @@
+<resources>
+    <string name="remote_accessibility_description">Allows an explicitly approved MEIZZO Controller to send screen gestures and lock this device during an active interaction session.</string>
+</resources>
