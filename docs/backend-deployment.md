@@ -14,11 +14,11 @@ Keep this project connected to `main`. The v3 deployment must use a separate Clo
 
 ## Isolated MEIZZO v3 Worker
 
-The v3 development branch has a separate Wrangler configuration, `wrangler.v3.toml`, and a separate Worker name, `meizzo-signaling-v3`. It has its own Durable Object namespace. This separation preserves the stable Worker while v3 adds participant-bound WebRTC signaling, ICE-server delivery, and additional session/reconnect checks.
+The v3 development branch has a separate Wrangler configuration, `wrangler.v3.toml`, and a shared beta Worker name, `meizzo-signaling-beta`. It has its own Durable Object namespace. This separation preserves the stable Worker while v3 adds participant-bound WebRTC signaling, ICE-server delivery, and additional session/reconnect checks.
 
 Expected v3 endpoint for the existing Cloudflare account subdomain:
 
-`wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
+`wss://meizzo-signaling-beta.rakhanatanox.workers.dev`
 
 ### One-time Cloudflare Workers Builds setup
 
@@ -38,14 +38,14 @@ Create a second Workers Builds project in the Cloudflare Dashboard:
 7. Use the automatically generated Cloudflare API token provided by Workers Builds.
 8. Save and deploy.
 
-After setup, each push to `develop/v3` automatically deploys the isolated v3 Worker. GitHub Actions runs the v3 Wrangler dry-run and tests independently. **No `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` GitHub Actions secrets are needed for this deployment path.** Do not paste a personal Cloudflare API token into the repository.
+After setup, each push to `develop/v3` automatically deploys the shared beta Worker. GitHub Actions runs the v3 Wrangler dry-run and tests independently. **No `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` GitHub Actions secrets are needed for this deployment path.** Do not paste a personal Cloudflare API token into the repository.
 
 Cloudflare's dashboard is authoritative for the final Worker hostname. Confirm the hostname there rather than assuming the account subdomain.
 
 ### Verify
 
 1. Open `https://<actual-v3-worker-hostname>/healthz`.
-2. Confirm the response reports `status: "ok"` and `service: "meizzo-signaling-v3"`.
+2. Confirm the response reports `status: "ok"` and `service: "meizzo-signaling-beta"`.
 3. Test a WSS connection and a real Client/Controller pairing.
 4. Test approved-session offer/answer/ICE signaling and reconnect behavior.
 5. Configure TURN separately if required.
