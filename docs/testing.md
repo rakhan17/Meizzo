@@ -13,20 +13,21 @@ npm run check
 npm test
 ```
 
-The Node.js test suite covers pairing approval, one-time code consumption,
-authentication, multi-device isolation, revocation, presence, reconnect, and
-related session flows. These tests exercise the local Node harness and do not
-by themselves prove Cloudflare production behavior.
+The Node.js and Durable Object tests cover pairing approval, one-time code
+consumption, authentication, multi-device isolation, revocation, presence,
+session restart after termination, Client reconnect cleanup, participant-bound
+media signaling, Client-initiated session termination, STUN fallback, and
+short-lived TURN credential delivery. These tests do not prove live network
+connectivity or Cloudflare production deployment.
 
 ## Android CI
 
 Android CI builds Client and Controller as separate debug APKs and validates
-their package identifiers. The beta.5 release workflow additionally builds
-release variants, signs both APKs, verifies signatures, checks package/version
-metadata, and publishes checksums and the updater manifest.
+their package identifiers. The v2.5.0 stable release workflow builds signed
+release variants. The v3 branch has not published a release APK yet.
 
-- [Android CI run](https://github.com/rakhan17/Meizzo/actions/runs/42946246894)
-- [Beta.5 release run](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
+- [Current v3 Android and signaling CI](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3)
+- [Stable v2.5.0 release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 
 ## iOS CI
 
@@ -69,12 +70,39 @@ Controller and at least two Clients.
 Record exact results. Never record tokens, passwords, pairing codes, or private
 endpoint credentials in test reports.
 
+## v3 remote media and file-transfer acceptance
+
+Run these checks on real Android devices after the v3 Worker has been deployed
+and the TURN secrets have been configured. CI compilation alone is not runtime
+acceptance.
+
+1. **Live screen:** approve the MEIZZO session, approve Android's MediaProjection
+   prompt, confirm the Controller renders the correct orientation, and verify
+   the stream stops when either participant ends the session.
+2. **Remote camera:** approve the camera session and Android CAMERA permission;
+   verify the rear camera stream and test permission denial.
+3. **Remote input:** approve the separate interaction session, enable the
+   AccessibilityService, then test taps and swipes at the center and edges of
+   portrait and landscape video. Confirm touches in letterbox bars do nothing.
+4. **Remote lock:** test the lock action on Android 9+ and confirm it is
+   unavailable when Accessibility access is disabled.
+5. **File transfer:** send files in both directions, verify SHA-256 completion,
+   test unknown-size document providers, reject files over 50 MiB, cancel
+   destination selection, and confirm partial files are removed after failure.
+6. **Network traversal:** test same Wi-Fi, different Wi-Fi networks, mobile
+   data, restrictive NAT, and Wi-Fi/mobile handover. Confirm TURN is used when
+   direct ICE fails.
+7. **Session recovery:** stop the interaction session and request it again;
+   end screen/camera/files sessions from each side; reconnect Client and
+   Controller and verify no stale approval or media state remains.
+
 ## Release acceptance boundary
 
-The beta.5 release workflow passed and published signed APKs. This proves
-release automation and artifact validation, not universal device
-compatibility. Physical-device runtime acceptance, OEM background behavior,
-and complete end-to-end multi-device validation must be recorded separately.
+The v2.5.0 stable release is published. v3 remains a development branch until
+the remote-media acceptance matrix above passes on physical devices and
+cross-network conditions. Physical-device runtime acceptance, OEM background
+behavior, and complete end-to-end multi-device validation must be recorded
+separately.
 
 ## Documentation checks
 
