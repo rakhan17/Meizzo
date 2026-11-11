@@ -196,6 +196,28 @@ export class MeizzoSignaling {
         if (m.role === "client" && validString(m.clientId)) {
           const d = s.devices[m.clientId];
           if (!d || d.clientToken !== m.authToken) return this.sendError(ws, "unauthorized", "Invalid authentication token");
+          if (d.clientConnId && d.clientConnId !== a.connId) {
+            for (const [sessionId, session] of Object.entries(s.sessions)) {
+              if (session.clientId !== m.clientId || !["pending", "approved"].includes(session.state)) continue;
+              session.state = "failed";
+              session.endedAtMs = t;
+              session.terminationReason = "client_reconnected";
+              const payload = {
+                type: "session.status",
+                sessionId,
+                clientId: session.clientId,
+                controllerId: session.controllerId,
+                sessionType: session.sessionType,
+                state: "failed",
+                createdAtMs: session.createdAtMs,
+                endedAtMs: t,
+                terminationReason: "client_reconnected"
+              };
+              this.sendController(session.controllerId, payload);
+              this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+              delete s.sessions[sessionId];
+            }
+          }
           this.setAuth(ws, { role: "client", clientId: m.clientId });
           d.status = "online"; d.lastSeen = t; d.clientHeartbeat = t; d.clientConnId = a.connId;
           await this.save(s);
