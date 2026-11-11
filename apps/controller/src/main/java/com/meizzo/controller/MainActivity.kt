@@ -1,6 +1,7 @@
 package com.meizzo.controller
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
@@ -25,7 +26,43 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class MainActivity : Activity() {
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.draw.drawBehind
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+
+class MainActivity : ComponentActivity() {
     private val preferences by lazy { getPreferences(MODE_PRIVATE) }
     private val secureStore by lazy { SecureStore(this) }
     private val controllerId by lazy {
@@ -50,93 +87,37 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(24), dp(22), dp(28))
-            setBackgroundColor(Color.rgb(8, 8, 10))
-        }
-        content.addView(ImageView(this).apply {
-            setImageResource(R.drawable.meizzo_logo)
-            contentDescription = "MEIZZO logo"
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }, LinearLayout.LayoutParams(-1, dp(76)))
-        content.addView(TextView(this).apply {
-            text = "MEIZZO CONTROLLER"
-            textSize = 24f
-            letterSpacing = 0.1f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setPadding(0, dp(18), 0, dp(4))
-        })
-        content.addView(TextView(this).apply {
-            text = "Your connected devices, at a glance."
-            textSize = 14f
-            setTextColor(Color.rgb(155, 155, 163))
-        })
-
-        val overview = uiCard().apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-        }
-        overview.addView(uiEyebrow("CONNECTION"))
         connectionLabel = TextView(this).apply {
             text = "● Connecting to MEIZZO"
             textSize = 14f
-            setPadding(0, dp(8), 0, dp(8))
             setTextColor(Color.rgb(220, 190, 120))
         }
-        overview.addView(connectionLabel)
         summaryLabel = TextView(this).apply {
             text = "Loading device inventory…"
             textSize = 13f
-            setTextColor(Color.rgb(165, 165, 173))
+            setTextColor(Color.rgb(65, 65, 75))
         }
-        overview.addView(summaryLabel)
-        content.addView(overview, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22) })
-
-        val pairing = uiCard().apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-        }
-        pairing.addView(uiEyebrow("PAIR A DEVICE"))
         codeInput = EditText(this).apply {
             hint = "Enter six-digit pairing code"
             inputType = 2
             maxLines = 1
             textSize = 16f
             setHintTextColor(Color.rgb(115, 115, 123))
-            setTextColor(Color.WHITE)
-            setPadding(0, dp(12), 0, dp(10))
-            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(85, 85, 94))
+            setTextColor(Color.rgb(20, 20, 24))
+            setPadding(dp(2), dp(12), dp(2), dp(10))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(120, 120, 130))
         }
-        pairing.addView(codeInput)
-        pairing.addView(uiActionButton("Add device", true) { requestPairing() },
-            LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
-        content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-        content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
-            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
-        content.addView(uiActionButton("Preview Liquid Glass", false) {
-            startActivity(android.content.Intent(this, LiquidGlassPreviewActivity::class.java))
-        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
-
-        content.addView(uiEyebrow("YOUR DEVICES").apply {
-            setPadding(dp(2), dp(28), 0, dp(8))
-        })
         devicesLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        content.addView(devicesLayout)
-        content.addView(TextView(this).apply {
-            text = "MEIZZO  ·  SECURE DEVICE MANAGEMENT"
-            textSize = 10f
-            letterSpacing = 0.12f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(105, 105, 113))
-            setPadding(0, dp(28), 0, dp(8))
-        })
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            addView(content)
-            setBackgroundColor(Color.rgb(8, 8, 10))
-        })
+        setContent {
+            ControllerLiquidGlassScreen(
+                connectionView = connectionLabel,
+                summaryView = summaryLabel,
+                pairingInput = codeInput,
+                devicesView = devicesLayout,
+                onPair = { requestPairing() },
+                onCheckUpdates = { checkForUpdate() }
+            )
+        }
         renderDevices()
         connect()
     }
@@ -629,5 +610,89 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun ControllerLiquidGlassScreen(
+    connectionView: TextView,
+    summaryView: TextView,
+    pairingInput: EditText,
+    devicesView: LinearLayout,
+    onPair: () -> Unit,
+    onCheckUpdates: () -> Unit
+) {
+    val backdrop = rememberLayerBackdrop()
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().layerBackdrop(backdrop).background(
+                Brush.linearGradient(
+                    listOf(ComposeColor(0xFF45454E), ComposeColor(0xFF101014), ComposeColor(0xFF282831))
+                )
+            )
+        ) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 16.dp).size(210.dp)
+                .clip(CircleShape).background(ComposeColor(0xFF858591).copy(alpha = 0.30f)))
+            Box(Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 110.dp).size(230.dp)
+                .clip(CircleShape).background(ComposeColor(0xFF62626D).copy(alpha = 0.26f)))
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
+            Spacer(Modifier.height(12.dp))
+            Text("MEIZZO", color = ComposeColor.White, fontSize = 12.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+            Text("Your devices.\nOne place.", color = ComposeColor.White, fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.SemiBold)
+            Text("A calmer way to stay connected.", color = ComposeColor(0xFFBEBEC7), fontSize = 14.sp)
+            ControllerGlassPanel(backdrop) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("CONNECTION", color = ComposeColor(0xFF777781), fontSize = 10.sp, letterSpacing = 1.7.sp, fontWeight = FontWeight.Bold)
+                    AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                    AndroidView(factory = { summaryView }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+            ControllerGlassPanel(backdrop) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("PAIR A DEVICE", color = ComposeColor(0xFF777781), fontSize = 10.sp, letterSpacing = 1.7.sp, fontWeight = FontWeight.Bold)
+                    AndroidView(factory = { pairingInput }, modifier = Modifier.fillMaxWidth())
+                    ControllerGlassButton(backdrop, "Add device", true, onPair)
+                }
+            }
+            ControllerGlassButton(backdrop, "Check for updates", false, onCheckUpdates)
+            Text("YOUR DEVICES", color = ComposeColor(0xFFD6D6DE), fontSize = 10.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Bold)
+            ControllerGlassPanel(backdrop) {
+                AndroidView(factory = { devicesView }, modifier = Modifier.fillMaxWidth())
+            }
+            Spacer(Modifier.height(10.dp))
+            Text("MEIZZO  ·  SECURE DEVICE MANAGEMENT", color = ComposeColor(0xFF92929C), fontSize = 9.sp, letterSpacing = 1.1.sp)
+        }
+    }
+}
+
+@Composable
+private fun ControllerGlassPanel(backdrop: Backdrop, content: @Composable () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedCornerShape(25.dp) },
+            effects = { vibrancy(); blur(18.dp.toPx()); lens(15.dp.toPx(), 26.dp.toPx()) },
+            onDrawSurface = { drawRect(ComposeColor.White.copy(alpha = 0.60f)) }
+        ).padding(18.dp)
+    ) { content() }
+}
+
+@Composable
+private fun ControllerGlassButton(backdrop: Backdrop, label: String, primary: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedCornerShape(18.dp) },
+            effects = { vibrancy(); blur(16.dp.toPx()); lens(12.dp.toPx(), 22.dp.toPx()) },
+            onDrawSurface = { drawRect(ComposeColor.White.copy(alpha = if (primary) 0.84f else 0.24f)) }
+        ).clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 15.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (primary) ComposeColor(0xFF111116) else ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
