@@ -18,8 +18,13 @@ The deployment configuration is:
 - Durable Object state: stored through the Durable Object storage API.
 
 The Worker exposes `GET /healthz` and WebSocket upgrades at `/` and
-`/ws`. The Worker validation workflow performs a Wrangler dry-run. Deployment
-is handled by the configured Cloudflare workflow and credentials.
+`/ws`. The Worker validation workflow performs a Wrangler dry-run only.
+Production deployment is available through the manual
+[`Deploy MEIZZO Cloudflare Worker`](../.github/workflows/deploy-cloudflare.yml)
+workflow. It requires the GitHub Actions secrets `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID`; TURN support additionally requires
+`REALTIME_TURN_TOKEN_ID` and `REALTIME_TURN_TOKEN_SECRET`. Run it against
+`develop/v3` only after reviewing the deployment diff.
 
 ### Deployment checklist
 
