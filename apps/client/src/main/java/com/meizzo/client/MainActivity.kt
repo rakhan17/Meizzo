@@ -927,6 +927,7 @@ class MainActivity : Activity() {
         val writeAccess = contentResolver.persistedUriPermissions.any {
             it.uri == treeUri && it.isWritePermission
         }
+        val directoryFlags = queryRemoteDocumentInfo(requestedDocument).optLong("flags")
         val entries = org.json.JSONArray()
         contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
             val idIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
@@ -961,6 +962,7 @@ class MainActivity : Activity() {
                 put("documentId", documentId)
                 put("rootDocumentId", rootId)
                 put("writeAccess", writeAccess)
+                put("directoryFlags", directoryFlags)
                 put("files", entries)
                 put("truncated", entries.length() >= 40)
             })
@@ -1051,6 +1053,70 @@ class MainActivity : Activity() {
                         pendingAlarmCommands.remove(requestId)
                         error = exception.message ?: "Unable to control the remote alarm"
                     }
+                }
+            }
+            "file_create_directory" -> {
+                try {
+                    val parentId = parameters.optString("parentDocumentId")
+                    val newName = parameters.optString("newName").trim()
+                    if (parentId.isBlank() || parentId.length > 512) {
+                        throw IllegalArgumentException("Invalid destination folder")
+                    }
+                    if (newName.isBlank() || newName.length > 128 || newName.contains('/') || newName.contains('\\')) {
+                        throw IllegalArgumentException("Enter a valid folder name without path separators")
+                    }
+                    val treeUri = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+                        .getString("tree_uri", null)?.let(android.net.Uri::parse)
+                        ?: throw IllegalStateException("Choose a shared folder before creating directories")
+                    val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                    val parentUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, parentId)
+                    val rootUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId)
+                    if (parentId != rootId &&
+                        !android.provider.DocumentsContract.isChildDocument(contentResolver, rootUri, parentUri)
+                    ) {
+                        throw SecurityException("Destination folder is outside the shared directory")
+                    }
+                    val writeAccess = contentResolver.persistedUriPermissions.any {
+                        it.uri == treeUri && it.isWritePermission
+                    }
+                    if (!writeAccess) throw SecurityException("The shared folder was not granted write access")
+                    val parentInfo = queryRemoteDocumentInfo(parentUri)
+                    val parentFlags = parentInfo.optLong("flags")
+                    if ((parentFlags and android.provider.DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE.toLong()) == 0L) {
+                        throw IllegalStateException("This folder does not support creating subfolders")
+                    }
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("Allow folder creation?")
+                            .setMessage("The paired Controller wants to create this folder inside the shared directory:\n\n$newName")
+                            .setNegativeButton("Deny") { _, _ ->
+                                sendCommandFailure(webSocket, message, "Folder creation was denied on the Client")
+                            }
+                            .setPositiveButton("Create folder") { _, _ ->
+                                try {
+                                    android.provider.DocumentsContract.createDocument(
+                                        contentResolver,
+                                        parentUri,
+                                        android.provider.DocumentsContract.Document.MIME_TYPE_DIR,
+                                        newName
+                                    ) ?: throw IllegalStateException("The storage provider could not create the folder")
+                                    webSocket.send(JSONObject().apply {
+                                        put("type", "client.result")
+                                        put("requestId", message.optString("requestId"))
+                                        put("result", JSONObject().put("filesChanged", true).put("createdFolder", newName))
+                                    }.toString())
+                                } catch (exception: Exception) {
+                                    sendCommandFailure(webSocket, message, exception.message ?: "Unable to create the folder")
+                                }
+                            }
+                            .setOnCancelListener {
+                                sendCommandFailure(webSocket, message, "Folder creation was cancelled")
+                            }
+                            .show()
+                    }
+                    return
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Remote folder creation failed"
                 }
             }
             "file_rename", "file_delete" -> {
