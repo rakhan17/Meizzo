@@ -852,15 +852,64 @@ class MainActivity : Activity() {
         var touchStartX = 0f
         var touchStartY = 0f
         var touchStartTime = 0L
+        var multiTouchGesture = false
+        var previousCentroidX = 0f
+        var previousCentroidY = 0f
+        var scrollDeltaX = 0f
+        var scrollDeltaY = 0f
         video.setOnTouchListener { _, event ->
-            when (event.action) {
+            when (event.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     touchStartX = event.x
                     touchStartY = event.y
                     touchStartTime = event.eventTime
+                    multiTouchGesture = false
+                    scrollDeltaX = 0f
+                    scrollDeltaY = 0f
+                    true
+                }
+                android.view.MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (event.pointerCount >= 2) {
+                        multiTouchGesture = true
+                        previousCentroidX = (event.getX(0) + event.getX(1)) / 2f
+                        previousCentroidY = (event.getY(0) + event.getY(1)) / 2f
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    if (multiTouchGesture && event.pointerCount >= 2) {
+                        val centroidX = (event.getX(0) + event.getX(1)) / 2f
+                        val centroidY = (event.getY(0) + event.getY(1)) / 2f
+                        scrollDeltaX += previousCentroidX - centroidX
+                        scrollDeltaY += previousCentroidY - centroidY
+                        previousCentroidX = centroidX
+                        previousCentroidY = centroidY
+                        val threshold = dp(18).toFloat()
+                        if (kotlin.math.abs(scrollDeltaX) >= threshold ||
+                            kotlin.math.abs(scrollDeltaY) >= threshold) {
+                            val normalizedX = (scrollDeltaX / video.width.coerceAtLeast(1)).coerceIn(-0.35f, 0.35f)
+                            val normalizedY = (scrollDeltaY / video.height.coerceAtLeast(1)).coerceIn(-0.35f, 0.35f)
+                            sendInteractionAction(clientId, "scroll", JSONObject().apply {
+                                put("deltaX", normalizedX.toDouble())
+                                put("deltaY", normalizedY.toDouble())
+                            })
+                            scrollDeltaX = 0f
+                            scrollDeltaY = 0f
+                        }
+                    }
+                    true
+                }
+                android.view.MotionEvent.ACTION_POINTER_UP -> {
+                    multiTouchGesture = true
                     true
                 }
                 android.view.MotionEvent.ACTION_UP -> {
+                    if (multiTouchGesture) {
+                        multiTouchGesture = false
+                        scrollDeltaX = 0f
+                        scrollDeltaY = 0f
+                        return@setOnTouchListener true
+                    }
                     val aspect = if (viewer.remoteWidth > 0 && viewer.remoteHeight > 0) {
                         viewer.remoteWidth.toFloat() / viewer.remoteHeight.toFloat()
                     } else video.width.toFloat() / video.height.coerceAtLeast(1).toFloat()
@@ -911,6 +960,12 @@ class MainActivity : Activity() {
                             put("durationMs", 350)
                         })
                     }
+                    true
+                }
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    multiTouchGesture = false
+                    scrollDeltaX = 0f
+                    scrollDeltaY = 0f
                     true
                 }
                 else -> true
