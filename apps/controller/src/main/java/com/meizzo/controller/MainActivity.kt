@@ -524,6 +524,8 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send emergency message", false) { composeEmergencyMessage(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Send text to focused field", false) { showRemoteTextDialog(id) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Lock Client screen", false) {
                 sendInteractionAction(id, "lock_screen", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
@@ -1061,6 +1063,30 @@ class MainActivity : Activity() {
                     put("parameters", JSONObject().put("message", message))
                 }.toString())
                 setConnection("Emergency message sent to Client", true)
+            }
+            .show()
+    }
+
+    private fun showRemoteTextDialog(clientId: String) {
+        val input = EditText(this).apply {
+            hint = "Text to insert on the Client"
+            minLines = 3
+            maxLines = 6
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(2_000))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Remote keyboard · text input")
+            .setMessage("Place the cursor in a text field on the Client first. MEIZZO appends the text there. Password fields are blocked, and Android may reject unsupported custom editors.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Insert") { _, _ ->
+                val value = input.text.toString()
+                if (value.isBlank()) {
+                    setConnection("Text input cannot be empty", false)
+                } else {
+                    sendInteractionAction(clientId, "text_input", JSONObject().put("text", value))
+                }
             }
             .show()
     }
