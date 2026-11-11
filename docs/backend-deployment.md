@@ -80,7 +80,7 @@ Expected v3 endpoint for the existing Cloudflare account subdomain:
 `wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
 
 The repository includes a guarded manual workflow at
-[Deploy MEIZZO v3 Cloudflare](../.github/workflows/deploy-cloudflare-v3.yml).
+[Deploy MEIZZO v3 Cloudflare](https://github.com/rakhan17/Meizzo/blob/develop/v3/.github/workflows/deploy-cloudflare-v3.yml).
 Before using it, configure these GitHub Actions repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`: token with permission to deploy Workers and manage
