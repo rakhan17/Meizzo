@@ -878,6 +878,9 @@ class MainActivity : Activity() {
         treeUri: android.net.Uri,
         documentId: String
     ) {
+        if (documentId.isBlank() || documentId.length > 512) {
+            throw IllegalArgumentException("Invalid remote folder identifier")
+        }
         val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
         val rootDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId)
         val requestedDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
