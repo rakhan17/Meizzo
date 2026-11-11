@@ -857,7 +857,7 @@ class MainActivity : Activity() {
             val mimeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
             val sizeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
             val modifiedIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-            while (cursor.moveToNext() && entries.length() < 80) {
+            while (cursor.moveToNext() && entries.length() < 40) {
                 val childId = if (idIndex >= 0) cursor.getString(idIndex).orEmpty() else ""
                 if (childId.isBlank()) continue
                 val name = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else childId
@@ -865,9 +865,9 @@ class MainActivity : Activity() {
                 val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else -1L
                 val modified = if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) cursor.getLong(modifiedIndex) else 0L
                 entries.put(JSONObject().apply {
-                    put("documentId", childId.take(512))
-                    put("name", name.take(160))
-                    put("mimeType", mime.take(160))
+                    put("documentId", childId.take(256))
+                    put("name", name.take(120))
+                    put("mimeType", mime.take(100))
                     put("size", size)
                     put("modifiedAt", modified)
                     put("isDirectory", mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
@@ -881,7 +881,7 @@ class MainActivity : Activity() {
                 put("documentId", documentId)
                 put("rootDocumentId", rootId)
                 put("files", entries)
-                put("truncated", entries.length() >= 80)
+                put("truncated", entries.length() >= 40)
             })
         }.toString())
     }
