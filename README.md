@@ -122,7 +122,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Remote media volume up/down/mute/unmute controls during an approved interaction session.
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
-- Remote folder browsing through a Client-granted Storage Access Framework tree URI, showing folder contents and file metadata. Individual files can be sent to the Controller after a separate file-session approval and per-file Client confirmation; remote rename/delete remain unimplemented.
+- Remote folder browsing through a Client-granted Storage Access Framework tree URI, showing folder contents and file metadata. Individual files can be sent to the Controller after a separate file-session approval and per-file Client confirmation; rename and file deletion are available only when the storage provider supports them and the Client approves.
 - Bidirectional single- and multi-file transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, bounded chunk retries, sequence and size validation, SHA-256 verification, incremental progress, cancellation, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
@@ -132,7 +132,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 ### Still in development / not release-ready
 
 - Production TURN secret configuration and reliable media connectivity across restrictive NATs.
-- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, remote file rename/delete, resumable file transfer, and large-file optimization.
+- Internal app/system audio capture, two-way voice, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
