@@ -59,6 +59,7 @@ class MainActivity : Activity() {
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
+    private var pendingRemoteFileBrowse: Pair<WebSocket, JSONObject>? = null
     private val pendingAlarmCommands = ConcurrentHashMap<String, WebSocket>()
     private val alarmResultReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -80,6 +81,7 @@ class MainActivity : Activity() {
     private val mediaAudioPermissionRequestCode = 4110
     private val filePickRequestCode = 4108
     private val fileSaveRequestCode = 4109
+    private val remoteFileTreeRequestCode = 4111
     private var pendingIncomingFileName: String? = null
     private var pendingIncomingFileMime: String = "application/octet-stream"
     private var fileTransferCoordinator: FileTransferCoordinator? = null
@@ -700,6 +702,27 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            remoteFileTreeRequestCode -> {
+                val pending = pendingRemoteFileBrowse
+                pendingRemoteFileBrowse = null
+                val treeUri = data?.data
+                if (resultCode == RESULT_OK && treeUri != null && pending != null) {
+                    try {
+                        val readPermission = (data.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        if (readPermission != 0) contentResolver.takePersistableUriPermission(treeUri, readPermission)
+                        getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+                            .edit().putString("tree_uri", treeUri.toString()).apply()
+                        val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                        val requestedId = pending.second.optJSONObject("parameters")
+                            ?.optString("documentId")?.takeIf { it.isNotBlank() } ?: rootId
+                        sendRemoteFileListing(pending.first, pending.second, treeUri, requestedId)
+                    } catch (exception: Exception) {
+                        sendCommandFailure(pending.first, pending.second, exception.message ?: "Unable to access the selected folder")
+                    }
+                } else if (pending != null) {
+                    sendCommandFailure(pending.first, pending.second, "No folder was selected")
+                }
+            }
             fileSaveRequestCode -> {
                 val destination = data?.data
                 if (resultCode == RESULT_OK && destination != null) {
@@ -805,6 +828,64 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun sendRemoteFileListing(
+        webSocket: WebSocket,
+        message: JSONObject,
+        treeUri: android.net.Uri,
+        documentId: String
+    ) {
+        val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+        val rootDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId)
+        val requestedDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+        if (documentId != rootId &&
+            !android.provider.DocumentsContract.isChildDocument(contentResolver, rootDocument, requestedDocument)
+        ) {
+            throw SecurityException("Requested folder is outside the shared directory")
+        }
+        val childrenUri = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
+        val projection = arrayOf(
+            android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
+            android.provider.DocumentsContract.Document.COLUMN_SIZE,
+            android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
+        )
+        val entries = org.json.JSONArray()
+        contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+            val idIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val nameIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            val mimeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
+            val sizeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
+            val modifiedIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+            while (cursor.moveToNext() && entries.length() < 80) {
+                val childId = if (idIndex >= 0) cursor.getString(idIndex).orEmpty() else ""
+                if (childId.isBlank()) continue
+                val name = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else childId
+                val mime = if (mimeIndex >= 0) cursor.getString(mimeIndex).orEmpty() else ""
+                val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else -1L
+                val modified = if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) cursor.getLong(modifiedIndex) else 0L
+                entries.put(JSONObject().apply {
+                    put("documentId", childId.take(512))
+                    put("name", name.take(160))
+                    put("mimeType", mime.take(160))
+                    put("size", size)
+                    put("modifiedAt", modified)
+                    put("isDirectory", mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                })
+            }
+        } ?: throw IllegalStateException("The selected folder could not be read")
+        webSocket.send(JSONObject().apply {
+            put("type", "client.result")
+            put("requestId", message.optString("requestId"))
+            put("result", JSONObject().apply {
+                put("documentId", documentId)
+                put("rootDocumentId", rootId)
+                put("files", entries)
+                put("truncated", entries.length() >= 80)
+            })
+        }.toString())
+    }
+
     private fun sendCommandFailure(webSocket: WebSocket, message: JSONObject, reason: String) {
         webSocket.send(JSONObject().apply {
             put("type", "client.result")
@@ -889,6 +970,47 @@ class MainActivity : Activity() {
                         pendingAlarmCommands.remove(requestId)
                         error = exception.message ?: "Unable to control the remote alarm"
                     }
+                }
+            }
+            "file_browse" -> {
+                if (pendingRemoteFileBrowse != null) {
+                    error = "Another remote folder permission request is already pending"
+                } else {
+                    val savedTree = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+                        .getString("tree_uri", null)?.let(android.net.Uri::parse)
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("Allow remote folder browsing?")
+                            .setMessage(
+                                "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. File contents are not exposed by browsing."
+                            )
+                            .setNegativeButton("Deny") { _, _ ->
+                                sendCommandFailure(webSocket, message, "Remote folder browsing was denied")
+                            }
+                            .setPositiveButton("Continue") { _, _ ->
+                                if (savedTree == null) {
+                                    pendingRemoteFileBrowse = webSocket to message
+                                    startActivityForResult(
+                                        android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT_TREE),
+                                        remoteFileTreeRequestCode
+                                    )
+                                } else {
+                                    try {
+                                        val rootId = android.provider.DocumentsContract.getTreeDocumentId(savedTree)
+                                        val requestedId = message.optJSONObject("parameters")
+                                            ?.optString("documentId")?.takeIf { it.isNotBlank() } ?: rootId
+                                        sendRemoteFileListing(webSocket, message, savedTree, requestedId)
+                                    } catch (exception: Exception) {
+                                        sendCommandFailure(webSocket, message, exception.message ?: "Unable to browse the selected folder")
+                                    }
+                                }
+                            }
+                            .setOnCancelListener {
+                                sendCommandFailure(webSocket, message, "Remote folder browsing was cancelled")
+                            }
+                            .show()
+                    }
+                    return
                 }
             }
             "clipboard_read", "clipboard_write" -> {
