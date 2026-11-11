@@ -23,18 +23,28 @@ build does not prove runtime behavior on every Android vendor or network.
   - Display-aspect-aware touch mapping on the Controller video surface.
 - Remote camera streaming prototype:
   - Camera2 capture after Android runtime CAMERA permission.
-  - WebRTC video publishing and Controller preview.
+  - WebRTC video publishing and Controller preview, with Controller-triggered front/rear camera switching.
 - Remote screen interaction:
   - Tap, swipe, long-press, and two-finger trackpad scrolling from the live video surface.
-  - A separate approved interaction session is required.
-  - Android AccessibilityService must be enabled manually by the device owner.
-- Remote lock screen:
-  - Android AccessibilityService global lock action on Android 9+.
+  - Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
+  - Focused-field text insertion at the active selection, Backspace, Enter, Tab, Escape, arrow keys, and selected Ctrl shortcuts.
+  - A separate approved interaction session is required; AccessibilityService must be enabled manually by the device owner.
+- Voice and media controls:
+  - Optional two-way microphone audio tracks over WebRTC. Each side requires RECORD_AUDIO permission and an explicit in-session action; Controller microphone capture uses its own foreground service.
+  - Controller can mute received Client audio; both sides can locally stop microphone transmission.
+  - Remote Client media volume up/down/mute/unmute and Client alarm ON/OFF controls.
+  - Internal app/system audio capture is not implemented; physical-device voice routing and echo-cancellation validation remain.
+- Clipboard transfer:
+  - Manual text clipboard read/write in both directions, with a separate Client approval dialog for every operation.
+- Remote file management:
+  - Client-granted Storage Access Framework tree browsing with folder navigation and metadata listing.
+  - Individual file downloads through a separate approved WebRTC files session and per-file Client confirmation.
+  - Rename and file deletion when the provider grants write access and advertises support; folder deletion is disabled.
 - File transfer prototype:
-  - Bidirectional send/receive over an ordered WebRTC DataChannel.
-  - Android Storage Access Framework for source and destination selection.
-  - 12 KiB stop-and-wait chunks with per-chunk acknowledgements and SHA-256 verification.
-  - 50 MiB maximum file size; transfer resume is not implemented.
+  - Bidirectional single- and multi-file send/receive over an ordered WebRTC DataChannel.
+  - 12 KiB stop-and-wait chunks, unique transfer IDs, bounded retries, duplicate completion handling, sequence validation, and SHA-256 verification.
+  - Incremental progress and explicit cancellation; 50 MiB maximum per file.
+  - Worker-provided STUN/TURN configuration and bounded ICE-restart recovery; transfer resume and large-file optimization are not implemented.
 - Android Keystore-backed AES-GCM credential storage, foreground connection
   services, reconnect backoff, and updater verification.
 - RustDesk upstream source pinned as a Git submodule at
@@ -55,8 +65,8 @@ Node.js service is a development/test harness with in-memory state only.
 
 The protocol uses WSS for pairing, authentication, presence, commands, session
 authorization, and WebRTC offer/answer/ICE exchange. Screen and camera media
-are sent over WebRTC video tracks. Files are sent over a WebRTC data channel.
-WSS is not the media transport.
+are sent over WebRTC video tracks, optional voice uses WebRTC audio tracks, and
+files are sent over a WebRTC data channel. WSS is not the media transport.
 
 The Worker and Node service support approved screen, camera, and files session
 types, participant-bound signaling, and Client-initiated session termination.
@@ -99,8 +109,10 @@ for real Android device testing, network traversal testing, or a security audit.
 
 - MediaProjection requires the system's explicit screen-capture consent.
 - Camera streaming requires Android CAMERA permission.
-- Remote tap, swipe, and lock actions require the user-enabled AccessibilityService.
-- Each sensitive session requires explicit Client approval.
+- Client and Controller microphone transmission each require RECORD_AUDIO permission and a user-initiated in-session action; Controller voice uses a microphone foreground service.
+- Remote tap, swipe, keyboard, navigation, and lock actions require the user-enabled AccessibilityService.
+- Clipboard reads/writes and remote file browse/mutations require additional Client confirmation.
+- Remote file browsing requires a persisted Storage Access Framework tree grant; rename/delete additionally require write permission and provider support.
 - File source and destination are selected through Android's document picker.
 - Android foreground services cannot override force-stop, OEM battery
   management, disabled autostart, revoked permissions, or network loss.
