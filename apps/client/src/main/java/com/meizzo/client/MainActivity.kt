@@ -627,8 +627,8 @@ class MainActivity : Activity() {
             },
             iceServersJson = iceServersBySession.remove(sessionId)
         )
-        if (kind == "screen" || includeAudio) {
-            MediaProjectionForegroundService.start(this, kind == "screen", includeAudio)
+        if (kind == "screen" || kind == "camera") {
+            MediaProjectionForegroundService.start(this, kind == "screen", kind == "camera", includeAudio)
         }
         if (kind == "screen") {
             Handler(Looper.getMainLooper()).postDelayed({
