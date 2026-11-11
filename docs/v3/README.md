@@ -21,7 +21,7 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 
 | Priority | Current implementation state |
 |---|---|
-| Live screen streaming | Android prototype implemented: MediaProjection consent, WebRTC video publishing, Controller video rendering, ICE signaling, and aspect-ratio-aware touch mapping. Requires physical-device/network testing and TURN before broad release. |
+| Live screen streaming | Android prototype implemented: MediaProjection consent, WebRTC video publishing, Controller video rendering, ICE signaling, aspect-ratio-aware touch mapping, stats-driven sender bitrate ceiling, and bounded ICE-restart recovery. Requires physical-device/network testing and TURN before broad release. |
 | Remote camera streaming | Android prototype implemented: Camera2 capture after runtime CAMERA permission, WebRTC video publishing, and Controller camera viewer. Rear/front camera selection and device compatibility need physical testing. |
 | Remote screen interaction | Android tap/swipe is wired to touch gestures on the live video surface. A separate approved interaction session is required; AccessibilityService must be enabled by the device owner. |
 | Remote lock screen | Android lock action is implemented through AccessibilityService on Android 9+. The user must explicitly enable MEIZZO in Android Accessibility settings and approve an interaction session. |
@@ -61,7 +61,7 @@ Cloudflare Workers continue to host MEIZZO pairing and control signaling. They c
 
 - WSS authenticates and authorizes signaling. It is not itself a media transport.
 - Media signaling is accepted only for an approved screen, camera, or file session and only from a session participant.
-- WebRTC uses Cloudflare STUN by default and supports short-lived Cloudflare Realtime TURN credentials when Worker secrets are configured. Production TURN setup, reconnection/recovery, bitrate adaptation, and end-to-end media security review remain before screen/camera streaming is production-ready.
+- WebRTC uses Cloudflare STUN by default and supports short-lived Cloudflare Realtime TURN credentials when Worker secrets are configured. An initial stats-driven bitrate ceiling and bounded ICE-restart recovery are implemented; physical-network tuning, TURN setup, handover acceptance, and end-to-end media security review remain before screen/camera streaming is production-ready.
 - File transfer currently uses stop-and-wait Base64 chunks over an ordered DTLS-protected WebRTC DataChannel; it is a functional prototype with SHA-256 completion checks, not yet optimized for large files or resumable transfer.
 - No iOS hosting capability is claimed. iOS capture and control require a separate platform implementation and Apple permission constraints.
 - Android permissions and Accessibility access remain controlled by the device owner and operating system.
