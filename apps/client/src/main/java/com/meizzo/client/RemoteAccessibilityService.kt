@@ -97,9 +97,20 @@ class RemoteAccessibilityService : AccessibilityService() {
         val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
         if (field.isPassword || !field.isEditable || !field.isEnabled) return false
         val current = field.text?.toString().orEmpty()
-        val updated = current + value
-        val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, updated) }
-        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        val selectionStart = field.textSelectionStart.takeIf { it in 0..current.length } ?: current.length
+        val selectionEnd = field.textSelectionEnd.takeIf { it in selectionStart..current.length } ?: selectionStart
+        val updated = current.substring(0, selectionStart) + value + current.substring(selectionEnd)
+        val setText = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, updated)
+        }
+        if (!field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, setText)) return false
+        val cursor = selectionStart + value.length
+        val selection = Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+        }
+        field.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selection)
+        return true
     }
 
     fun deleteBackward(): Boolean {
@@ -107,15 +118,22 @@ class RemoteAccessibilityService : AccessibilityService() {
         val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
         if (field.isPassword || !field.isEditable || !field.isEnabled) return false
         val current = field.text?.toString().orEmpty()
-        if (current.isEmpty()) return true
-        val end = current.offsetByCodePoints(current.length, -1)
-        val args = Bundle().apply {
-            putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                current.substring(0, end)
-            )
+        val selectionStart = field.textSelectionStart.takeIf { it in 0..current.length } ?: current.length
+        val selectionEnd = field.textSelectionEnd.takeIf { it in selectionStart..current.length } ?: selectionStart
+        if (selectionStart == selectionEnd && selectionStart == 0) return true
+        val deleteStart = if (selectionStart != selectionEnd) selectionStart
+            else current.offsetByCodePoints(selectionStart, -1)
+        val updated = current.removeRange(deleteStart, selectionEnd)
+        val setText = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, updated)
         }
-        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        if (!field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, setText)) return false
+        val selection = Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, deleteStart)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, deleteStart)
+        }
+        field.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selection)
+        return true
     }
 
     fun navigate(action: String): Boolean = when (action) {
