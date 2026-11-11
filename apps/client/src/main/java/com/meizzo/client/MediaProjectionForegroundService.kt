@@ -20,28 +20,48 @@ class MediaProjectionForegroundService : Service() {
                 NotificationChannel(CHANNEL_ID, "MEIZZO screen sharing", NotificationManager.IMPORTANCE_LOW)
             )
         }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val screenCapture = intent?.getBooleanExtra(EXTRA_SCREEN_CAPTURE, false) ?: false
+        val microphone = intent?.getBooleanExtra(EXTRA_MICROPHONE, false) ?: false
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_view)
-            .setContentTitle("MEIZZO screen sharing")
-            .setContentText("Your screen is being shared with an approved Controller")
+            .setContentTitle("MEIZZO remote media")
+            .setContentText(
+                when {
+                    screenCapture && microphone -> "Screen and microphone are shared with an approved Controller"
+                    screenCapture -> "Your screen is shared with an approved Controller"
+                    microphone -> "Your microphone is shared with an approved Controller"
+                    else -> "An approved MEIZZO media session is active"
+                }
+            )
             .setOngoing(true)
             .build()
-        if (Build.VERSION.SDK_INT >= 29) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            var serviceTypes = 0
+            if (screenCapture) serviceTypes = serviceTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (microphone) serviceTypes = serviceTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            startForeground(NOTIFICATION_ID, notification, serviceTypes)
+        } else if (Build.VERSION.SDK_INT >= 29 && screenCapture) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+        return START_NOT_STICKY
     }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
         private const val CHANNEL_ID = "meizzo_screen_sharing"
         private const val NOTIFICATION_ID = 3901
+        private const val EXTRA_SCREEN_CAPTURE = "screen_capture"
+        private const val EXTRA_MICROPHONE = "microphone"
 
-        fun start(context: Context) {
+        fun start(context: Context, screenCapture: Boolean, microphone: Boolean) {
             val intent = Intent(context, MediaProjectionForegroundService::class.java)
+                .putExtra(EXTRA_SCREEN_CAPTURE, screenCapture)
+                .putExtra(EXTRA_MICROPHONE, microphone)
             if (Build.VERSION.SDK_INT >= 26) ContextCompat.startForegroundService(context, intent)
             else context.startService(intent)
         }
