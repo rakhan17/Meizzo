@@ -39,15 +39,22 @@ class ConnectionForegroundService : Service() {
             return START_NOT_STICKY
         }
 
+        var alarmRequestId: String? = null
+        var alarmError: String? = null
         when (intent.action) {
             ACTION_ALARM_ON -> {
+                alarmRequestId = intent.getStringExtra(EXTRA_REQUEST_ID)
                 try {
                     startAlarm()
-                } catch (_: Exception) {
+                } catch (exception: Exception) {
                     stopAlarm()
+                    alarmError = exception.message ?: "Android could not start alarm audio"
                 }
             }
-            ACTION_ALARM_OFF -> stopAlarm()
+            ACTION_ALARM_OFF -> {
+                alarmRequestId = intent.getStringExtra(EXTRA_REQUEST_ID)
+                stopAlarm()
+            }
         }
 
         val notification = buildNotification()
@@ -57,6 +64,13 @@ class ConnectionForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification, serviceTypes)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+        if (!alarmRequestId.isNullOrBlank()) {
+            sendBroadcast(Intent(ACTION_ALARM_RESULT).setPackage(packageName).apply {
+                putExtra(EXTRA_REQUEST_ID, alarmRequestId)
+                putExtra(EXTRA_ALARM_ENABLED, alarmActive)
+                putExtra(EXTRA_ALARM_ERROR, alarmError)
+            })
         }
         return START_NOT_STICKY
     }
@@ -168,6 +182,10 @@ class ConnectionForegroundService : Service() {
     companion object {
         const val ACTION_ALARM_ON = "com.meizzo.client.action.ALARM_ON"
         const val ACTION_ALARM_OFF = "com.meizzo.client.action.ALARM_OFF"
+        const val ACTION_ALARM_RESULT = "com.meizzo.client.action.ALARM_RESULT"
+        const val EXTRA_REQUEST_ID = "request_id"
+        const val EXTRA_ALARM_ENABLED = "alarm_enabled"
+        const val EXTRA_ALARM_ERROR = "alarm_error"
         private const val CHANNEL_ID = "meizzo_device_connection"
         private const val NOTIFICATION_ID = 2501
     }
