@@ -706,6 +706,35 @@ class MainActivity : Activity() {
             }
         )
         mediaViewers[sessionId] = viewer
+        var touchStartX = 0f
+        var touchStartY = 0f
+        video.setOnTouchListener { _, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    touchStartX = event.x
+                    touchStartY = event.y
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP -> {
+                    val startX = (touchStartX / video.width.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
+                    val startY = (touchStartY / video.height.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
+                    val endX = (event.x / video.width.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
+                    val endY = (event.y / video.height.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
+                    if (kotlin.math.abs(event.x - touchStartX) < dp(12) &&
+                        kotlin.math.abs(event.y - touchStartY) < dp(12)) {
+                        sendInteractionAction(clientId, "tap", JSONObject().put("x", endX).put("y", endY))
+                    } else {
+                        sendInteractionAction(clientId, "swipe", JSONObject().apply {
+                            put("startX", startX); put("startY", startY)
+                            put("endX", endX); put("endY", endY)
+                            put("durationMs", 350)
+                        })
+                    }
+                    true
+                }
+                else -> true
+            }
+        }
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
             mediaViewers.remove(sessionId)?.close()
@@ -717,6 +746,10 @@ class MainActivity : Activity() {
             (resources.displayMetrics.heightPixels * 0.82).toInt()
         )
         viewer.start(video)
+        if (!approvedInteractionSessions.containsKey(clientId) &&
+            !pendingInteractionSessions.containsKey(clientId)) {
+            requestInteraction(clientId)
+        }
     }
 
     private fun handleMediaSignal(message: JSONObject) {
