@@ -47,6 +47,7 @@ class MainActivity : Activity() {
     private val devices = linkedMapOf<String, JSONObject>()
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
+    private val pendingCommandClients = mutableSetOf<String>()
     private val pendingMediaRequests = mutableSetOf<String>()
     private val activeMediaSessions = mutableMapOf<String, String>()
     private val iceServersBySession = mutableMapOf<String, JSONArray>()
@@ -306,6 +307,7 @@ class MainActivity : Activity() {
                         "device.result" -> {
                             val id = message.optString("clientId")
                             val error = message.optString("error")
+                            val wasCommandPending = pendingCommandClients.remove(id)
                             if (error.isNotBlank() && error != "null") {
                                 setConnection("Device command failed · $error", false)
                             } else if (message.optJSONObject("result") != null) {
@@ -322,6 +324,7 @@ class MainActivity : Activity() {
                                 current.put("metadata", metadata)
                                 devices[id] = current
                                 renderDevices()
+                                if (wasCommandPending) setConnection("Client confirmed · command completed", true)
                             }
                         }
                         "device.revoked" -> {
@@ -331,6 +334,7 @@ class MainActivity : Activity() {
                             devices.remove(clientId)
                             approvedInteractionSessions.remove(clientId)
                             pendingInteractionSessions.remove(clientId)
+                            pendingCommandClients.remove(clientId)
                             renderDevices()
                         }
                         "error" -> runOnUiThread {
@@ -344,6 +348,7 @@ class MainActivity : Activity() {
                     runOnUiThread {
                         approvedInteractionSessions.clear()
                         pendingInteractionSessions.clear()
+                        pendingCommandClients.clear()
                         renderDevices()
                     }
                     setConnection(connectionFailureLabel(t), false)
@@ -967,13 +972,28 @@ class MainActivity : Activity() {
             setConnection("Request Client approval before sending commands", false)
             return
         }
-        socket?.send(JSONObject().apply {
+        if (clientId in pendingCommandClients) {
+            setConnection("Waiting for the previous Client command to finish", false)
+            return
+        }
+        val webSocket = socket
+        if (webSocket == null) {
+            setConnection("Controller is disconnected · command not sent", false)
+            return
+        }
+        pendingCommandClients.add(clientId)
+        val sent = webSocket.send(JSONObject().apply {
             put("type", "controller.command")
             put("clientId", clientId)
             put("command", command)
             put("parameters", JSONObject().put("enabled", enabled))
         }.toString())
-        setConnection("Command sent · $command ${if (enabled) "on" else "off"}", true)
+        if (!sent) {
+            pendingCommandClients.remove(clientId)
+            setConnection("Command could not be queued · check connection", false)
+        } else {
+            setConnection("Waiting for Client confirmation · $command", true)
+        }
     }
 
     private fun coordinateField(label: String): EditText = EditText(this).apply {
