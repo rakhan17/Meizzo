@@ -558,6 +558,15 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Keyboard · Backspace", false) {
                 sendInteractionAction(id, "key_backspace", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Keyboard · Enter", false) {
+                sendInteractionAction(id, "key_enter", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Keyboard · Tab", false) {
+                sendInteractionAction(id, "key_tab", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Keyboard · Escape", false) {
+                sendInteractionAction(id, "key_escape", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Keyboard · New line", false) {
                 sendInteractionAction(id, "text_input", JSONObject().put("text", "\n"))
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
