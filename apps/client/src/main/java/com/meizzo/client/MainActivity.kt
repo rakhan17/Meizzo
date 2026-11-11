@@ -828,6 +828,50 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun resolveSharedDocumentUri(documentId: String): android.net.Uri {
+        if (documentId.isBlank() || documentId.length > 512) {
+            throw IllegalArgumentException("Invalid remote file identifier")
+        }
+        val treeUri = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+            .getString("tree_uri", null)?.let(android.net.Uri::parse)
+            ?: throw IllegalStateException("Choose a shared folder before managing remote files")
+        val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+        if (documentId == rootId) throw SecurityException("The shared folder root cannot be modified")
+        val rootDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId)
+        val documentUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+        if (!android.provider.DocumentsContract.isChildDocument(contentResolver, rootDocument, documentUri)) {
+            throw SecurityException("Requested file is outside the shared directory")
+        }
+        return documentUri
+    }
+
+    private fun queryRemoteDocumentInfo(uri: android.net.Uri): JSONObject {
+        val info = JSONObject()
+        info.put("name", uri.lastPathSegment?.substringAfterLast('/') ?: "Remote file")
+        info.put("mimeType", contentResolver.getType(uri) ?: "application/octet-stream")
+        info.put("size", -1L)
+        info.put("flags", 0L)
+        contentResolver.query(
+            uri,
+            arrayOf(
+                android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                android.provider.DocumentsContract.Document.COLUMN_SIZE,
+                android.provider.DocumentsContract.Document.COLUMN_FLAGS
+            ),
+            null, null, null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
+                val flagsIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_FLAGS)
+                if (nameIndex >= 0) info.put("name", cursor.getString(nameIndex) ?: info.optString("name"))
+                if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) info.put("size", cursor.getLong(sizeIndex))
+                if (flagsIndex >= 0 && !cursor.isNull(flagsIndex)) info.put("flags", cursor.getLong(flagsIndex))
+            }
+        } ?: throw IllegalStateException("Remote file metadata could not be read")
+        return info
+    }
+
     private fun sendRemoteFileListing(
         webSocket: WebSocket,
         message: JSONObject,
@@ -848,7 +892,8 @@ class MainActivity : Activity() {
             android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
             android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE,
             android.provider.DocumentsContract.Document.COLUMN_SIZE,
-            android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+            android.provider.DocumentsContract.Document.COLUMN_FLAGS
         )
         val entries = org.json.JSONArray()
         contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
@@ -857,6 +902,7 @@ class MainActivity : Activity() {
             val mimeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_MIME_TYPE)
             val sizeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
             val modifiedIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+            val flagsIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_FLAGS)
             while (cursor.moveToNext() && entries.length() < 40) {
                 val childId = if (idIndex >= 0) cursor.getString(idIndex).orEmpty() else ""
                 if (childId.isBlank() || childId.length > 512) continue
@@ -864,12 +910,14 @@ class MainActivity : Activity() {
                 val mime = if (mimeIndex >= 0) cursor.getString(mimeIndex).orEmpty() else ""
                 val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else -1L
                 val modified = if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) cursor.getLong(modifiedIndex) else 0L
+                val documentFlags = if (flagsIndex >= 0 && !cursor.isNull(flagsIndex)) cursor.getLong(flagsIndex) else 0L
                 entries.put(JSONObject().apply {
                     put("documentId", childId)
                     put("name", name.take(120))
                     put("mimeType", mime.take(100))
                     put("size", size)
                     put("modifiedAt", modified)
+                    put("flags", documentFlags)
                     put("isDirectory", mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
                 })
             }
@@ -970,6 +1018,74 @@ class MainActivity : Activity() {
                         pendingAlarmCommands.remove(requestId)
                         error = exception.message ?: "Unable to control the remote alarm"
                     }
+                }
+            }
+            "file_rename", "file_delete" -> {
+                try {
+                    val documentId = parameters.optString("documentId")
+                    val documentUri = resolveSharedDocumentUri(documentId)
+                    val info = queryRemoteDocumentInfo(documentUri)
+                    val name = info.optString("name", "Remote file")
+                    val mime = info.optString("mimeType")
+                    val flags = info.optLong("flags")
+                    val isDirectory = mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR
+                    val command = message.optString("command")
+                    val newName = parameters.optString("newName").trim()
+                    if (command == "file_rename") {
+                        if (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong() == 0L) {
+                            throw IllegalStateException("This storage provider does not support renaming this item")
+                        }
+                        if (newName.isBlank() || newName.length > 128 || newName.contains('/') || newName.contains('\\')) {
+                            throw IllegalArgumentException("Enter a valid file or folder name without path separators")
+                        }
+                    } else {
+                        if (isDirectory) throw IllegalArgumentException("Folder deletion is disabled for safety")
+                        if (flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_DELETE.toLong() == 0L) {
+                            throw IllegalStateException("This storage provider does not support deleting this file")
+                        }
+                    }
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle(if (command == "file_rename") "Allow rename?" else "Allow file deletion?")
+                            .setMessage(
+                                if (command == "file_rename") "The paired Controller wants to rename:\n\n$name\n\nto:\n$newName"
+                                else "The paired Controller wants to permanently delete this file:\n\n$name"
+                            )
+                            .setNegativeButton("Deny") { _, _ ->
+                                sendCommandFailure(webSocket, message, "Remote file operation was denied on the Client")
+                            }
+                            .setPositiveButton(if (command == "file_rename") "Rename" else "Delete") { _, _ ->
+                                try {
+                                    val changed = if (command == "file_rename") {
+                                        android.provider.DocumentsContract.renameDocument(contentResolver, documentUri, newName)
+                                            ?: throw IllegalStateException("The storage provider could not rename this item")
+                                    } else {
+                                        if (!android.provider.DocumentsContract.deleteDocument(contentResolver, documentUri)) {
+                                            throw IllegalStateException("The storage provider could not delete this file")
+                                        }
+                                        documentUri
+                                    }
+                                    webSocket.send(JSONObject().apply {
+                                        put("type", "client.result")
+                                        put("requestId", message.optString("requestId"))
+                                        put("result", JSONObject().apply {
+                                            put("filesChanged", true)
+                                            put("name", if (command == "file_rename") newName else name)
+                                            put("deleted", command == "file_delete")
+                                        })
+                                    }.toString())
+                                } catch (exception: Exception) {
+                                    sendCommandFailure(webSocket, message, exception.message ?: "Remote file operation failed")
+                                }
+                            }
+                            .setOnCancelListener {
+                                sendCommandFailure(webSocket, message, "Remote file operation was cancelled")
+                            }
+                            .show()
+                    }
+                    return
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Remote file operation failed"
                 }
             }
             "file_send" -> {
