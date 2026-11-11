@@ -33,10 +33,6 @@ class ConnectionForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null) {
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -65,7 +61,7 @@ class ConnectionForegroundService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
