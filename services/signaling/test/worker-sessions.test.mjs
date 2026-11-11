@@ -43,6 +43,11 @@ async function run() {
     sessions: {}
   };
   let alarmAt = null;
+  const client = new FakeSocket({ role: 'client', clientId: 'client-1', connId: 'client-connection' });
+  const controller = new FakeSocket({
+    role: 'controller', controllerId: 'controller-1',
+    token: 'controller-token', tokens: ['controller-token'], connId: 'controller-connection'
+  });
   const sockets = [client, controller];
   const ctx = {
     storage: {
@@ -53,11 +58,6 @@ async function run() {
     },
     getWebSockets() { return sockets; }
   };
-  const client = new FakeSocket({ role: 'client', clientId: 'client-1', connId: 'client-connection' });
-  const controller = new FakeSocket({
-    role: 'controller', controllerId: 'controller-1',
-    token: 'controller-token', tokens: ['controller-token'], connId: 'controller-connection'
-  });
   const signaling = new MeizzoSignaling(ctx, {});
 
   const start = () => signaling.webSocketMessage(controller, JSON.stringify({
