@@ -13,6 +13,7 @@ import java.io.OutputStream
 import java.util.ArrayDeque
 import java.nio.ByteBuffer
 import java.security.MessageDigest
+import java.util.UUID
 
 /**
  * Stop-and-wait file transfer over an already consented WebRTC data channel.
@@ -42,9 +43,10 @@ class FileTransferCoordinator(
             val pending = pendingChunkMessage ?: return
             if (!waitingForAck) return
             if (chunkRetryCount >= MAX_CHUNK_RETRIES) {
+                val transferId = outgoingTransferId
                 pendingChunkMessage = null
                 closeOutgoing()
-                send(JSONObject().put("type", "file_reject"))
+                send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                 outgoingQueue.clear()
                 onStatus("File transfer stopped · chunk acknowledgement timed out")
                 return
@@ -56,7 +58,9 @@ class FileTransferCoordinator(
     }
     private var outgoingDigest: MessageDigest? = null
     private var incomingDigest: MessageDigest? = null
-    private var lastCompletedIncomingHash: String? = null
+    private var outgoingTransferId: String? = null
+    private var incomingTransferId: String? = null
+    private var lastCompletedIncomingTransferId: String? = null
     private var waitingForAck = false
     @Volatile private var closed = false
     private var pendingName = ""
@@ -133,9 +137,11 @@ class FileTransferCoordinator(
         outgoingBytes = 0L
         lastOutgoingProgressBytes = 0L
         outgoingDigest = MessageDigest.getInstance("SHA-256")
+        outgoingTransferId = UUID.randomUUID().toString()
         waitingForAck = true
         send(JSONObject().apply {
             put("type", "file_offer")
+            put("transferId", outgoingTransferId)
             put("name", metadata.first)
             put("size", metadata.second)
             put("mimeType", context.contentResolver.getType(uri) ?: "application/octet-stream")
@@ -152,12 +158,13 @@ class FileTransferCoordinator(
         lastIncomingProgressBytes = 0L
         incomingExpectedSequence = 0
         incomingDigest = MessageDigest.getInstance("SHA-256")
-        send(JSONObject().put("type", "file_accept"))
+        val transferId = incomingTransferId ?: throw IllegalStateException("Incoming file offer has no transfer identifier")
+        send(JSONObject().put("type", "file_accept").put("transferId", transferId))
         onStatus("Receiving $pendingName")
     }
 
     fun rejectIncoming() {
-        send(JSONObject().put("type", "file_reject"))
+        send(JSONObject().put("type", "file_reject").put("transferId", incomingTransferId))
         pendingName = ""
         pendingSize = 0L
         discardIncoming()
@@ -169,7 +176,8 @@ class FileTransferCoordinator(
             onStatus("No active file transfer to cancel")
             return
         }
-        send(JSONObject().put("type", "file_reject"))
+        val transferId = outgoingTransferId ?: incomingTransferId
+        send(JSONObject().put("type", "file_reject").put("transferId", transferId))
         closeOutgoing()
         outgoingQueue.clear()
         discardIncoming()
@@ -192,16 +200,24 @@ class FileTransferCoordinator(
         val message = try { JSONObject(raw) } catch (_: Exception) { return }
         when (message.optString("type")) {
             "file_offer" -> {
+                val transferId = message.optString("transferId")
+                if (transferId.isBlank() || transferId.length > 64) {
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    onStatus("Rejected file offer with an invalid transfer identifier")
+                    return
+                }
                 if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
-                    send(JSONObject().put("type", "file_reject"))
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     onStatus("Another file transfer is already active")
                     return
                 }
+                incomingTransferId = transferId
                 pendingName = message.optString("name").take(128)
                 pendingSize = message.optLong("size", -1L)
                 val mime = message.optString("mimeType", "application/octet-stream")
                 if (pendingName.isBlank() || pendingSize < -1L || pendingSize > MAX_FILE_SIZE) {
-                    send(JSONObject().put("type", "file_reject"))
+                    send(JSONObject().put("type", "file_reject").put("transferId", incomingTransferId))
+                    incomingTransferId = null
                     pendingName = ""
                     pendingSize = 0L
                     onStatus("Rejected invalid or oversized file offer")
@@ -210,29 +226,43 @@ class FileTransferCoordinator(
                 onIncomingOffer(pendingName, pendingSize, mime)
             }
             "file_accept" -> {
-                waitingForAck = false
-                sendNextChunk()
+                if (message.optString("transferId") == outgoingTransferId) {
+                    waitingForAck = false
+                    sendNextChunk()
+                }
             }
             "file_reject" -> {
-                cancelChunkRetry()
-                closeOutgoing()
-                outgoingQueue.clear()
-                discardIncoming()
-                pendingName = ""
-                pendingSize = 0L
-                onStatus("The other device declined or could not complete the file")
+                val transferId = message.optString("transferId")
+                when {
+                    transferId.isNotBlank() && transferId == outgoingTransferId -> {
+                        cancelChunkRetry()
+                        closeOutgoing()
+                        outgoingQueue.clear()
+                        onStatus("The other device declined or could not complete the file")
+                    }
+                    transferId.isNotBlank() && transferId == incomingTransferId -> {
+                        discardIncoming()
+                        pendingName = ""
+                        pendingSize = 0L
+                        onStatus("The other device cancelled the incoming file")
+                    }
+                    else -> Unit
+                }
             }
             "file_chunk" -> {
                 val sequence = message.optInt("sequence", -1)
                 val encoded = message.optString("data")
-                if (sequence < 0 || encoded.isBlank() || incomingOutput == null) return
+                val transferId = message.optString("transferId")
+                if (transferId.isBlank() || transferId != incomingTransferId ||
+                    sequence < 0 || encoded.isBlank() || incomingOutput == null
+                ) return
                 if (sequence == incomingExpectedSequence - 1) {
-                    send(JSONObject().put("type", "file_ack").put("sequence", sequence))
+                    send(JSONObject().put("type", "file_ack").put("transferId", transferId).put("sequence", sequence))
                     return
                 }
                 if (sequence != incomingExpectedSequence) {
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     discardIncoming()
-                    send(JSONObject().put("type", "file_reject"))
                     onStatus("File transfer stopped · unexpected chunk sequence")
                     return
                 }
@@ -240,8 +270,8 @@ class FileTransferCoordinator(
                     val bytes = Base64.decode(encoded, Base64.NO_WRAP)
                     incomingBytes += bytes.size
                     if (incomingBytes > MAX_FILE_SIZE) {
+                        send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                         discardIncoming()
-                        send(JSONObject().put("type", "file_reject"))
                         onStatus("Incoming file exceeded the 50 MiB transfer limit")
                         return
                     }
@@ -252,15 +282,17 @@ class FileTransferCoordinator(
                         lastIncomingProgressBytes = incomingBytes
                         onStatus("Receiving file · ${incomingBytes / MEBIBYTE} MiB received")
                     }
-                    send(JSONObject().put("type", "file_ack").put("sequence", sequence))
+                    send(JSONObject().put("type", "file_ack").put("transferId", transferId).put("sequence", sequence))
                 } catch (error: Exception) {
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     discardIncoming()
-                    send(JSONObject().put("type", "file_reject"))
                     onStatus("File write failed: ${error.message ?: "storage error"}")
                 }
             }
             "file_ack" -> {
-                if (message.optInt("sequence", -1) == outgoingSequence) {
+                if (message.optString("transferId") == outgoingTransferId &&
+                    message.optInt("sequence", -1) == outgoingSequence
+                ) {
                     cancelChunkRetry()
                     pendingChunkMessage = null
                     chunkRetryCount = 0
@@ -270,34 +302,38 @@ class FileTransferCoordinator(
                 }
             }
             "file_end" -> {
+                val transferId = message.optString("transferId")
                 val expectedHash = message.optString("sha256")
+                if (transferId.isBlank()) return
                 if (incomingOutput == null) {
-                    if (expectedHash.isNotBlank() && expectedHash == lastCompletedIncomingHash) {
-                        send(JSONObject().put("type", "file_complete"))
+                    if (transferId == lastCompletedIncomingTransferId) {
+                        send(JSONObject().put("type", "file_complete").put("transferId", transferId))
                     }
                     return
                 }
+                if (transferId != incomingTransferId) return
                 val actualHash = incomingDigest?.digest()?.toHex().orEmpty()
                 val sizeMatches = pendingSize < 0L || incomingBytes == pendingSize
                 val hashMatches = sizeMatches && expectedHash.isNotBlank() &&
                     actualHash.equals(expectedHash, ignoreCase = true)
                 if (hashMatches) {
-                    lastCompletedIncomingHash = actualHash
+                    lastCompletedIncomingTransferId = transferId
                     closeIncoming()
                 } else {
                     discardIncoming()
                 }
                 if (!hashMatches) {
-                    send(JSONObject().put("type", "file_reject"))
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     onStatus(if (sizeMatches) "File integrity check failed for $pendingName" else "File size mismatch for $pendingName")
                 } else {
-                    send(JSONObject().put("type", "file_complete"))
+                    send(JSONObject().put("type", "file_complete").put("transferId", transferId))
                     onStatus("Received $pendingName · SHA-256 verified")
                 }
                 pendingName = ""
                 pendingSize = 0L
             }
             "file_complete" -> {
+                if (message.optString("transferId") != outgoingTransferId) return
                 cancelChunkRetry()
                 closeOutgoing()
                 if (outgoingQueue.isNotEmpty()) {
@@ -322,7 +358,9 @@ class FileTransferCoordinator(
             val count = input.read(chunk)
             if (count < 0) {
                 val hash = outgoingDigest?.digest()?.toHex().orEmpty()
-                val endMessage = JSONObject().put("type", "file_end").put("sha256", hash)
+                val endMessage = JSONObject().put("type", "file_end")
+                    .put("transferId", outgoingTransferId)
+                    .put("sha256", hash)
                 pendingChunkMessage = endMessage
                 chunkRetryCount = 0
                 waitingForAck = true
@@ -337,14 +375,16 @@ class FileTransferCoordinator(
                 onStatus("Sending file · ${outgoingBytes / MEBIBYTE} MiB sent")
             }
             if (outgoingBytes > MAX_FILE_SIZE) {
+                val transferId = outgoingTransferId
                 closeOutgoing()
                 outgoingQueue.clear()
-                send(JSONObject().put("type", "file_reject"))
+                send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                 onStatus("File exceeds the 50 MiB transfer limit")
                 return
             }
             val encoded = Base64.encodeToString(chunk.copyOf(count), Base64.NO_WRAP)
             val chunkMessage = JSONObject().put("type", "file_chunk")
+                .put("transferId", outgoingTransferId)
                 .put("sequence", outgoingSequence)
                 .put("data", encoded)
             pendingChunkMessage = chunkMessage
@@ -353,9 +393,10 @@ class FileTransferCoordinator(
             send(chunkMessage)
             retryHandler.postDelayed(chunkRetryTask, CHUNK_ACK_TIMEOUT_MS)
         } catch (error: Exception) {
+            val transferId = outgoingTransferId
             closeOutgoing()
             outgoingQueue.clear()
-            send(JSONObject().put("type", "file_reject"))
+            send(JSONObject().put("type", "file_reject").put("transferId", transferId))
             onStatus("File read failed: ${error.message ?: "storage error"}")
         }
     }
@@ -394,6 +435,7 @@ class FileTransferCoordinator(
         try { outgoingInput?.close() } catch (_: Exception) { }
         outgoingInput = null
         outgoingDigest = null
+        outgoingTransferId = null
         waitingForAck = false
     }
 
@@ -403,6 +445,7 @@ class FileTransferCoordinator(
         incomingUri = null
         incomingBytes = 0L
         incomingDigest = null
+        incomingTransferId = null
     }
 
     private fun discardIncoming() {
