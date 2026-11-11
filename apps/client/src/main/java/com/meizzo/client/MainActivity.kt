@@ -888,6 +888,16 @@ class MainActivity : Activity() {
                     return
                 }
             }
+            "key_backspace" -> {
+                val accessibility = RemoteAccessibilityService.instance
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!accessibility.deleteBackward()) {
+                    error = "No editable non-password field is focused, or Android rejected Backspace"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
             "text_input" -> {
                 val text = parameters.optString("text")
                 val accessibility = RemoteAccessibilityService.instance
