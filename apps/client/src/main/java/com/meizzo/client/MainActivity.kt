@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
                     reconnectScheduled = false
                     socket?.close(1000, "Pairing stopped")
                     socket = null
+                    stopService(Intent(this@MainActivity, ConnectionForegroundService::class.java))
                     status.text = "Pairing stopped"
                 },
                 onCheckUpdates = { checkForUpdate() }
