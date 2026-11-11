@@ -32,7 +32,7 @@ Create a second Workers Builds project in the Cloudflare Dashboard:
 6. Set the deploy command to:
 
    ```bash
-   npx wrangler deploy --config wrangler.v3.toml
+   npx --yes wrangler@4 deploy --config wrangler.v3.toml
    ```
 
 7. Use the automatically generated Cloudflare API token provided by Workers Builds.
