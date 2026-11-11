@@ -50,6 +50,13 @@ class MainActivity : Activity() {
     private val activeMediaSessions = mutableMapOf<String, String>()
     private val mediaViewers = mutableMapOf<String, RtcMediaController>()
     private val mediaDialogs = mutableMapOf<String, AlertDialog>()
+    private val fileTransferCoordinators = mutableMapOf<String, FileTransferCoordinator>()
+    private var selectedFileSessionId: String? = null
+    private var incomingFileSessionId: String? = null
+    private var incomingFileName: String? = null
+    private var incomingFileMime: String = "application/octet-stream"
+    private val filePickRequestCode = 5302
+    private val fileSaveRequestCode = 5303
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
@@ -476,6 +483,10 @@ class MainActivity : Activity() {
             if (online) requestMediaSession(id, "camera")
             else setConnection("Client is offline", false)
         }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+        card.addView(uiActionButton("Request file transfer", false) {
+            if (online) requestMediaSession(id, "files")
+            else setConnection("Client is offline", false)
+        }, LinearLayout.LayoutParams(-1, dp(6)).apply { topMargin = dp(6) })
         val interactionSession = approvedInteractionSessions[id]
         val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
@@ -634,7 +645,7 @@ class MainActivity : Activity() {
                     setConnection("Interaction session $state", false)
                 }
             }
-            "screen", "camera" -> when (state) {
+            "screen", "camera", "files" -> when (state) {
                 "pending" -> {
                     pendingMediaRequests.add(clientId)
                     setConnection("Waiting for Client $sessionType approval", false)
@@ -642,7 +653,8 @@ class MainActivity : Activity() {
                 "approved" -> {
                     pendingMediaRequests.remove(clientId)
                     activeMediaSessions[sessionId] = clientId
-                    openMediaViewer(clientId, sessionId, sessionType)
+                    if (sessionType == "files") openFileTransferDialog(clientId, sessionId)
+                    else openMediaViewer(clientId, sessionId, sessionType)
                 }
                 "failed", "rejected", "ended" -> {
                     pendingMediaRequests.remove(clientId)
@@ -752,6 +764,93 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun openFileTransferDialog(clientId: String, sessionId: String) {
+        closeMediaViewer(sessionId)
+        val details = TextView(this).apply {
+            text = "Files are transferred directly through an encrypted WebRTC data channel after Client approval. Each transfer requires the receiving device to choose a save location."
+            textSize = 13f
+            setTextColor(Color.LTGRAY)
+            setPadding(dp(18), dp(8), dp(18), dp(12))
+        }
+        val choose = uiActionButton("Choose file to send", true) {
+            selectedFileSessionId = sessionId
+            startActivityForResult(
+                android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                },
+                filePickRequestCode
+            )
+        }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(Color.rgb(8, 8, 10))
+            addView(details)
+            addView(choose, LinearLayout.LayoutParams(-1, dp(46)))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Secure file transfer")
+            .setView(root)
+            .setNegativeButton("End session") { _, _ -> endMediaSession(clientId, sessionId) }
+            .create()
+        mediaDialogs[sessionId] = dialog
+        val viewer = RtcMediaController(
+            this,
+            { signal ->
+                socket?.send(JSONObject().apply {
+                    put("type", "media.signal")
+                    put("sessionId", sessionId)
+                    put("signal", signal)
+                }.toString())
+            },
+            { reason -> runOnUiThread { setConnection("File transfer error · $reason", false) } },
+            onDataChannel = { channel ->
+                runOnUiThread {
+                    fileTransferCoordinators[sessionId]?.close()
+                    fileTransferCoordinators[sessionId] = FileTransferCoordinator(
+                        this,
+                        channel,
+                        { name, size, mime ->
+                            runOnUiThread {
+                                incomingFileSessionId = sessionId
+                                incomingFileName = name
+                                incomingFileMime = mime
+                                AlertDialog.Builder(this)
+                                    .setTitle("Receive file?")
+                                    .setMessage("$name · ${size / 1024} KB\nSave this file to the Controller?")
+                                    .setNegativeButton("Decline") { _, _ ->
+                                        fileTransferCoordinators[sessionId]?.rejectIncoming()
+                                    }
+                                    .setPositiveButton("Choose destination") { _, _ ->
+                                        startActivityForResult(
+                                            android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+                                                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                                                type = incomingFileMime
+                                                putExtra(android.content.Intent.EXTRA_TITLE, incomingFileName)
+                                            },
+                                            fileSaveRequestCode
+                                        )
+                                    }
+                                    .show()
+                            }
+                        },
+                        { message -> runOnUiThread { setConnection(message, true) } }
+                    )
+                }
+            }
+        )
+        mediaViewers[sessionId] = viewer
+        dialog.setOnDismissListener {
+            mediaDialogs.remove(sessionId)
+            mediaViewers.remove(sessionId)?.close()
+            fileTransferCoordinators.remove(sessionId)?.close()
+            if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
+        }
+        dialog.show()
+        viewer.startFiles()
+    }
+
     private fun handleMediaSignal(message: JSONObject) {
         val sessionId = message.optString("sessionId")
         val signal = message.optJSONObject("signal") ?: return
@@ -761,6 +860,7 @@ class MainActivity : Activity() {
     private fun closeMediaViewer(sessionId: String) {
         mediaDialogs.remove(sessionId)?.dismiss()
         mediaViewers.remove(sessionId)?.close()
+        fileTransferCoordinators.remove(sessionId)?.close()
     }
 
     private fun endMediaSession(clientId: String, sessionId: String) {
@@ -927,11 +1027,47 @@ class MainActivity : Activity() {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
     }
 
+    @Deprecated("Deprecated in Android API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            filePickRequestCode -> {
+                val sessionId = selectedFileSessionId
+                if (resultCode == RESULT_OK && data?.data != null && sessionId != null) {
+                    try {
+                        fileTransferCoordinators[sessionId]?.sendFile(data.data!!)
+                    } catch (error: Exception) {
+                        setConnection("Could not send file · ${error.message ?: "storage error"}", false)
+                    }
+                }
+                selectedFileSessionId = null
+            }
+            fileSaveRequestCode -> {
+                val sessionId = incomingFileSessionId
+                if (resultCode == RESULT_OK && data?.data != null && sessionId != null) {
+                    try {
+                        fileTransferCoordinators[sessionId]?.acceptIncoming(data.data!!)
+                    } catch (error: Exception) {
+                        fileTransferCoordinators[sessionId]?.rejectIncoming()
+                        setConnection("Could not save file · ${error.message ?: "storage error"}", false)
+                    }
+                } else if (sessionId != null) {
+                    fileTransferCoordinators[sessionId]?.rejectIncoming()
+                }
+                incomingFileSessionId = null
+                incomingFileName = null
+                incomingFileMime = "application/octet-stream"
+            }
+        }
+    }
+
     override fun onDestroy() {
         mediaDialogs.values.toList().forEach { it.dismiss() }
         mediaViewers.values.toList().forEach { it.close() }
+        fileTransferCoordinators.values.toList().forEach { it.close() }
         mediaDialogs.clear()
         mediaViewers.clear()
+        fileTransferCoordinators.clear()
         reconnectHandler.removeCallbacksAndMessages(null)
         socket?.close(1000, "Controller activity destroyed")
         super.onDestroy()
