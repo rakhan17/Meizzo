@@ -728,10 +728,31 @@ class MainActivity : Activity() {
                     true
                 }
                 android.view.MotionEvent.ACTION_UP -> {
-                    val startX = (touchStartX / video.width.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
-                    val startY = (touchStartY / video.height.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
-                    val endX = (event.x / video.width.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
-                    val endY = (event.y / video.height.coerceAtLeast(1)).coerceIn(0f, 1f).toDouble()
+                    val aspect = if (viewer.remoteWidth > 0 && viewer.remoteHeight > 0) {
+                        viewer.remoteWidth.toFloat() / viewer.remoteHeight.toFloat()
+                    } else video.width.toFloat() / video.height.coerceAtLeast(1).toFloat()
+                    val viewAspect = video.width.toFloat() / video.height.coerceAtLeast(1).toFloat()
+                    val contentWidth: Float
+                    val contentHeight: Float
+                    val offsetX: Float
+                    val offsetY: Float
+                    if (viewAspect > aspect) {
+                        contentHeight = video.height.toFloat()
+                        contentWidth = contentHeight * aspect
+                        offsetX = (video.width - contentWidth) / 2f
+                        offsetY = 0f
+                    } else {
+                        contentWidth = video.width.toFloat()
+                        contentHeight = contentWidth / aspect
+                        offsetX = 0f
+                        offsetY = (video.height - contentHeight) / 2f
+                    }
+                    fun normalizedX(x: Float) = ((x - offsetX) / contentWidth).coerceIn(0f, 1f).toDouble()
+                    fun normalizedY(y: Float) = ((y - offsetY) / contentHeight).coerceIn(0f, 1f).toDouble()
+                    val startX = normalizedX(touchStartX)
+                    val startY = normalizedY(touchStartY)
+                    val endX = normalizedX(event.x)
+                    val endY = normalizedY(event.y)
                     if (kotlin.math.abs(event.x - touchStartX) < dp(12) &&
                         kotlin.math.abs(event.y - touchStartY) < dp(12)) {
                         sendInteractionAction(clientId, "tap", JSONObject().put("x", endX).put("y", endY))
