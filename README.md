@@ -6,6 +6,11 @@
 
 **CONTROL YOUR CONNECTED WORLD.**
 
+[![Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml)
+[![iOS CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
+[![Latest Beta](https://img.shields.io/github/v/release/rakhan17/Meizzo?include_prereleases&label=latest%20beta)](https://github.com/rakhan17/Meizzo/releases)
+[![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
+
 Permission-based device assistance for Android and iOS, built around explicit
 consent, isolated sessions, and real-time device status.
 
