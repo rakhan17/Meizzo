@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to build (for example v2.5.0)"
+        description: "MEIZZO v3 prerelease tag (for example v3.0.0-beta.6)"
         required: true
         type: string
-        default: "v2.5.0"
+        default: "v3.0.0-beta.6"
       publish_release:
         description: "Publish a GitHub Release after all validation gates pass"
         required: true
@@ -38,12 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF_NAME" != "develop/v3" ]]; then
+              echo "::error::Manual v3 releases must be dispatched from develop/v3."
+              exit 1
+            fi
             release_tag="${{ inputs.release_tag }}"
           else
             release_tag="$GITHUB_REF_NAME"
           fi
-          if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|rc)\.[1-9][0-9]{0,2}))?$ ]]; then
-            echo "::error::Invalid release tag: $release_tag"
+          if [[ ! "$release_tag" =~ ^v3\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[1-9][0-9]{0,2}$ ]]; then
+            echo "::error::The develop/v3 release workflow only accepts v3 prerelease tags; received: $release_tag"
             exit 1
           fi
           echo "MEIZZO_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
