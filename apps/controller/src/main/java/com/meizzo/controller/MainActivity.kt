@@ -330,7 +330,13 @@ class MainActivity : Activity() {
                                     }
                                 } else if (commandResult.has("files")) {
                                     runOnUiThread { showRemoteFileBrowser(id, commandResult) }
-                                } else if (!commandResult.has("clipboardWritten") && !commandResult.has("accepted") && !commandResult.has("charactersInserted")) {
+                                } else if (commandResult.optBoolean("filesChanged")) {
+                                    val parentId = remoteFileBrowseStacks[id]?.lastOrNull()
+                                    setConnection("Client files updated · refreshing folder", true)
+                                    if (!parentId.isNullOrBlank()) {
+                                        sendClientCommand(id, "file_browse", JSONObject().put("documentId", parentId))
+                                    }
+                                } else if (!commandResult.has("clipboardWritten") && !commandResult.has("accepted") && !commandResult.has("charactersInserted") && !commandResult.has("filesChanged")) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
                                 val metadata = current.optJSONObject("metadata") ?: JSONObject()
                                 val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
@@ -1176,6 +1182,49 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun showRemoteRenameDialog(clientId: String, item: JSONObject) {
+        val currentName = item.optString("name")
+        val input = EditText(this).apply {
+            setText(currentName)
+            selectAll()
+            hint = "New file or folder name"
+            filters = arrayOf(android.text.InputFilter.LengthFilter(128))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename remote item")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Rename") { _, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isBlank() || newName.contains('/') || newName.contains('\\')) {
+                    setConnection("Enter a valid name without path separators", false)
+                } else {
+                    sendClientCommand(
+                        clientId,
+                        "file_rename",
+                        JSONObject().put("documentId", item.optString("documentId")).put("newName", newName)
+                    )
+                }
+            }
+            .show()
+    }
+
+    private fun confirmRemoteDelete(clientId: String, item: JSONObject) {
+        val name = item.optString("name", "this file")
+        AlertDialog.Builder(this)
+            .setTitle("Delete remote file?")
+            .setMessage("Delete $name permanently? The Client must approve this operation too.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                sendClientCommand(
+                    clientId,
+                    "file_delete",
+                    JSONObject().put("documentId", item.optString("documentId"))
+                )
+            }
+            .show()
+    }
+
     private fun showRemoteFileBrowser(clientId: String, result: JSONObject) {
         val documentId = result.optString("documentId")
         val rootDocumentId = result.optString("rootDocumentId")
@@ -1207,7 +1256,7 @@ class MainActivity : Activity() {
             metadata.add(item)
         }
         val message = buildString {
-            append("Read-only view · ")
+            append("Shared folder · ")
             append(if (documentId == rootDocumentId) "shared folder root" else "subfolder")
             if (result.optBoolean("truncated")) append("\nShowing the first 40 entries")
         }
@@ -1216,35 +1265,53 @@ class MainActivity : Activity() {
             .setMessage(message)
             .setItems(labels.toTypedArray()) { _, index ->
                 val item = metadata[index]
-                if (item.optBoolean("isDirectory")) {
-                    val childId = item.optString("documentId")
-                    if (childId.isNotBlank()) {
-                        stack.add(childId)
-                        sendClientCommand(clientId, "file_browse", JSONObject().put("documentId", childId))
+                val name = item.optString("name", "Remote item")
+                val documentId = item.optString("documentId")
+                val flags = item.optLong("flags")
+                val isDirectory = item.optBoolean("isDirectory")
+                val canRename = flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_RENAME.toLong() != 0L
+                val canDelete = !isDirectory &&
+                    flags and android.provider.DocumentsContract.Document.FLAG_SUPPORTS_DELETE.toLong() != 0L
+                val size = item.optLong("size", -1L)
+                val mime = item.optString("mimeType", "Unknown type")
+                val entryDialog = AlertDialog.Builder(this)
+                    .setTitle(name)
+                    .setMessage(
+                        if (isDirectory) "Folder · open, or rename if this storage provider allows it."
+                        else "$mime\\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}"
+                    )
+                if (isDirectory) {
+                    entryDialog.setPositiveButton("Open") { _, _ ->
+                        if (documentId.isNotBlank()) {
+                            stack.add(documentId)
+                            sendClientCommand(clientId, "file_browse", JSONObject().put("documentId", documentId))
+                        }
                     }
                 } else {
-                    val name = item.optString("name", "File")
-                    val size = item.optLong("size", -1L)
-                    val mime = item.optString("mimeType", "Unknown type")
-                    AlertDialog.Builder(this)
-                        .setTitle(name)
-                        .setMessage("$mime\n${if (size >= 0L) "${size} bytes" else "Size unavailable"}\n\nThe Client will ask for permission before sending this file.")
-                        .setNegativeButton("Close", null)
-                        .setPositiveButton("Download to Controller") { _, _ ->
-                            val fileSessionId = activeFileTransferSessions[clientId]
-                            if (fileSessionId.isNullOrBlank()) {
-                                setConnection("Start an approved file-transfer session before downloading", false)
-                            } else {
-                                sendClientCommand(
-                                    clientId,
-                                    "file_send",
-                                    JSONObject().put("documentId", item.optString("documentId"))
-                                        .put("sessionId", fileSessionId)
-                                )
-                            }
+                    entryDialog.setPositiveButton("Download") { _, _ ->
+                        val fileSessionId = activeFileTransferSessions[clientId]
+                        if (fileSessionId.isNullOrBlank()) {
+                            setConnection("Start an approved file-transfer session before downloading", false)
+                        } else {
+                            sendClientCommand(
+                                clientId,
+                                "file_send",
+                                JSONObject().put("documentId", documentId).put("sessionId", fileSessionId)
+                            )
                         }
-                        .show()
+                    }
                 }
+                if (canRename) {
+                    entryDialog.setNeutralButton("Rename") { _, _ -> showRemoteRenameDialog(clientId, item) }
+                } else {
+                    entryDialog.setNeutralButton("Close", null)
+                }
+                if (canDelete) {
+                    entryDialog.setNegativeButton("Delete") { _, _ -> confirmRemoteDelete(clientId, item) }
+                } else {
+                    entryDialog.setNegativeButton("Close", null)
+                }
+                entryDialog.show()
             }
             .setNegativeButton("Close", null)
         if (stack.size > 1) {
