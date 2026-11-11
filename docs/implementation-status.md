@@ -131,7 +131,7 @@ Before calling a capability production-ready, record:
 7. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
    OFF, local notification Stop alarm, background playback, and volume behavior.
 8. Tap, swipe, keyboard shortcuts, system navigation, lock, and Accessibility permission-denial behavior.
-9. Clipboard approval, remote folder navigation, file download, rename/delete, and SAF permission revocation.
+9. Clipboard approval, remote folder navigation and creation, file download, rename/delete, and SAF permission revocation.
 10. File transfer in both directions, including multi-file batches, progress, cancellation, interrupted
    transfers.
 11. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
