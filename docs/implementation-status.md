@@ -28,6 +28,7 @@ build does not prove runtime behavior on every Android vendor or network.
   - Tap, swipe, long-press, and two-finger trackpad scrolling from the live video surface.
   - Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
   - Focused-field text insertion at the active selection, Backspace, Enter, Tab, Escape, arrow keys, and selected Ctrl shortcuts.
+  - Controller can save a remote video-frame screenshot to its Pictures/MEIZZO folder.
   - A separate approved interaction session is required; AccessibilityService must be enabled manually by the device owner.
 - Voice and media controls:
   - Optional two-way microphone audio tracks over WebRTC. Each side requires RECORD_AUDIO permission and an explicit in-session action; Controller microphone capture uses its own foreground service.
