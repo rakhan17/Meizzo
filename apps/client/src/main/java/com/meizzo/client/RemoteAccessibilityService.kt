@@ -86,6 +86,22 @@ class RemoteAccessibilityService : AccessibilityService() {
         return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
+    fun deleteBackward(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val field = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        if (field.isPassword || !field.isEditable || !field.isEnabled) return false
+        val current = field.text?.toString().orEmpty()
+        if (current.isEmpty()) return true
+        val end = current.offsetByCodePoints(current.length, -1)
+        val args = Bundle().apply {
+            putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                current.substring(0, end)
+            )
+        }
+        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+    }
+
     fun navigate(action: String): Boolean = when (action) {
         "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
         "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
