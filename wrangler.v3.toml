@@ -1,4 +1,4 @@
-name = "meizzo-signaling-v3"
+name = "meizzo-signaling-beta"
 main = "services/signaling/cloudflare/worker.js"
 compatibility_date = "2026-11-10"
 workers_dev = true
