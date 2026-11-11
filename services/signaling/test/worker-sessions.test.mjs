@@ -67,7 +67,11 @@ async function run() {
     role: 'controller', controllerId: 'controller-1',
     token: 'controller-token', tokens: ['controller-token'], connId: 'controller-connection'
   });
-  const sockets = [client, controller];
+  const shadowController = new FakeSocket({
+    role: 'controller', controllerId: 'controller-1',
+    token: 'controller-token', tokens: ['controller-token'], connId: 'other-controller-connection'
+  });
+  const sockets = [client, controller, shadowController];
   const ctx = {
     storage: {
       async get(key) { return key === 'state' ? stored : alarmAt; },
@@ -139,6 +143,9 @@ async function run() {
   if (!hasTurn(controllerIce) || !hasTurn(clientIce)) {
     throw new Error('Short-lived Cloudflare TURN credentials were not delivered to both media peers');
   }
+  if (shadowController.messages.some(m => m.type === 'media.ice_servers')) {
+    throw new Error('TURN credentials leaked to a different Controller socket');
+  }
   controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'approved', 'screen session approved');
 
   await signaling.webSocketMessage(controller, JSON.stringify({
@@ -148,6 +155,9 @@ async function run() {
   const workerOffer = client.take(m => m.type === 'media.signal' && m.sessionId === screenPending.sessionId, 'WebRTC offer forwarded to Client');
   if (workerOffer.fromRole !== 'controller' || workerOffer.signal.type !== 'offer') {
     throw new Error('Cloudflare Worker did not relay the authorized media offer');
+  }
+  if (shadowController.messages.some(m => m.type === 'media.signal')) {
+    throw new Error('Media offer leaked to a different Controller socket');
   }
   await signaling.webSocketMessage(client, JSON.stringify({
     type: 'media.signal', sessionId: screenPending.sessionId,
