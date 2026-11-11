@@ -8,221 +8,336 @@
 
 [![Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml)
 [![iOS CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
+[![Cloudflare Worker](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml)
+[![Documentation](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml)
 [![Latest Beta](https://img.shields.io/github/v/release/rakhan17/Meizzo?include_prereleases&label=latest%20beta)](https://github.com/rakhan17/Meizzo/releases)
+[![License](https://img.shields.io/badge/license-Apache--2.0-111111.svg)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
 
-Permission-based device assistance for Android and iOS, built around explicit
-consent, isolated sessions, and real-time device status.
+A consent-first device assistance platform with separate Android Client and
+Controller apps, authenticated signaling, device presence, telemetry, and
+session-scoped authorization.
 
-[Android CI](https://github.com/rakhan17/Meizzo/actions/workflows/ci.yml) ·
-[iOS CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml) ·
-[Latest releases](https://github.com/rakhan17/Meizzo/releases)
-
-[Documentation](https://github.com/rakhan17/Meizzo/tree/main/docs) ·
-[Releases](https://github.com/rakhan17/Meizzo/releases) ·
-[Issues](https://github.com/rakhan17/Meizzo/issues)
+[Downloads](#downloads) · [Documentation](#documentation) ·
+[Architecture](#architecture) · [Security](#security-and-assurance) ·
+[Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
-> **Beta status:** Android is the active testing platform. iOS is still
-> under development and is not part of the current Android testing build.
-> The Cloudflare Workers signaling endpoint is deployed over WSS and has
-> passed a browser-based protocol-v2 pairing/authentication smoke test.
-> Android CI debug builds are configured for this endpoint, but end-to-end
-> runtime testing in BlueStacks or on physical devices is still pending.
-> Media streaming, unrestricted remote control, production operations, and
-> signed iOS distribution are not verified.
+> **Current channel: Android beta.** The latest published build is
+> `v0.1.0-beta.5`. It is a testing release, not a stable or enterprise-ready
+> product. iOS remains under development and is not available for physical
+> device installation. Read the [implementation status](docs/implementation-status.md)
+> before relying on a capability.
 
-## Product
+## What is MEIZZO?
 
-MEIZZO is an ecosystem of two independent applications:
+MEIZZO is a two-app device assistance system:
 
-- **MEIZZO Client** runs on the device receiving assistance. It displays a
-  temporary six-digit code and explicitly approves pairing requests.
-- **MEIZZO Controller** runs on the operator device. It pairs with and monitors
-  one or more authorized Clients independently.
+- **MEIZZO Client** runs on the device being assisted. It creates a temporary
+  pairing code, receives pairing and session requests, and requires the user
+  to approve them.
+- **MEIZZO Controller** runs on the operator's device. It pairs with authorized
+  Clients, displays their connection state and telemetry, and sends supported
+  device commands.
 
-The signaling service works across different networks when exposed through a
-reachable endpoint. Authorization is consent-based; a Controller cannot use a
-Client until the Client approves the request.
+The two apps have separate package identifiers, credentials, and roles.
+Pairing establishes an authorized relationship; it does not silently grant
+screen capture, camera, file, location, or unrestricted interaction access.
 
 ## Downloads
 
-Choose the app based on the role of each device. Client and Controller are
-separate applications. Published versions are organized by platform and
-release channel below.
+Client and Controller are separate APKs. Install the app that matches the
+role of each device. Stable channels are shown first; beta downloads are
+clearly marked as prerelease software.
 
 <div align="center">
 
-[![All Releases](https://img.shields.io/badge/ALL%20VERSIONS-BROWSE%20ALL%20RELEASES-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
+[![All Versions](https://img.shields.io/badge/ALL%20VERSIONS-BROWSE%20ALL%20RELEASES-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
 ### Android
 
-#### Release
+#### Stable release
 
-<sub>**LATEST RELEASE** · `v0.1.0-beta.4` · Version code `100304` · Published and runtime-tested</sub>
+<sub>**STABLE** · No stable Android version has been published yet.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Client-v0.1.0-beta.4.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.4/MEIZZO-Controller-v0.1.0-beta.4.apk) |
-
-[![View Android Release](https://img.shields.io/badge/VIEW-ANDROID%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.4)
+| **MEIZZO Client** | Device receiving assistance | ![Coming soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Controller** | Device managing connected Clients | ![Coming soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
 
 #### Beta
 
-<sub>**BETA CHANNEL** · New preview builds will appear here when published.</sub>
+<sub>**LATEST BETA** · `v0.1.0-beta.5` · Published 11 November 2026 · Android APKs signed and verified by the release workflow.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![No newer beta](https://img.shields.io/badge/NO%20NEWER%20BETA-USE%20LATEST%20RELEASE-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.5/MEIZZO-Client-v0.1.0-beta.5.apk) |
+| **MEIZZO Controller** | Install on the operator device | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.5/MEIZZO-Controller-v0.1.0-beta.5.apk) |
 
-> **Beta software:** v0.1.0-beta.4 is a prerelease build intended for testing
-> and may contain bugs. Install Client on the device receiving assistance and
-> Controller on the operator's device. Pairing still requires explicit
-> approval on the Client.
->
-> **Upgrade note:** beta.4 is signed with the project's current release key.
-> If an older installation was signed with a different key, Android may reject
-> an in-place update. Back up any important app data before uninstalling an
-> older build; uninstalling removes that app's local data.
+[![View beta.5 release](https://img.shields.io/badge/VIEW-BETA.5%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5)
+
+The release also includes `MEIZZO-UPDATE.json` for the in-app updater and
+`SHA256SUMS.txt` for artifact integrity checks. See the
+[release notes](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5)
+for the exact assets.
+
+> **Beta warning:** expect bugs and incomplete capabilities. Do not use this
+> build as the sole means of accessing or managing a critical device. Android
+> may restrict background services according to battery, OEM, and force-stop
+> policies. An update can only be installed over an existing copy when its
+> signing certificate is compatible. Back up any important app data before
+> uninstalling an older build.
 
 ### iOS
 
-iOS builds are not ready for public installation. Both release channels are
-shown for visibility, but downloads remain disabled until iOS development,
-signing, and device testing are complete.
+iOS is still in development. Simulator builds are useful for engineering
+smoke tests, but they are not installable packages for a physical iPhone.
 
-#### Stable Release
+#### Stable release
 
-<sub>**STABLE** · Under development</sub>
-
-| App | Purpose | Download |
-|:--|:--|:--|
-| **MEIZZO Client for iOS** | Device receiving assistance | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
-| **MEIZZO Controller for iOS** | Device managing connected Clients | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+| App | Download |
+|:--|:--|
+| **MEIZZO Client for iOS** | ![Under development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+| **MEIZZO Controller for iOS** | ![Under development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
 
 #### Beta
 
-<sub>**BETA** · Under development</sub>
+| App | Download |
+|:--|:--|
+| **MEIZZO Client for iOS** | ![Under development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+| **MEIZZO Controller for iOS** | ![Under development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
 
-| App | Purpose | Download |
-|:--|:--|:--|
-| **MEIZZO Client for iOS** | Device receiving assistance | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
-| **MEIZZO Controller for iOS** | Device managing connected Clients | ![Under Development](https://img.shields.io/badge/UNDER%20DEVELOPMENT-Not%20Available-777777?style=for-the-badge&logo=apple&logoColor=white) |
+Physical-device distribution requires Apple signing, provisioning, and
+device-level testing. Previous Simulator ZIP artifacts must not be renamed
+or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
-<sub>Previous unsigned Simulator ZIPs were intended only for Xcode on Mac and
-cannot be installed directly on a physical iPhone. They are intentionally not
-presented as public iOS downloads.</sub>
+## Product capabilities
 
-[Read the iOS development guide](docs/ios-guide.md)
+### Available in the Android beta
 
-## Feature overview
+- Six-digit pairing codes with a short lifetime and single-use behavior.
+- Explicit approval on the Client before a Controller is paired.
+- Separate Client and Controller identities and app credentials.
+- Multiple authorized Clients per Controller with per-device status routing.
+- Authenticated presence and heartbeat-based online/offline state.
+- Device telemetry including battery and charging state, storage, uptime,
+  network transport, and available device metadata.
+- Supported device commands such as flashlight and alarm, subject to
+  permissions and hardware availability.
+- Session request, approval, rejection, and termination state.
+- Interaction commands are gated behind an approved interaction session.
+- Android foreground connection services, reconnect handling, and
+  Android Keystore-backed local credential encryption.
+- Release metadata, SHA-256 verification, package checks, signing-certificate
+  checks, and Android Package Installer handoff for updates.
 
-**Android:** six-digit pairing, explicit approval, multi-device management,
-authoritative presence, heartbeat telemetry, battery and charging state,
-network type, storage, RAM where exposed, device metadata, flashlight and
-alarm commands where supported, Android Keystore credentials, and isolated
-command routing.
+### Not available yet
 
-**iOS (under development):** native SwiftUI Client and Controller targets are
-in the repository, but iOS is not included in this Android-focused beta
-milestone. Feature parity, distribution, and runtime validation remain
-pending.
+- Live screen or camera streaming.
+- WebRTC media transport, STUN/TURN relay, and adaptive media quality.
+- General remote touch/input control or Accessibility-based interaction.
+- Arbitrary file browsing or transfer.
+- Location tracking or sharing.
+- Android Enterprise enrollment or Managed Mode.
+- A signed iOS build for physical devices.
+- A completed independent security audit or formal security certification.
 
-## Screenshots
-
-No production screenshots are committed yet. Do not treat mockups as runtime
-evidence. The capture workflow and naming convention are documented in
-[docs/assets/screenshots/README.md](docs/assets/screenshots/README.md).
+A session marked **approved** is an authorization state only. It is not proof
+that a screen, camera, file, or input channel exists. See
+[implementation status](docs/implementation-status.md) and the
+[security model](docs/v2/security-model.md).
 
 ## Architecture
 
+MEIZZO separates the control plane from any future media plane. The current
+Android apps communicate with the signaling service over WebSocket Secure
+(WSS). The deployed Cloudflare Worker routes connections to a Durable Object,
+which coordinates pairing, authentication, presence, telemetry, commands, and
+authorization-only sessions.
+
 ```mermaid
 flowchart LR
-  AC[Android Client] -->|WebSocket / WSS| B[Signaling backend]
-  AO[Android Controller] -->|WebSocket / WSS| B
-  IC[iOS Client] -->|WebSocket / WSS| B
-  IO[iOS Controller] -->|WebSocket / WSS| B
-  B --> P[Pairing + explicit approval]
-  B --> A[Token authentication]
-  B --> R[Presence + heartbeat]
-  B --> T[Telemetry]
-  B --> C[Isolated command routing]
+  subgraph Devices
+    C[Android Client]
+    O[Android Controller]
+    CS[Client foreground service]
+    OS[Controller foreground service]
+    C --- CS
+    O --- OS
+  end
+
+  subgraph ControlPlane["MEIZZO control plane"]
+    W[Cloudflare Worker<br/>WSS entry point]
+    D[Durable Object<br/>state and routing]
+    W --> D
+  end
+
+  CS <-->|WSS · protocol v2| W
+  OS <-->|WSS · protocol v2| W
+  D <--> P[Pairing · auth · presence<br/>telemetry · commands · sessions]
+  D <--> S[(Durable Object storage)]
 ```
+
+### Pairing and session lifecycle
 
 ```mermaid
 sequenceDiagram
-  participant C as Client
-  participant S as Signaling
-  participant O as Controller
-  C->>S: register six-digit offer
-  O->>S: request pairing code
-  S->>C: pairing request
-  C->>S: explicit approval
-  S-->>C: client token
-  S-->>O: controller token
-  C->>S: authenticated heartbeat + telemetry
-  O->>S: authenticated device list/command
-  S-->>O: authoritative presence and result
+  participant Client
+  participant Service as Signaling service
+  participant Controller
+
+  Client->>Service: Register expiring six-digit offer
+  Controller->>Service: Submit pairing code
+  Service->>Client: Pairing request
+  Client->>Service: Explicit approve or reject
+  Service-->>Controller: Pairing result and Controller token
+  Service-->>Client: Client token
+  Client->>Service: Authenticate and heartbeat
+  Controller->>Service: Authenticate and list devices
+  Controller->>Service: Start a scoped session
+  Service->>Client: Session approval request
+  Client->>Service: Approve or reject session
+  Service-->>Controller: Session state
 ```
 
-## Repository
+An approved interaction session is required before supported interaction
+commands are routed. This consent state does not implement media streaming or
+unrestricted device control.
+
+### Technology map
+
+| Layer | Current implementation |
+|---|---|
+| Android apps | Kotlin, separate Client and Controller modules |
+| Android connection lifecycle | Foreground services, reconnect backoff, boot receivers |
+| Android credential storage | AES-GCM protected values using Android Keystore keys |
+| iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
+| Signaling protocol | JSON messages over WebSocket, protocol version 2 |
+| Hosted signaling | Cloudflare Workers + Durable Objects |
+| Local signaling harness | Node.js + `ws`, in-memory process state |
+| Release distribution | GitHub Actions and GitHub Releases |
+| Android updates | Release manifest, checksum/package/signature checks, Package Installer |
+| Documentation | Markdown + MkDocs Material |
+
+The Node.js service is a local development/test harness. Its in-memory state is
+not equivalent to the hosted Durable Object deployment and is lost on process
+restart. See [architecture](docs/architecture.md) and
+[backend deployment](docs/backend-deployment.md).
+
+## Repository layout
 
 | Path | Responsibility |
 |---|---|
-| `apps/client` | Android Client, telemetry, consent UI, commands, updater |
-| `apps/controller` | Android Controller, multi-device dashboard, updater |
-| `ios/Client` | SwiftUI iOS Client target and Simulator project definition |
-| `ios/Controller` | SwiftUI iOS Controller target and Simulator project definition |
-| `ios/Shared` | iOS WebSocket, reconnect, heartbeat, and Keychain code |
-| `services/signaling` | Node.js WebSocket pairing, auth, presence, telemetry, routing |
-| `scripts` | Manual BlueStacks/ADB harnesses |
-| `docs` | User, developer, platform, security, and release documentation |
-| `.github/workflows` | Android, iOS Simulator, iOS device, release, and docs CI |
+| `apps/client` | Android Client app, pairing approval, telemetry, commands |
+| `apps/controller` | Android Controller app, device list, session controls |
+| `ios/Client` | SwiftUI iOS Client target |
+| `ios/Controller` | SwiftUI iOS Controller target |
+| `ios/Shared` | Shared iOS networking and secure-storage code |
+| `shared` | Shared protocol/domain resources |
+| `services/signaling/cloudflare` | Hosted Worker and Durable Object implementation |
+| `services/signaling/src` | Local Node.js signaling harness |
+| `services/signaling/test` | Pairing, multi-device, and revocation tests |
+| `scripts` | Development and BlueStacks/ADB test helpers |
+| `docs` | User, architecture, API, security, deployment, and platform guides |
+| `.github/workflows` | CI, release, Worker validation, iOS, and docs workflows |
 
 ## Documentation
 
-- [Quick start](docs/getting-started.md)
-- [User manual](docs/user-guide.md)
+### For users
+
+- [Getting started](docs/getting-started.md)
+- [Installation](docs/installation.md)
+- [User guide](docs/user-guide.md)
 - [Client guide](docs/client-guide.md)
 - [Controller guide](docs/controller-guide.md)
 - [Pairing](docs/pairing.md)
 - [Device monitoring](docs/device-monitoring.md)
-- [Development setup](docs/development.md)
-- [Architecture](docs/architecture.md)
-- [API reference](docs/api-reference.md)
-- [Testing](docs/testing.md)
-- [Android guide](docs/android-guide.md)
-- [iOS guide](docs/ios-guide.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [FAQ](docs/faq.md)
+
+### For developers and operators
+
+- [System architecture](docs/architecture.md)
+- [Protocol and API reference](docs/api-reference.md)
+- [Android development](docs/android-guide.md)
+- [iOS development](docs/ios-guide.md)
 - [Backend deployment](docs/backend-deployment.md)
+- [Testing strategy](docs/testing.md)
 - [Security and privacy](docs/security-and-privacy.md)
-- [Contributing](CONTRIBUTING.md)
+- [Implementation status](docs/implementation-status.md)
+- [V2 architecture audit](docs/v2/architecture-audit.md)
+- [Contributing guide](CONTRIBUTING.md)
 - [Security reporting](SECURITY.md)
 - [Support](SUPPORT.md)
 
-## Security, privacy, and limitations
+The full documentation navigation is in [docs/index.md](docs/index.md). A
+MkDocs site can be built locally with `mkdocs build --strict`.
 
-Pairing requires a short-lived code and explicit Client approval. Tokens are
-stored in Android Keystore or iOS Keychain. Device sessions and commands are
-isolated by Client identity. Logs must not contain credentials, pairing codes,
-or personal data.
+## Security and assurance
 
-The Cloudflare Workers signaling endpoint is deployed with WSS and a
-Durable Object binding. Its browser-based smoke test has verified protocol-v2
-handshake, pairing approval, token issuance/authentication, heartbeat, online
-presence, and device-list delivery. This does not yet establish end-to-end
-compatibility with the Android apps or production operational readiness.
-Complete Android runtime testing, review persistence/retention behavior, and
-apply operational safeguards before treating the service as production-ready.
-iOS system restrictions prevent unrestricted touch control, arbitrary file
-access, and silent screen capture. See [security and privacy](docs/security-and-privacy.md)
-and [implementation status](docs/implementation-status.md).
+Security is a product requirement, not a badge. The current beta includes
+short-lived single-use pairing offers, explicit Client approval, rate-limited
+pairing attempts, random authentication tokens, per-device authorization,
+WSS transport, Android Keystore-backed local credentials, and session-scoped
+approval for supported interaction commands.
+
+Important boundaries remain:
+
+- Hosted Durable Object state contains device relationships and authentication
+  token records. Server-side token hashing/rotation, formal audit trails, and
+  operational key-management procedures need further hardening.
+- The local Node.js harness keeps state in process memory and is for
+  development/testing only.
+- Android background execution is subject to Android and OEM restrictions.
+- iOS platform privacy rules remain in force.
+- Screen capture, camera, files, location, and general remote input are not
+  implemented capabilities.
+
+**Certification status:** MEIZZO has not been independently security-audited
+and does not claim ISO/IEC 27001, SOC 2, GDPR certification, or any other
+third-party security certification. Automated tests and CI checks are not
+certifications. A formal security review and stronger isolation/security tests
+remain release-readiness work. Report vulnerabilities privately using
+[SECURITY.md](SECURITY.md).
+
+## Testing and release evidence
+
+The beta.5 Android release workflow completed successfully and published both
+signed APKs. The release pipeline validates the version, requires release
+secrets and a WSS endpoint, builds Client and Controller independently, signs
+the APKs, verifies their signatures and package/version metadata, and creates
+checksums plus the updater manifest.
+
+Relevant workflow runs:
+
+- [Android and signaling CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246894)
+- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
+- [Android beta.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
+
+Automated success does not replace real-device acceptance testing. See
+[testing](docs/testing.md) for the manual multi-device matrix and known gaps.
 
 ## Development
+
+### Requirements
+
+- JDK 17
+- Android SDK 35 or newer compatible SDK packages
+- Node.js 22 for signaling tests and local backend
+- Xcode and XcodeGen for iOS Simulator development
+- Python 3.12 for documentation checks
+
+### Android debug builds
+
+```bash
+./gradlew :apps:client:assembleDebug
+./gradlew :apps:controller:assembleDebug
+```
+
+### Local signaling harness
 
 ```bash
 cd services/signaling
@@ -232,30 +347,55 @@ npm test
 PORT=8080 npm start
 ```
 
-For Android debug builds, use JDK 17, Android SDK 35, and:
+The local Node.js server is an in-memory development harness. Configure debug
+builds with the appropriate local WebSocket URL; do not point a release build
+at an emulator-only address. The published Android beta uses the configured
+WSS endpoint.
+
+### Documentation
 
 ```bash
-./gradlew :apps:client:assembleDebug
-./gradlew :apps:controller:assembleDebug
+python -m pip install -r requirements-docs.txt
+python scripts/check-doc-links.py
+mkdocs build --strict
 ```
 
-Debug and release builds default to the deployed MEIZZO signaling
-endpoint, `wss://meizzo-signaling.rakhanatanox.workers.dev`. The CI workflow
-also accepts an optional `meizzo.debugSignalingUrl` Gradle property for
-testing against another endpoint. Cleartext traffic is disabled. For local
-Node signaling development, explicitly override the endpoint and configure
-the emulator host appropriately. See [Android development](docs/android-guide.md).
+See [development setup](docs/development.md) for complete instructions.
 
-## License status
+## Roadmap
 
-No repository license has been finalized. Until the owner approves a license,
-the source should not be described as open-source software. Apache License 2.0
-is documented as the recommended option in [docs/license.md](docs/license.md).
+- [x] Separate Android Client and Controller applications
+- [x] Consent-based pairing and token authentication
+- [x] Multi-device presence, telemetry, and isolated routing
+- [x] Hosted WSS signaling with Durable Object state
+- [x] Authorization-only session lifecycle
+- [x] Android background connection services and reconnect handling
+- [x] Signed Android beta release pipeline and in-app update verification
+- [ ] Full Android physical-device and multi-instance runtime acceptance
+- [ ] Durable token hardening, rotation, audit events, and independent security review
+- [ ] WebRTC screen/camera media with explicit OS consent and STUN/TURN
+- [ ] Scoped file, location, and interaction capabilities
+- [ ] iOS physical-device signing, testing, and distribution
+- [ ] Enterprise enrollment and policy management, if pursued
+
+Roadmap items are plans, not shipped features. Track progress in
+[implementation status](docs/implementation-status.md).
+
+## License
+
+MEIZZO project-owned source and documentation are licensed under the
+[Apache License 2.0](LICENSE). Third-party dependencies, fonts, icons, and
+other assets remain subject to their respective licenses. The license does
+not grant rights to the MEIZZO name or branding beyond customary reference.
 
 <div align="center">
 
-**MEIZZO** · Android and iOS beta ·
-[Documentation](docs/index.md) · [Releases](https://github.com/rakhan17/Meizzo/releases) ·
+**MEIZZO** · Android beta · iOS under development
+
+[Download beta.5](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5) ·
+[Documentation](docs/index.md) ·
+[Contributing](CONTRIBUTING.md) ·
+[Security](SECURITY.md) ·
 [Issues](https://github.com/rakhan17/Meizzo/issues)
 
 </div>
