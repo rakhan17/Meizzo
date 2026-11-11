@@ -27,6 +27,23 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | Remote lock screen | Android lock action is implemented through AccessibilityService on Android 9+. The user must explicitly enable MEIZZO in Android Accessibility settings and approve an interaction session. |
 | Remote alarm | Continuous looped AudioTrack playback is hosted by the Client foreground service, with remote ON/OFF and a local notification stop action. Physical-device and OEM background acceptance is still required. |
 | File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, final SHA-256 verification, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
+| RustDesk engine | Upstream source is pinned at `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`) and verified in CI. Native Rust engine, Flutter bridge, and RustDesk server are not yet integrated into MEIZZO runtime. |
+
+## Upstream engine integration
+
+RustDesk is now tracked as a pinned source submodule. This is source acquisition
+and provenance, not feature integration. RustDesk's Android app uses Flutter,
+a Rust `cdylib` built for Android ABIs, generated Flutter-Rust bridge code,
+Android native services, and its own rendezvous/relay protocol. MEIZZO currently
+uses native Kotlin apps and a Cloudflare Worker/Durable Object for control
+signaling. These paths must be deliberately integrated rather than assumed to
+be drop-in replacements.
+
+Cloudflare Workers continue to host MEIZZO pairing and control signaling.
+They cannot host RustDesk's `hbbs`/`hbbr` server processes; adopting RustDesk's
+native network protocol requires a separately hosted rendezvous/relay service.
+The migration and deployment plan is documented in
+[upstream and license notes](UPSTREAM_AND_LICENSES.md).
 
 ## Session and signaling foundation
 
