@@ -125,11 +125,16 @@ async function run() {
   if (workerAnswer.fromRole !== 'client' || workerAnswer.signal.type !== 'answer') {
     throw new Error('Cloudflare Worker did not relay the authorized media answer');
   }
-  await signaling.webSocketMessage(controller, JSON.stringify({
-    type: 'controller.end_session', sessionId: screenPending.sessionId
+  await signaling.webSocketMessage(client, JSON.stringify({
+    type: 'client.end_session',
+    sessionId: screenPending.sessionId,
+    reason: 'screen_capture_consent_denied'
   }));
-  controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'screen session ended');
-  client.take(m => m.type === 'client.session_status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'Client screen session ended');
+  controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId &&
+    m.state === 'ended' && m.terminationReason === 'screen_capture_consent_denied', 'Client ends screen session');
+  client.take(m => m.type === 'client.session_status' && m.sessionId === screenPending.sessionId &&
+    m.state === 'ended', 'Client screen session ended');
+  if (Object.keys(stored.sessions).length !== 0) throw new Error('Client-ended media session remained in durable state');
 
   await start();
   const beforeReconnect = controller.take(m => m.type === 'session.status' && m.state === 'pending', 'session pending before Client reconnect');
