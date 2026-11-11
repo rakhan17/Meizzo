@@ -15,7 +15,7 @@ function openSocket(url) {
 
 function nextMessage(socket, predicate, timeoutMs = 2000, label = 'message') {
   return new Promise((resolve, reject) => {
-    const caller = new Error().stack?.split('\\n')[2]?.trim() || 'unknown caller';
+    const caller = new Error().stack || 'unknown caller';
     const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${label} at ${caller}`)), timeoutMs);
     const onMessage = (raw) => {
       const message = JSON.parse(raw.toString());
