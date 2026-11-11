@@ -275,11 +275,21 @@ class MainActivity : ComponentActivity() {
                             runOnUiThread { status.text = "Connected · Controller authorized" }
                         }
                         "client.snapshot_request" -> {
-                            webSocket.send(JSONObject().apply {
-                                put("type", "client.result")
-                                put("requestId", message.optString("requestId"))
-                                put("result", deviceMetrics())
-                            }.toString())
+                            val response = try {
+                                JSONObject().apply {
+                                    put("type", "client.result")
+                                    put("requestId", message.optString("requestId"))
+                                    put("result", deviceMetrics())
+                                }
+                            } catch (error: Exception) {
+                                JSONObject().apply {
+                                    put("type", "client.result")
+                                    put("requestId", message.optString("requestId"))
+                                    put("result", JSONObject())
+                                    put("error", error.message ?: "Device telemetry is temporarily unavailable")
+                                }
+                            }
+                            webSocket.send(response.toString())
                         }
                         "client.command" -> try {
                             handleCommand(webSocket, message)
@@ -345,10 +355,15 @@ class MainActivity : ComponentActivity() {
                     return@Thread
                 }
                 if (socket === webSocket && heartbeatSocket === webSocket) {
-                    webSocket.send(JSONObject().apply {
-                        put("type", "heartbeat")
-                        put("telemetry", deviceMetrics())
-                    }.toString())
+                    val heartbeat = runCatching {
+                        JSONObject().apply {
+                            put("type", "heartbeat")
+                            put("telemetry", deviceMetrics())
+                        }
+                    }.getOrElse {
+                        JSONObject().put("type", "heartbeat")
+                    }
+                    webSocket.send(heartbeat.toString())
                 }
             }
         }.start()
