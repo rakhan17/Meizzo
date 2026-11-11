@@ -314,7 +314,7 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The v2.5.0 Android stable release is published with separate Client and Controller APKs. The v3 development branch now adds WebRTC screen/camera streaming, live-view touch control, Android lock-screen support, and bidirectional file transfer. CI builds both Android apps and runs signaling regression tests; automated builds do not replace real-device and cross-network validation.
+The v2.5.0 Android stable release is published with separate Client and Controller APKs. The v3 development branch now adds WebRTC screen/camera streaming, optional two-way voice, remote input and system navigation, manual clipboard transfer, remote folder management, and bidirectional multi-file transfer. CI builds both Android apps and runs signaling regression tests; automated builds do not replace real-device and cross-network validation.
 
 Relevant workflow runs:
 
