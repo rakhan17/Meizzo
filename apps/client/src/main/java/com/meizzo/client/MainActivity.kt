@@ -1,6 +1,7 @@
 package com.meizzo.client
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import android.app.AlertDialog
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
@@ -35,7 +36,42 @@ import java.util.concurrent.TimeUnit
 import android.os.Handler
 import android.os.Looper
 
-class MainActivity : Activity() {
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+
+class MainActivity : ComponentActivity() {
     private val preferences by lazy { getPreferences(MODE_PRIVATE) }
     private val secureStore by lazy { SecureStore(this) }
     private val clientId by lazy {
@@ -61,90 +97,23 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(28), dp(24), dp(28))
-            setBackgroundColor(Color.rgb(8, 8, 10))
-        }
-        content.addView(ImageView(this).apply {
-            setImageResource(R.drawable.meizzo_logo)
-            contentDescription = "MEIZZO logo"
-            adjustViewBounds = true
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-        }, LinearLayout.LayoutParams(-1, dp(88)))
-        content.addView(TextView(this).apply {
-            text = "MEIZZO CLIENT"
-            textSize = 25f
-            letterSpacing = 0.12f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setPadding(0, dp(20), 0, dp(4))
-        })
-        content.addView(TextView(this).apply {
-            text = "Your device, connected on your terms."
-            textSize = 14f
-            setTextColor(Color.rgb(155, 155, 163))
-        })
-
-        val pairingCard = uiCard().apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
-        }
-        pairingCard.addView(uiEyebrow("PAIRING CODE"))
-        pairingCard.addView(TextView(this).apply {
-            text = pairingCode
-            textSize = 42f
-            letterSpacing = 0.18f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("monospace", Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(12))
-        })
-        pairingCard.addView(TextView(this).apply {
-            text = "Share this temporary code with your MEIZZO Controller. It expires automatically."
-            textSize = 13f
-            setTextColor(Color.rgb(160, 160, 168))
-            gravity = Gravity.CENTER
-        })
-        content.addView(pairingCard, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(28)
-        })
-
-        val connectionCard = uiCard().apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(16), dp(18), dp(16))
-        }
-        connectionCard.addView(uiEyebrow("DEVICE CONNECTION"))
         status = TextView(this).apply {
             text = "Connecting…"
-            textSize = 15f
-            setTextColor(Color.rgb(220, 190, 120))
-            setPadding(0, dp(8), 0, 0)
+            textSize = 14f
+            setTextColor(Color.rgb(35, 35, 42))
+            setPadding(dp(2), dp(4), dp(2), dp(4))
         }
-        connectionCard.addView(status)
-        content.addView(connectionCard, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(12)
-        })
-        content.addView(uiActionButton("Stop pairing", false) {
-            socket?.close(1000, "Pairing stopped")
-            status.text = "Pairing stopped"
-        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
-        content.addView(uiActionButton("Check for updates", true) {
-            checkForUpdate()
-        }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) })
-        content.addView(TextView(this).apply {
-            text = "PRIVATE BY DESIGN  ·  YOU CONTROL ACCESS"
-            textSize = 10f
-            letterSpacing = 0.12f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(105, 105, 113))
-            setPadding(0, dp(28), 0, dp(8))
-        })
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            addView(content)
-            setBackgroundColor(Color.rgb(8, 8, 10))
-        })
+        setContent {
+            ClientLiquidGlassScreen(
+                pairingCode = pairingCode,
+                statusView = status,
+                onStopPairing = {
+                    socket?.close(1000, "Pairing stopped")
+                    status.text = "Pairing stopped"
+                },
+                onCheckUpdates = { checkForUpdate() }
+            )
+        }
         connect()
     }
 
@@ -633,5 +602,86 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+}
+
+
+@Composable
+private fun ClientLiquidGlassScreen(
+    pairingCode: String,
+    statusView: TextView,
+    onStopPairing: () -> Unit,
+    onCheckUpdates: () -> Unit
+) {
+    val backdrop = rememberLayerBackdrop()
+    val ink = ComposeColor(0xFF111116)
+    val muted = ComposeColor(0xFF777781)
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().layerBackdrop(backdrop).background(
+                Brush.linearGradient(
+                    listOf(ComposeColor(0xFF44444D), ComposeColor(0xFF101014), ComposeColor(0xFF272730))
+                )
+            )
+        ) {
+            Box(Modifier.align(Alignment.TopEnd).padding(top = 110.dp, end = 18.dp).size(190.dp)
+                .clip(CircleShape).background(ComposeColor(0xFF858591).copy(alpha = 0.32f)))
+            Box(Modifier.align(Alignment.BottomStart).padding(start = 8.dp, bottom = 90.dp).size(220.dp)
+                .clip(CircleShape).background(ComposeColor(0xFF62626D).copy(alpha = 0.28f)))
+        }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 34.dp),
+            verticalArrangement = Arrangement.spacedBy(17.dp)
+        ) {
+            Spacer(Modifier.height(12.dp))
+            Text("MEIZZO", color = ComposeColor.White, fontSize = 12.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
+            Text("Your device.\nYour control.", color = ComposeColor.White, fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.SemiBold)
+            Text("A private connection, on your terms.", color = ComposeColor(0xFFBEBEC7), fontSize = 14.sp)
+            ClientGlassPanel(backdrop) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("PAIRING CODE", color = muted, fontSize = 10.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Bold)
+                    Text(pairingCode, color = ink, fontSize = 38.sp, letterSpacing = 5.sp, fontWeight = FontWeight.Bold)
+                    Text("Enter this code in MEIZZO Controller", color = muted, fontSize = 12.sp)
+                }
+            }
+            Text("CONNECTION", color = ComposeColor(0xFFD6D6DE), fontSize = 10.sp, letterSpacing = 1.8.sp, fontWeight = FontWeight.Bold)
+            ClientGlassPanel(backdrop) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.size(9.dp).clip(CircleShape).background(ComposeColor(0xFF5DAD7B)))
+                    AndroidView(factory = { statusView }, modifier = Modifier.weight(1f))
+                }
+            }
+            ClientGlassButton(backdrop, "Stop pairing", false, onStopPairing)
+            ClientGlassButton(backdrop, "Check for updates", true, onCheckUpdates)
+            Spacer(Modifier.height(8.dp))
+            Text("PRIVATE BY DESIGN  ·  YOU CONTROL ACCESS", color = ComposeColor(0xFF92929C), fontSize = 9.sp, letterSpacing = 1.1.sp)
+        }
+    }
+}
+
+@Composable
+private fun ClientGlassPanel(backdrop: Backdrop, content: @Composable () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedCornerShape(25.dp) },
+            effects = { vibrancy(); blur(18.dp.toPx()); lens(15.dp.toPx(), 26.dp.toPx()) },
+            onDrawSurface = { drawRect(ComposeColor.White.copy(alpha = 0.60f)) }
+        ).padding(19.dp)
+    ) { content() }
+}
+
+@Composable
+private fun ClientGlassButton(backdrop: Backdrop, label: String, primary: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.fillMaxWidth().drawBackdrop(
+            backdrop = backdrop,
+            shape = { RoundedCornerShape(18.dp) },
+            effects = { vibrancy(); blur(16.dp.toPx()); lens(12.dp.toPx(), 22.dp.toPx()) },
+            onDrawSurface = { drawRect(ComposeColor.White.copy(alpha = if (primary) 0.84f else 0.24f)) }
+        ).clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = if (primary) ComposeColor(0xFF111116) else ComposeColor.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
