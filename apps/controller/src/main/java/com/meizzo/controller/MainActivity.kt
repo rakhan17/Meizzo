@@ -449,6 +449,10 @@ class MainActivity : Activity() {
             textSize = 14f; setTextColor(Color.LTGRAY); setPadding(0, 8, 0, 8)
         })
         card.addView(Button(this).apply { text = "Open device details"; setOnClickListener { showDetails(device) } })
+        telemetry.optJSONObject("lastKnownLocation")?.let { location ->
+            card.addView(uiActionButton("Open last known location", false) { openLastKnownLocation(location) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+        }
         val interactionSession = approvedInteractionSessions[id]
         val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
@@ -506,6 +510,16 @@ class MainActivity : Activity() {
             append("Network: ${telemetry.optString("network").ifBlank { "Unavailable" }}\n")
             append("Available storage: $storage\n")
             append("Uptime: $uptime")
+            val location = telemetry.optJSONObject("lastKnownLocation")
+            append("\n\nFIND MY PHONE\n")
+            if (location != null) {
+                append("Coordinates: %.6f, %.6f\n".format(Locale.US, location.optDouble("latitude"), location.optDouble("longitude")))
+                val accuracy = location.optDouble("accuracyMeters", -1.0)
+                append("Accuracy: ${if (accuracy >= 0) "%.0f m".format(Locale.US, accuracy) else "Unavailable"}\n")
+                append("Captured: ${if (location.optLong("capturedAtMs") > 0) android.text.format.DateFormat.format("dd MMM yyyy, HH:mm:ss", location.optLong("capturedAtMs")) else "Unknown"}")
+            } else {
+                append("No location shared. Enable Find My location on the Client first.")
+            }
         }
         AlertDialog.Builder(this).setTitle(metadata.optString("alias").ifBlank { id }).setMessage(text)
             .setPositiveButton("Refresh telemetry") { _, _ -> sendSnapshot(id) }
@@ -536,6 +550,21 @@ class MainActivity : Activity() {
             days > 0L -> "${days}d ${hours}h"
             hours > 0L -> "${hours}h ${minutes}m"
             else -> "${minutes}m"
+        }
+    }
+
+    private fun openLastKnownLocation(location: JSONObject) {
+        val latitude = location.optDouble("latitude", Double.NaN)
+        val longitude = location.optDouble("longitude", Double.NaN)
+        if (!latitude.isFinite() || !longitude.isFinite()) {
+            setConnection("Last known location is unavailable", false)
+            return
+        }
+        val uri = android.net.Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude")
+        try {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, uri))
+        } catch (_: Exception) {
+            setConnection("No map application is available", false)
         }
     }
 

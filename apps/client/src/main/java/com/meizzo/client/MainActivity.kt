@@ -129,6 +129,10 @@ class MainActivity : Activity() {
             stopService(android.content.Intent(this, ConnectionForegroundService::class.java))
             status.text = "Pairing stopped"
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
+        content.addView(uiActionButton(
+            if (preferences.getBoolean("find_my_location_enabled", false)) "Disable Find My location" else "Enable Find My location",
+            false
+        ) { toggleFindMyLocation() }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         content.addView(uiActionButton("Check for updates", true) {
             checkForUpdate()
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(10) })
@@ -152,6 +156,31 @@ class MainActivity : Activity() {
         ) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4103)
         }
+    }
+
+    private fun toggleFindMyLocation() {
+        if (preferences.getBoolean("find_my_location_enabled", false)) {
+            preferences.edit().putBoolean("find_my_location_enabled", false).apply()
+            status.text = "Find My location disabled"
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Enable Find My location?")
+            .setMessage(
+                "When enabled, MEIZZO includes Android's last-known location in device telemetry visible to your paired Controllers. " +
+                    "It does not continuously request GPS updates. Coordinates can be approximate or stale, and Android may not have a cached location."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Continue") { _, _ ->
+                requestPermissions(
+                    arrayOf(
+                        android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                        android.Manifest.permission.ACCESS_FINE_LOCATION
+                    ),
+                    4104
+                )
+            }
+            .show()
     }
 
     private fun startConnectionForegroundService() {
@@ -404,6 +433,17 @@ class MainActivity : Activity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 4104) {
+            val granted = permissions.indices.any { index ->
+                (permissions[index] == android.Manifest.permission.ACCESS_FINE_LOCATION ||
+                    permissions[index] == android.Manifest.permission.ACCESS_COARSE_LOCATION) &&
+                    grantResults.getOrNull(index) == PackageManager.PERMISSION_GRANTED
+            }
+            preferences.edit().putBoolean("find_my_location_enabled", granted).apply()
+            status.text = if (granted) "Find My location enabled · last-known location may be approximate or stale"
+                else "Find My location permission denied"
+            return
+        }
         if (requestCode != cameraPermissionRequestCode) return
         val pending = pendingTorchCommand
         pendingTorchCommand = null
@@ -582,6 +622,29 @@ class MainActivity : Activity() {
         memory.getMemoryInfo(memoryInfo)
         put("ramTotalBytes", memoryInfo.totalMem)
         put("ramAvailableBytes", memoryInfo.availMem)
+        if (preferences.getBoolean("find_my_location_enabled", false)) {
+            val fineGranted = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val coarseGranted = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (fineGranted || coarseGranted) {
+                try {
+                    val locationManager = getSystemService(LOCATION_SERVICE) as android.location.LocationManager
+                    val lastLocation = locationManager.getProviders(true).mapNotNull { provider ->
+                        try { locationManager.getLastKnownLocation(provider) } catch (_: SecurityException) { null }
+                    }.maxByOrNull { it.time }
+                    if (lastLocation != null) {
+                        put("lastKnownLocation", JSONObject().apply {
+                            put("latitude", lastLocation.latitude)
+                            put("longitude", lastLocation.longitude)
+                            put("accuracyMeters", if (lastLocation.hasAccuracy()) lastLocation.accuracy else JSONObject.NULL)
+                            put("capturedAtMs", lastLocation.time)
+                            put("provider", lastLocation.provider ?: "unknown")
+                        })
+                    }
+                } catch (_: Exception) {
+                    // Location is optional; telemetry continues without it.
+                }
+            }
+        }
     }
 
     private fun BatteryManager.isChargingCompat(): Boolean {
