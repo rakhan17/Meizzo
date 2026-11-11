@@ -125,15 +125,15 @@ Before calling a capability production-ready, record:
 2. Device model, Android version, and OEM settings.
 3. Client and Controller installation result.
 4. Pairing and explicit approval result.
-5. Screen/camera stream start, quality, latency, and stop behavior.
-6. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
+5. Screen/camera stream start, quality, latency, camera switching, and stop behavior.
+6. Two-way voice start/mute/stop, permission denial, audio routing, echo, and background behavior.\n7. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
    OFF, local notification Stop alarm, background playback, and volume behavior.
-7. Tap, swipe, lock, and Accessibility permission-denial behavior.
-8. File transfer in both directions, including cancellation and interrupted
+8. Tap, swipe, keyboard shortcuts, system navigation, lock, and Accessibility permission-denial behavior.
+9. Clipboard approval, remote folder navigation, file download, rename/delete, and SAF permission revocation.\n10. File transfer in both directions, including multi-file batches, progress, cancellation, interrupted
    transfers.
-9. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
-10. Multi-device isolation, revocation, and session cleanup.
-11. Sanitized logs without tokens, codes, passwords, or private data.
+11. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
+12. Multi-device isolation, revocation, and session cleanup.
+13. Sanitized logs without tokens, codes, passwords, or private data.
 
 See [v3 implementation notes](v3/README.md),
 [upstream/license notes](v3/UPSTREAM_AND_LICENSES.md), and
