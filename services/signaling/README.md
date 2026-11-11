@@ -22,6 +22,26 @@ The Cloudflare Worker is defined in `services/signaling/cloudflare/worker.js`; t
 
 Cloudflare's Workers Builds uses the Wrangler deploy command by default and supports GitHub-triggered deployments. The Worker name must match the Wrangler configuration.
 
+## MEIZZO v3 isolated Worker
+
+The v3 development branch uses a separate Worker configuration,
+`wrangler.v3.toml`, with Worker name `meizzo-signaling-v3`. It preserves the
+stable `meizzo-signaling` deployment and has an independent Durable Object
+namespace.
+
+The expected endpoint in this repository is:
+
+`wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
+
+Deploy it through the guarded
+[MEIZZO v3 Cloudflare workflow](https://github.com/rakhan17/Meizzo/blob/develop/v3/.github/workflows/deploy-cloudflare-v3.yml)
+after configuring `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub
+Actions repository secrets. Configure the Realtime TURN secrets separately on
+the v3 Worker if TURN relay is enabled.
+
+The v3 Worker adds approved-session WebRTC signaling and short-lived TURN
+credential delivery. Do not point v3 release builds at the stable Worker.
+
 ## Verify the deployment
 
 Open:
