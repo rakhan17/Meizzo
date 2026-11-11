@@ -215,7 +215,6 @@ class RtcMediaController(
     fun disableLocalMicrophone() {
         localAudioTrack?.setEnabled(false)
         localAudioSender?.setTrack(null, false)
-        localAudioSender?.setTrack(null, false)
         localAudioTrack?.dispose()
         localAudioTrack = null
         localAudioSource?.dispose()
@@ -386,10 +385,12 @@ class RtcMediaController(
         remoteAudioTrack?.setEnabled(false)
         remoteAudioTrack = null
         localAudioTrack?.setEnabled(false)
+        localAudioSender?.setTrack(null, false)
         localAudioTrack?.dispose()
         localAudioTrack = null
         localAudioSource?.dispose()
         localAudioSource = null
+        localAudioSender = null
         localAudioEnabled = false
         peer?.close()
         peer?.dispose()
