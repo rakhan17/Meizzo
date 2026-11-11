@@ -924,6 +924,9 @@ class MainActivity : Activity() {
             android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED,
             android.provider.DocumentsContract.Document.COLUMN_FLAGS
         )
+        val writeAccess = contentResolver.persistedUriPermissions.any {
+            it.uri == treeUri && it.isWritePermission
+        }
         val entries = org.json.JSONArray()
         contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
             val idIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID)
@@ -957,6 +960,7 @@ class MainActivity : Activity() {
             put("result", JSONObject().apply {
                 put("documentId", documentId)
                 put("rootDocumentId", rootId)
+                put("writeAccess", writeAccess)
                 put("files", entries)
                 put("truncated", entries.length() >= 40)
             })
@@ -1215,7 +1219,7 @@ class MainActivity : Activity() {
                         val dialog = AlertDialog.Builder(this)
                             .setTitle("Allow remote folder browsing?")
                             .setMessage(
-                                "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. File contents are not exposed by browsing."
+                                "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. If Android grants write access, it may also request individual file rename or deletion; each operation needs separate approval. Folder deletion is disabled."
                             )
                             .setNegativeButton("Deny") { _, _ ->
                                 sendCommandFailure(webSocket, message, "Remote folder browsing was denied")
