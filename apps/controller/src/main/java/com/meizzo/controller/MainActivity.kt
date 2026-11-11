@@ -749,6 +749,12 @@ class MainActivity : Activity() {
                     }
                     fun normalizedX(x: Float) = ((x - offsetX) / contentWidth).coerceIn(0f, 1f).toDouble()
                     fun normalizedY(y: Float) = ((y - offsetY) / contentHeight).coerceIn(0f, 1f).toDouble()
+                    if (event.x < offsetX || event.x > offsetX + contentWidth ||
+                        event.y < offsetY || event.y > offsetY + contentHeight ||
+                        touchStartX < offsetX || touchStartX > offsetX + contentWidth ||
+                        touchStartY < offsetY || touchStartY > offsetY + contentHeight) {
+                        return@setOnTouchListener true
+                    }
                     val startX = normalizedX(touchStartX)
                     val startY = normalizedY(touchStartY)
                     val endX = normalizedX(event.x)
