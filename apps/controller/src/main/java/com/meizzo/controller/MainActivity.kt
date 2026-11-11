@@ -1309,6 +1309,30 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun showRemoteCreateFolderDialog(clientId: String, parentDocumentId: String) {
+        val input = EditText(this).apply {
+            hint = "Folder name"
+            filters = arrayOf(android.text.InputFilter.LengthFilter(128))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Create remote folder")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Create") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isBlank() || name.contains('/') || name.contains('\\')) {
+                    setConnection("Enter a valid folder name without path separators", false)
+                } else {
+                    sendClientCommand(
+                        clientId,
+                        "file_create_directory",
+                        JSONObject().put("parentDocumentId", parentDocumentId).put("newName", name)
+                    )
+                }
+            }
+            .show()
+    }
+
     private fun showRemoteRenameDialog(clientId: String, item: JSONObject) {
         val currentName = item.optString("name")
         val input = EditText(this).apply {
@@ -1449,6 +1473,14 @@ class MainActivity : Activity() {
                 entryDialog.show()
             }
             .setNegativeButton("Close", null)
+        val canCreateFolder = result.optBoolean("writeAccess") &&
+            (result.optLong("directoryFlags") and
+                android.provider.DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE.toLong()) != 0L
+        if (canCreateFolder) {
+            builder.setNeutralButton("New folder") { _, _ ->
+                showRemoteCreateFolderDialog(clientId, documentId)
+            }
+        }
         if (stack.size > 1) {
             builder.setPositiveButton("Up") { _, _ ->
                 stack.removeAt(stack.lastIndex)
