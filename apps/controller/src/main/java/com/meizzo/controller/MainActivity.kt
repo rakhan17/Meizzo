@@ -1206,7 +1206,7 @@ class MainActivity : Activity() {
         val message = buildString {
             append("Read-only view · ")
             append(if (documentId == rootDocumentId) "shared folder root" else "subfolder")
-            if (result.optBoolean("truncated")) append("\nShowing the first 80 entries")
+            if (result.optBoolean("truncated")) append("\nShowing the first 40 entries")
         }
         val builder = AlertDialog.Builder(this)
             .setTitle("Client files")
