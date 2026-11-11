@@ -5,6 +5,7 @@ on:
     branches: [main, develop/v3]
     paths:
       - "wrangler.toml"
+      - "wrangler.v3.toml"
       - "services/signaling/cloudflare/**"
       - ".github/workflows/meizzo-cloudflare.yml"
   pull_request:
@@ -27,5 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate Worker bundle with Wrangler
+      - name: Validate stable Worker bundle with Wrangler
         run: npx --yes wrangler@4 deploy --dry-run --config wrangler.toml
+      - name: Validate v3 Worker bundle with Wrangler
+        run: npx --yes wrangler@4 deploy --dry-run --config wrangler.v3.toml
