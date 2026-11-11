@@ -125,7 +125,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 ### Still in development / not release-ready
 
-- TURN relay deployment and reliable media connectivity across restrictive NATs.
+- Production TURN secret configuration and reliable media connectivity across restrictive NATs.
 - Adaptive bitrate, reconnect recovery, resumable file transfer, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
@@ -144,8 +144,7 @@ MEIZZO separates its control plane from its peer-to-peer media plane. Pairing,
 authentication, presence, telemetry, commands, and session authorization use
 WebSocket Secure (WSS) through the Cloudflare Worker and Durable Object. After
 the Client approves a screen, camera, or file session, the Android apps
-negotiate a direct WebRTC connection using the signaling channel. STUN is
-configured; TURN relay deployment remains outstanding.
+negotiate a direct WebRTC connection using the signaling channel. STUN is the fallback. The Worker can issue short-lived Cloudflare TURN credentials when its secrets are configured; production TURN setup remains outstanding.
 
 ```mermaid
 flowchart LR
