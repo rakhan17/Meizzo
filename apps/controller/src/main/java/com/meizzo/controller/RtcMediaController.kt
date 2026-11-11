@@ -336,6 +336,7 @@ class RtcMediaController(
     }
 
     companion object {
+        private const val MAX_ICE_RESTART_ATTEMPTS = 3
         private val FACTORY_LOCK = Any()
         @Volatile private var factoryInitialized = false
     }
