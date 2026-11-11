@@ -29,19 +29,13 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, final SHA-256 verification, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
 | RustDesk engine | Upstream source is pinned at `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`) and verified in CI. Native Rust engine, Flutter bridge, and RustDesk server are not yet integrated into MEIZZO runtime. |
 
-## Cloudflare v3 deployment
+## Cloudflare signaling deployment
 
-The stable Cloudflare Workers Builds project remains connected to `main` and deploys `wrangler.toml` as `meizzo-signaling`.
+MEIZZO v3 uses the existing shared Worker endpoint:
 
-The v3 branch uses an isolated Worker configuration, `wrangler.v3.toml`, with its own Durable Object namespace. Create a **second Cloudflare Workers Builds project** for the same GitHub repository, set its production branch to `develop/v3`, leave the build command blank, and use this deploy command:
+`wss://meizzo-signaling.rakhanatanox.workers.dev`
 
-```bash
-npx --yes wrangler@4 deploy --config wrangler.v3.toml
-```
-
-Set Preview command to `npx --yes wrangler@4 preview --config wrangler.v3.toml`. Leave Build command blank. Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../backend-deployment.md#isolated-meizzo-v3-worker).
-
-The expected hostname is `meizzo-signaling-beta.rakhanatanox.workers.dev`, but Cloudflare's dashboard is authoritative. Confirm the actual deployment URL and health endpoint before treating the Worker as live. Configure Cloudflare Realtime TURN secrets on the v3 Worker separately if relay is enabled.
+Do not create a second Worker or a separate Workers Builds project. The existing Cloudflare Workers Builds project remains connected to `main` and deploys the root `wrangler.toml`. The v3 branch uses this endpoint for debug and release builds. Worker-side v3 changes deploy through the existing main-branch deployment after merging them into `main`.
 
 ## Upstream engine integration
 
