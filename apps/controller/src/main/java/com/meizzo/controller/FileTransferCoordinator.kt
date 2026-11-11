@@ -274,8 +274,6 @@ class FileTransferCoordinator(
                         discardIncoming()
                         pendingName = ""
                         pendingSize = 0L
-                    pendingName = ""
-                    pendingSize = 0L
                         onStatus("Incoming file exceeded the 50 MiB transfer limit")
                         return
                     }
