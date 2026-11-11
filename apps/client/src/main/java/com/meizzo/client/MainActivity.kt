@@ -126,6 +126,7 @@ class MainActivity : Activity() {
         })
         content.addView(uiActionButton("Stop pairing", false) {
             socket?.close(1000, "Pairing stopped")
+            stopService(android.content.Intent(this, ConnectionForegroundService::class.java))
             status.text = "Pairing stopped"
         }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
         content.addView(uiActionButton("Check for updates", true) {
@@ -144,7 +145,13 @@ class MainActivity : Activity() {
             addView(content)
             setBackgroundColor(Color.rgb(8, 8, 10))
         })
+        startConnectionForegroundService()
         connect()
+    }
+
+    private fun startConnectionForegroundService() {
+        val intent = android.content.Intent(this, ConnectionForegroundService::class.java)
+        startForegroundService(intent)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
