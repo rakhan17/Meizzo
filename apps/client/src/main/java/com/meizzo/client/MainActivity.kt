@@ -458,7 +458,11 @@ class MainActivity : Activity() {
     }
 
     private fun beginFileTransferSession(sessionId: String) {
-        stopMediaPublisher()
+        fileTransferCoordinator?.close()
+        fileTransferCoordinator = null
+        pendingMediaSignals.clear()
+        rtcMediaClient?.close()
+        rtcMediaClient = null
         activeMediaSessionId = sessionId
         rtcMediaClient = RtcMediaClient(
             this,
