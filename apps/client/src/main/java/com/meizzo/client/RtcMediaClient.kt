@@ -2,6 +2,8 @@ package com.meizzo.client
 
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import org.json.JSONObject
 import org.json.JSONArray
@@ -12,6 +14,7 @@ import org.webrtc.DataChannel
 import org.webrtc.EglBase
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
+import org.webrtc.RtpSender
 import org.webrtc.ScreenCapturerAndroid
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
@@ -42,6 +45,18 @@ class RtcMediaClient(
     private var sessionId: String = ""
     private var remoteDescriptionSet = false
     private val queuedCandidates = mutableListOf<IceCandidate>()
+    private var videoSender: RtpSender? = null
+    private val adaptationHandler = Handler(Looper.getMainLooper())
+    private var adaptationActive = false
+    private var currentMaxBitrateBps = 1_500_000
+    private var healthyStatsSamples = 0
+    private val adaptationPoll = object : Runnable {
+        override fun run() {
+            if (!adaptationActive) return
+            collectAndAdaptBitrate()
+            adaptationHandler.postDelayed(this, 3_000)
+        }
+    }
 
     init {
         synchronized(FACTORY_LOCK) {
@@ -109,7 +124,72 @@ class RtcMediaClient(
         }
         val track = factory.createVideoTrack("MEIZZO_VIDEO_$sessionId", videoSource)
         track.setEnabled(true)
-        peer?.addTrack(track, listOf("MEIZZO_STREAM_$sessionId"))
+        videoSender = peer?.addTrack(track, listOf("MEIZZO_STREAM_$sessionId"))
+        if (videoSender == null) {
+            onFailure("Unable to attach the video track to WebRTC")
+            return
+        }
+        startAdaptiveBitrate()
+    }
+
+    private fun startAdaptiveBitrate() {
+        adaptationActive = true
+        adaptationHandler.removeCallbacks(adaptationPoll)
+        adaptationHandler.postDelayed(adaptationPoll, 3_000)
+    }
+
+    /**
+     * Uses WebRTC's selected candidate-pair bandwidth estimate, remote packet
+     * loss, and RTT to adjust the sender cap. WebRTC congestion control remains
+     * authoritative; this is a conservative application-level ceiling.
+     */
+    private fun collectAndAdaptBitrate() {
+        val connection = peer ?: return
+        connection.getStats { report ->
+            val stats = report.statsMap.values
+            val candidatePair = stats.firstOrNull {
+                it.type == "candidate-pair" && it.members["state"] == "succeeded" &&
+                    (it.members["nominated"] == true || it.members["selected"] == true)
+            } ?: stats.firstOrNull {
+                it.type == "candidate-pair" && it.members["state"] == "succeeded"
+            }
+            val bandwidth = (candidatePair?.members?.get("availableOutgoingBitrate") as? Number)
+                ?.toDouble()?.takeIf { it > 0.0 }
+            val rtt = (candidatePair?.members?.get("currentRoundTripTime") as? Number)?.toDouble()
+            val packetLoss = stats.firstOrNull { it.type == "remote-inbound-rtp" }
+                ?.members?.get("fractionLost") as? Number
+            val lossRatio = packetLoss?.toDouble()
+
+            adaptationHandler.post {
+                if (!adaptationActive || peer !== connection) return@post
+                var target = currentMaxBitrateBps
+                if (bandwidth != null) {
+                    target = minOf(target, (bandwidth * 0.75).toInt().coerceIn(350_000, 3_500_000))
+                }
+                val congested = (lossRatio != null && lossRatio >= 0.08) ||
+                    (rtt != null && rtt >= 0.45)
+                val healthy = (lossRatio == null || lossRatio < 0.02) &&
+                    (rtt == null || rtt < 0.20)
+                if (congested) {
+                    target = minOf(target, (currentMaxBitrateBps * 0.70).toInt())
+                        .coerceAtLeast(350_000)
+                    healthyStatsSamples = 0
+                } else if (healthy) {
+                    healthyStatsSamples += 1
+                    if (healthyStatsSamples >= 2) {
+                        target = minOf(3_500_000, maxOf(target, (currentMaxBitrateBps * 1.15).toInt()))
+                    }
+                } else {
+                    healthyStatsSamples = 0
+                }
+                if (kotlin.math.abs(target - currentMaxBitrateBps) < 100_000) return@post
+                val sender = videoSender ?: return@post
+                val parameters = sender.parameters
+                if (parameters.encodings.isEmpty()) return@post
+                parameters.encodings.forEach { it.maxBitrateBps = target }
+                if (sender.setParameters(parameters)) currentMaxBitrateBps = target
+            }
+        }
     }
 
     fun startFiles(sessionId: String) {
@@ -200,6 +280,9 @@ class RtcMediaClient(
     }
 
     fun close() {
+        adaptationActive = false
+        adaptationHandler.removeCallbacks(adaptationPoll)
+        videoSender = null
         try { capturer?.stopCapture() } catch (_: Exception) { }
         capturer?.dispose()
         capturer = null
