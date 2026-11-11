@@ -164,6 +164,7 @@ class FileTransferCoordinator(
             outgoingBytes += count
             if (outgoingBytes > MAX_FILE_SIZE) {
                 closeOutgoing()
+                send(JSONObject().put("type", "file_reject"))
                 onStatus("File exceeds the 50 MiB transfer limit")
                 return
             }
@@ -174,6 +175,7 @@ class FileTransferCoordinator(
             waitingForAck = true
         } catch (error: Exception) {
             closeOutgoing()
+            send(JSONObject().put("type", "file_reject"))
             onStatus("File read failed: ${error.message ?: "storage error"}")
         }
     }
