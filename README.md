@@ -65,8 +65,8 @@ clearly marked as prerelease software.
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [![Download Stable Client](https://img.shields.io/badge/DOWNLOAD-STABLE%20CLIENT-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [![Download Stable Controller](https://img.shields.io/badge/DOWNLOAD-STABLE%20CONTROLLER-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
 
 [![View stable channel release](https://img.shields.io/badge/VIEW-STABLE%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
 
