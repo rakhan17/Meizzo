@@ -72,8 +72,10 @@ for real Android device testing, network traversal testing, or a security audit.
 
 ## Not yet release-ready
 
-- TURN relay deployment. Current WebRTC ICE configuration uses STUN only, so
-  restrictive NATs, carrier-grade NAT, and firewalls may prevent connectivity.
+- Production TURN secret configuration and network traversal acceptance. The
+  Worker can issue short-lived Cloudflare Realtime TURN credentials when
+  configured; without them, restrictive NATs, carrier-grade NAT, and firewalls
+  may prevent connectivity.
 - Adaptive bitrate, congestion control tuning, stream recovery, and network
   handover behavior.
 - Resumable transfers, large-file optimization, and signed transfer manifests.
