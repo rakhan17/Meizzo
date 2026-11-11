@@ -1348,8 +1348,11 @@ class MainActivity : Activity() {
                 } else {
                     entryDialog.setPositiveButton("Download") { _, _ ->
                         val fileSessionId = activeFileTransferSessions[clientId]
+                        val transfer = fileSessionId?.let(fileTransferCoordinators::get)
                         if (fileSessionId.isNullOrBlank()) {
                             setConnection("Start an approved file-transfer session before downloading", false)
+                        } else if (transfer?.isReady() != true) {
+                            setConnection("Wait until the secure file-transfer channel is ready", false)
                         } else {
                             sendClientCommand(
                                 clientId,
