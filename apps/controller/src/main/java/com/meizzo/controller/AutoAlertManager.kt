@@ -109,9 +109,13 @@ class AutoAlertManager(context: Context) {
         offlineTasks.remove(clientId)?.let(handler::removeCallbacks)
         val delay = (settings().offlineMinutes * 60_000L - (now - since)).coerceAtLeast(0L)
         val task = Runnable {
-            if (preferences.getLong(key, 0L) == since) {
-                notify(clientId, "offline", "Device offline · $label",
-                    "This Client has been offline for at least ${settings().offlineMinutes} minutes.")
+            if (preferences.getLong(key, 0L) == since &&
+                !preferences.getBoolean("offline_alerted_$clientId", false)
+            ) {
+                if (notify(clientId, "offline", "Device offline · $label",
+                    "This Client has been offline for at least ${settings().offlineMinutes} minutes.")) {
+                    preferences.edit().putBoolean("offline_alerted_$clientId", true).apply()
+                }
             }
             offlineTasks.remove(clientId)
         }
@@ -120,7 +124,7 @@ class AutoAlertManager(context: Context) {
     }
 
     private fun clearOfflineAlert(clientId: String) {
-        preferences.edit().remove("offline_since_$clientId").apply()
+        preferences.edit().remove("offline_since_$clientId").remove("offline_alerted_$clientId").apply()
         offlineTasks.remove(clientId)?.let(handler::removeCallbacks)
     }
 
