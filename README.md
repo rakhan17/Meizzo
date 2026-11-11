@@ -118,7 +118,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Optional two-way voice prototype: Client and Controller microphone audio tracks over WebRTC, each requiring runtime permission and an explicit in-session action. Controller uses a microphone foreground service and can mute either side locally.
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
 - Remote Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
-- Remote text insertion, Backspace, Enter, Tab, Escape, arrow keys, and newline for focused text editors. Android 13+ input-connection key support is used where available.
+- Remote text insertion at the active cursor/selection, Backspace, Enter, Tab, Escape, arrow keys, and Ctrl+A/C/V/X/Z/Y shortcuts for supported focused text editors. Android 13+ input-connection key support is used where available.
 - Remote media volume up/down/mute/unmute controls during an approved interaction session.
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
