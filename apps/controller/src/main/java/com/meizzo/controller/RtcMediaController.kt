@@ -37,6 +37,8 @@ class RtcMediaController(
     private var iceRestartInProgress = false
     private val iceRestartTask = Runnable { restartIceIfNeeded() }
     private var attachedTrackId: String? = null
+    private var remoteAudioTrack: org.webrtc.AudioTrack? = null
+    private var remoteAudioEnabled = true
     var remoteWidth: Int = 0
         private set
     var remoteHeight: Int = 0
@@ -113,13 +115,19 @@ class RtcMediaController(
             override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) {
                 when (val track = receiver?.track()) {
                     is VideoTrack -> attachTrack(track)
-                    is org.webrtc.AudioTrack -> track.setEnabled(true)
+                    is org.webrtc.AudioTrack -> {
+                        remoteAudioTrack = track
+                        track.setEnabled(remoteAudioEnabled)
+                    }
                 }
             }
             override fun onTrack(transceiver: RtpTransceiver?) {
                 when (val track = transceiver?.receiver?.track()) {
                     is VideoTrack -> attachTrack(track)
-                    is org.webrtc.AudioTrack -> track.setEnabled(true)
+                    is org.webrtc.AudioTrack -> {
+                        remoteAudioTrack = track
+                        track.setEnabled(remoteAudioEnabled)
+                    }
                 }
             }
         }) ?: run {
@@ -148,6 +156,12 @@ class RtcMediaController(
             }
             override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create WebRTC offer")
         }, MediaConstraints())
+    }
+
+    fun toggleRemoteAudio(): Boolean {
+        remoteAudioEnabled = !remoteAudioEnabled
+        remoteAudioTrack?.setEnabled(remoteAudioEnabled)
+        return remoteAudioEnabled
     }
 
     private fun restartIceIfNeeded() {
@@ -285,6 +299,8 @@ class RtcMediaController(
     fun close() {
         recoveryHandler.removeCallbacks(iceRestartTask)
         iceRestartInProgress = false
+        remoteAudioTrack?.setEnabled(false)
+        remoteAudioTrack = null
         peer?.close()
         peer?.dispose()
         peer = null
