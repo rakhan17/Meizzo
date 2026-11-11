@@ -836,6 +836,19 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            "text_input" -> {
+                val text = parameters.optString("text")
+                val accessibility = RemoteAccessibilityService.instance
+                if (text.isBlank() || text.length > 2_000) {
+                    error = "Text input must contain 1–2,000 characters"
+                } else if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!accessibility.appendText(text)) {
+                    error = "No editable non-password field is focused, or Android rejected text insertion"
+                } else {
+                    result.put("charactersInserted", text.length)
+                }
+            }
             "lock_screen" -> {
                 val accessibility = RemoteAccessibilityService.instance
                 if (accessibility == null) {
