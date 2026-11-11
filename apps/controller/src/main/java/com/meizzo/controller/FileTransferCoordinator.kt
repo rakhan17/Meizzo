@@ -56,6 +56,7 @@ class FileTransferCoordinator(
     private var incomingDigest: MessageDigest? = null
     private var lastCompletedIncomingHash: String? = null
     private var waitingForAck = false
+    @Volatile private var closed = false
     private var pendingName = ""
     private var pendingSize = 0L
 
@@ -63,25 +64,29 @@ class FileTransferCoordinator(
         channel.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
             override fun onStateChange() {
-                when (channel.state()) {
-                    DataChannel.State.OPEN -> onStatus("Secure file channel ready")
-                    DataChannel.State.CLOSING, DataChannel.State.CLOSED -> {
-                        cancelChunkRetry()
-                        closeOutgoing()
-                        outgoingQueue.clear()
-                        discardIncoming()
-                        pendingName = ""
-                        pendingSize = 0L
-                        onStatus("File channel closed · transfer stopped")
+                retryHandler.post {
+                    if (closed) return@post
+                    when (channel.state()) {
+                        DataChannel.State.OPEN -> onStatus("Secure file channel ready")
+                        DataChannel.State.CLOSING, DataChannel.State.CLOSED -> {
+                            cancelChunkRetry()
+                            closeOutgoing()
+                            outgoingQueue.clear()
+                            discardIncoming()
+                            pendingName = ""
+                            pendingSize = 0L
+                            onStatus("File channel closed · transfer stopped")
+                        }
+                        else -> Unit
                     }
-                    else -> Unit
                 }
             }
             override fun onMessage(buffer: DataChannel.Buffer) {
                 if (buffer.binary) return
                 val bytes = ByteArray(buffer.data.remaining())
                 buffer.data.get(bytes)
-                handleMessage(String(bytes, Charsets.UTF_8))
+                val raw = String(bytes, Charsets.UTF_8)
+                retryHandler.post { if (!closed) handleMessage(raw) }
             }
         })
     }
@@ -89,6 +94,10 @@ class FileTransferCoordinator(
     fun sendFile(uri: Uri) = sendFiles(listOf(uri))
 
     fun sendFiles(uris: List<Uri>) {
+        if (closed) {
+            onStatus("File transfer session has ended")
+            return
+        }
         if (channel.state() != DataChannel.State.OPEN) {
             onStatus("File channel is not connected yet")
             return
@@ -128,6 +137,7 @@ class FileTransferCoordinator(
     }
 
     fun acceptIncoming(uri: Uri) {
+        check(!closed) { "File transfer session has ended" }
         incomingOutput = context.contentResolver.openOutputStream(uri, "wt")
             ?: throw IllegalStateException("Android could not create the destination file")
         incomingUri = uri
@@ -146,6 +156,8 @@ class FileTransferCoordinator(
     }
 
     fun close() {
+        if (closed) return
+        closed = true
         closeOutgoing()
         outgoingQueue.clear()
         discardIncoming()
@@ -334,7 +346,7 @@ class FileTransferCoordinator(
     }
 
     private fun send(message: JSONObject) {
-        if (channel.state() != DataChannel.State.OPEN) return
+        if (closed || channel.state() != DataChannel.State.OPEN) return
         channel.send(DataChannel.Buffer(ByteBuffer.wrap(message.toString().toByteArray(Charsets.UTF_8)), false))
     }
 
