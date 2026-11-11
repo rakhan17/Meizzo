@@ -16,6 +16,19 @@ permissions:
   contents: read
 
 jobs:
+  rustdesk-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Verify pinned RustDesk source and license
+        run: |
+          expected="95cca3f661f635b3cc85c04935fe8d96d8f432ef"
+          actual="$(git -C third_party/rustdesk rev-parse HEAD)"
+          test "$actual" = "$expected"
+          grep -q "GNU AFFERO GENERAL PUBLIC LICENSE" third_party/rustdesk/LICENCE
+          cmp -s LICENSE-AGPL-3.0-only third_party/rustdesk/LICENCE
   signaling:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: services/signaling } }
