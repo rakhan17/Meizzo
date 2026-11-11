@@ -2,6 +2,7 @@ package com.meizzo.client
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import android.app.AlertDialog
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
@@ -94,7 +95,20 @@ class MainActivity : ComponentActivity() {
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
-    private val cameraPermissionRequestCode = 4102
+    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val pending = pendingTorchCommand
+        pendingTorchCommand = null
+        if (pending == null) return@registerForActivityResult
+        if (granted) {
+            try {
+                handleCommand(pending.first, pending.second)
+            } catch (error: Exception) {
+                sendCommandFailure(pending.first, pending.second, error.message ?: "Flashlight could not be enabled")
+            }
+        } else {
+            sendCommandFailure(pending.first, pending.second, "Camera permission was denied; flashlight control is unavailable")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -380,27 +394,6 @@ class MainActivity : ComponentActivity() {
         }.toString())
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != cameraPermissionRequestCode) return
-        val pending = pendingTorchCommand
-        pendingTorchCommand = null
-        if (pending == null) return
-        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-            try {
-                handleCommand(pending.first, pending.second)
-            } catch (error: Exception) {
-                sendCommandFailure(pending.first, pending.second, error.message ?: "Flashlight could not be enabled")
-            }
-        } else {
-            sendCommandFailure(pending.first, pending.second, "Camera permission was denied; flashlight control is unavailable")
-        }
-    }
-
     private fun stopActiveOutputs() {
         alarm?.stopTone()
         alarm?.release()
@@ -448,10 +441,7 @@ class MainActivity : ComponentActivity() {
                         sendCommandFailure(webSocket, message, "Flashlight permission was not granted")
                     }
                     .setPositiveButton("Continue") { _, _ ->
-                        requestPermissions(
-                            arrayOf(android.Manifest.permission.CAMERA),
-                            cameraPermissionRequestCode
-                        )
+                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
                     }
                     .setOnCancelListener {
                         pendingTorchCommand = null
