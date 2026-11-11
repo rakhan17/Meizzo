@@ -1,5 +1,5 @@
 const PROTOCOL_VERSION = 2;
-const SERVER_CAPABILITIES = ["pairing", "token-authentication", "presence", "telemetry", "device-commands", "multi-device-routing"];
+const SERVER_CAPABILITIES = ["pairing", "token-authentication", "presence", "telemetry", "device-commands", "multi-device-routing", "session-authorization", "media-signaling", "turn-credentials", "remote-interaction"];
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
 const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const SESSION_PENDING_TTL_MS = 10 * 60 * 1000;
@@ -54,6 +54,33 @@ export class MeizzoSignaling {
     await this.ensureAlarm();
   }
 
+  async getIceServers() {
+    const fallback = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+    const keyId = this.env.REALTIME_TURN_TOKEN_ID;
+    const apiToken = this.env.REALTIME_TURN_TOKEN_SECRET;
+    if (!keyId || !apiToken) return fallback;
+    try {
+      const response = await fetch(
+        `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ ttl: 86400 })
+        }
+      );
+      if (!response.ok) return fallback;
+      const data = await response.json();
+      return Array.isArray(data.iceServers) && data.iceServers.length
+        ? data.iceServers
+        : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   async ensureAlarm() {
     const alarm = await this.ctx.storage.getAlarm();
     if (alarm === null) await this.ctx.storage.setAlarm(now() + 15000);
@@ -78,6 +105,21 @@ export class MeizzoSignaling {
 
   sendController(controllerId, payload) {
     this.sendTag("controller:" + controllerId, payload);
+  }
+
+  sendSessionPeer(session, role, payload) {
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = this.attachment(ws);
+      if (role === "client" && a.role === "client" &&
+          a.clientId === session.clientId && a.connId === session.clientConnId) {
+        this.send(ws, payload);
+      }
+      if (role === "controller" && a.role === "controller" &&
+          a.controllerId === session.controllerId && a.connId === session.controllerConnId &&
+          (a.tokens || [a.token]).includes(session.controllerToken)) {
+        this.send(ws, payload);
+      }
+    }
   }
 
   sendError(ws, code, message) {
@@ -196,6 +238,28 @@ export class MeizzoSignaling {
         if (m.role === "client" && validString(m.clientId)) {
           const d = s.devices[m.clientId];
           if (!d || d.clientToken !== m.authToken) return this.sendError(ws, "unauthorized", "Invalid authentication token");
+          if (d.clientConnId && d.clientConnId !== a.connId) {
+            for (const [sessionId, session] of Object.entries(s.sessions)) {
+              if (session.clientId !== m.clientId || !["pending", "approved"].includes(session.state)) continue;
+              session.state = "failed";
+              session.endedAtMs = t;
+              session.terminationReason = "client_reconnected";
+              const payload = {
+                type: "session.status",
+                sessionId,
+                clientId: session.clientId,
+                controllerId: session.controllerId,
+                sessionType: session.sessionType,
+                state: "failed",
+                createdAtMs: session.createdAtMs,
+                endedAtMs: t,
+                terminationReason: "client_reconnected"
+              };
+              this.sendController(session.controllerId, payload);
+              this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+              delete s.sessions[sessionId];
+            }
+          }
           this.setAuth(ws, { role: "client", clientId: m.clientId });
           d.status = "online"; d.lastSeen = t; d.clientHeartbeat = t; d.clientConnId = a.connId;
           await this.save(s);
@@ -207,6 +271,24 @@ export class MeizzoSignaling {
           const controllerId = s.controllers[m.authToken]?.controllerId;
           if (!controllerId) return this.sendError(ws, "unauthorized", "Invalid authentication token");
           if (a.role === "controller" && a.controllerId !== controllerId) return this.sendError(ws, "unauthorized", "Controller identity mismatch");
+          if (a.connId) {
+            for (const [sessionId, session] of Object.entries(s.sessions)) {
+              if (session.controllerId !== controllerId || session.controllerConnId === a.connId ||
+                  !["pending", "approved"].includes(session.state)) continue;
+              session.state = "failed";
+              session.endedAtMs = t;
+              session.terminationReason = "controller_reconnected";
+              const payload = {
+                type: "session.status", sessionId, clientId: session.clientId,
+                controllerId: session.controllerId, sessionType: session.sessionType,
+                state: "failed", createdAtMs: session.createdAtMs, endedAtMs: t,
+                terminationReason: "controller_reconnected"
+              };
+              this.sendController(session.controllerId, payload);
+              this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+              delete s.sessions[sessionId];
+            }
+          }
           const tokens = [...new Set([...(a.tokens || []), m.authToken])];
           this.setAuth(ws, { role: "controller", controllerId, token: m.authToken, tokens });
           this.send(ws, { type: "controller.status", status: "connected", timestamp: t });
@@ -260,8 +342,27 @@ export class MeizzoSignaling {
         if (!d) return this.sendError(ws, "unauthorized", "Not authorized for this device");
         if (!SESSION_TYPES.has(m.sessionType)) return this.sendError(ws, "invalid_session_type", "Unsupported session type");
         if (d.status !== "online") return this.sendError(ws, "offline", "Client is offline");
+        const activeDuplicate = Object.values(s.sessions).some(session =>
+          session.clientId === d.clientId &&
+          ["pending", "approved"].includes(session.state) &&
+          (m.sessionType === "interaction"
+            ? session.sessionType === "interaction"
+            : session.controllerId === a.controllerId && session.sessionType === m.sessionType)
+        );
+        if (activeDuplicate) {
+          return this.sendError(ws, "session_already_active", "An equivalent session is already active for this Client");
+        }
+        const controllerToken = Object.entries(d.controllerTokens).find(([token, owner]) =>
+          owner === a.controllerId && (a.tokens || [a.token]).includes(token)
+        )?.[0];
+        if (!controllerToken) return this.sendError(ws, "unauthorized", "No active Controller credential for this device");
         const sessionId = id();
-        const session = { sessionId, clientId: d.clientId, controllerId: a.controllerId, controllerToken: a.token, sessionType: m.sessionType, state: "pending", createdAtMs: t };
+        const session = {
+          sessionId, clientId: d.clientId, controllerId: a.controllerId,
+          controllerToken, controllerConnId: a.connId,
+          clientConnId: d.clientConnId, sessionType: m.sessionType,
+          state: "pending", createdAtMs: t
+        };
         s.sessions[sessionId] = session; await this.save(s);
         const payload = { type: "session.status", sessionId, clientId: d.clientId, controllerId: a.controllerId, sessionType: m.sessionType, state: "pending", createdAtMs: t, endedAtMs: null, terminationReason: null };
         this.sendController(a.controllerId, payload); this.sendClient(d.clientId, { ...payload, type: "client.session_status" });
@@ -269,24 +370,72 @@ export class MeizzoSignaling {
       }
       case "client.session_decision": {
         const session = s.sessions[m.sessionId];
-        if (!session || a.role !== "client" || session.clientId !== a.clientId || typeof m.approved !== "boolean") return this.sendError(ws, "unauthorized", "Invalid session decision");
+        if (!session || a.role !== "client" || session.clientId !== a.clientId || session.clientConnId !== a.connId || typeof m.approved !== "boolean") return this.sendError(ws, "unauthorized", "Invalid session decision");
         if (session.state !== "pending") return this.sendError(ws, "session_not_pending", "Session is no longer awaiting approval");
         session.state = m.approved ? "approved" : "rejected"; session.endedAtMs = m.approved ? null : t;
         session.terminationReason = m.approved ? null : "client_rejected";
         await this.save(s);
+        if (m.approved && ["screen", "camera", "files"].includes(session.sessionType)) {
+          const iceServers = await this.getIceServers();
+          const icePayload = { type: "media.ice_servers", sessionId: session.sessionId, iceServers };
+          this.sendSessionPeer(session, "controller", icePayload);
+          this.sendSessionPeer(session, "client", icePayload);
+        }
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: session.state, createdAtMs: session.createdAtMs, endedAtMs: session.endedAtMs, terminationReason: session.terminationReason };
         this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
         if (!m.approved) { delete s.sessions[m.sessionId]; await this.save(s); }
         return;
       }
+      case "client.end_session": {
+        const session = s.sessions[m.sessionId];
+        if (!session || a.role !== "client" || session.clientId !== a.clientId ||
+            session.clientConnId !== a.connId || session.state !== "approved") {
+          return this.sendError(ws, "unauthorized", "Invalid Client session termination");
+        }
+        session.state = "ended";
+        session.endedAtMs = t;
+        session.terminationReason = validString(m.reason) ? m.reason : "client_ended";
+        await this.save(s);
+        const payload = {
+          type: "session.status", sessionId: session.sessionId, clientId: session.clientId,
+          controllerId: session.controllerId, sessionType: session.sessionType,
+          state: "ended", createdAtMs: session.createdAtMs, endedAtMs: t,
+          terminationReason: session.terminationReason
+        };
+        this.sendController(session.controllerId, payload);
+        this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+        delete s.sessions[m.sessionId];
+        await this.save(s);
+        return;
+      }
       case "controller.end_session": {
         const session = s.sessions[m.sessionId];
-        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || session.controllerToken !== a.token) return this.sendError(ws, "unauthorized", "Invalid session termination");
+        if (!session || a.role !== "controller" || session.controllerId !== a.controllerId || !(a.tokens || [a.token]).includes(session.controllerToken) || session.controllerConnId !== a.connId) return this.sendError(ws, "unauthorized", "Invalid session termination");
         session.state = "ended"; session.endedAtMs = t; session.terminationReason = validString(m.reason) ? m.reason : "controller_ended";
         await this.save(s);
         const payload = { type: "session.status", sessionId: session.sessionId, clientId: session.clientId, controllerId: session.controllerId, sessionType: session.sessionType, state: "ended", createdAtMs: session.createdAtMs, endedAtMs: t, terminationReason: session.terminationReason };
         this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
         delete s.sessions[m.sessionId]; await this.save(s); return;
+      }
+      case "media.signal": {
+        const session = s.sessions[m.sessionId];
+        if (!session || session.state !== "approved" || !["screen", "camera", "files"].includes(session.sessionType)) {
+          return this.sendError(ws, "session_required", "An approved screen, camera, or file session is required");
+        }
+        if (!m.signal || typeof m.signal !== "object" || Array.isArray(m.signal) || JSON.stringify(m.signal).length > 48000) {
+          return this.sendError(ws, "invalid_signal", "Invalid or oversized media signaling payload");
+        }
+        const payload = { type: "media.signal", sessionId: session.sessionId, fromRole: a.role, signal: m.signal };
+        if (a.role === "client" && a.clientId === session.clientId && a.connId === session.clientConnId) {
+          this.sendSessionPeer(session, "controller", payload);
+          return;
+        }
+        if (a.role === "controller" && a.controllerId === session.controllerId &&
+            session.controllerConnId === a.connId && (a.tokens || [a.token]).includes(session.controllerToken)) {
+          this.sendSessionPeer(session, "client", payload);
+          return;
+        }
+        return this.sendError(ws, "unauthorized", "Not a participant in this media session");
       }
       case "controller.request_snapshot":
       case "controller.command": {
@@ -294,7 +443,7 @@ export class MeizzoSignaling {
         if (!d) return this.sendError(ws, "unauthorized", "Not authorized for this device");
         if (d.status !== "online") return this.sendError(ws, "offline", "Client is offline");
         if (m.type === "controller.command") {
-          const allowed = Object.values(s.sessions).some(x => x.clientId === d.clientId && x.controllerId === a.controllerId && x.controllerToken === a.token && x.sessionType === "interaction" && x.state === "approved");
+          const allowed = Object.values(s.sessions).some(x => x.clientId === d.clientId && x.controllerId === a.controllerId && (a.tokens || [a.token]).includes(x.controllerToken) && x.sessionType === "interaction" && x.state === "approved");
           if (!allowed) return this.sendError(ws, "session_required", "An approved interaction session is required");
           if (!validString(m.command)) return this.sendError(ws, "invalid_command", "Command is required");
         }
@@ -340,14 +489,45 @@ export class MeizzoSignaling {
 
   async webSocketClose(ws) {
     const a = this.attachment(ws);
+    const s = await this.state();
+
+    // A Controller disconnect ends sessions owned by that live connection.
+    // This mirrors the local signaling server and prevents an orphaned
+    // approved session from blocking a fresh Client consent request.
+    if (a.role === "controller" && a.controllerId) {
+      const tokens = new Set(a.tokens || [a.token].filter(Boolean));
+      let changed = false;
+      for (const [sessionId, session] of Object.entries(s.sessions)) {
+        if (session.controllerId !== a.controllerId || session.controllerConnId !== a.connId ||
+            (tokens.size && !tokens.has(session.controllerToken)) ||
+            !["pending", "approved"].includes(session.state)) continue;
+        session.state = "ended";
+        session.endedAtMs = now();
+        session.terminationReason = "controller_disconnected";
+        const payload = {
+          type: "session.status",
+          sessionId,
+          clientId: session.clientId,
+          controllerId: session.controllerId,
+          sessionType: session.sessionType,
+          state: "ended",
+          createdAtMs: session.createdAtMs,
+          endedAtMs: session.endedAtMs,
+          terminationReason: session.terminationReason
+        };
+        this.sendController(session.controllerId, payload);
+        this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
+        delete s.sessions[sessionId];
+        changed = true;
+      }
+      if (changed) await this.save(s);
+      return;
+    }
+
     if (a.role !== "client" || !a.clientId) return;
 
-    // A WebSocket close can be caused by Android background suspension or a
-    // transient network handoff. Do not equate socket closure with device
-    // unavailability. The durable-object alarm marks the device offline only
-    // after its authenticated heartbeat has exceeded HEARTBEAT_TIMEOUT_MS.
-    // A reconnect updates clientConnId and refreshes clientHeartbeat.
-    const s = await this.state();
+    // A Client socket close may be a transient Android/network handoff.
+    // Presence is changed only after the heartbeat timeout in alarm().
     const d = s.devices[a.clientId];
     if (d && d.clientConnId === a.connId) {
       console.log(JSON.stringify({
