@@ -17,6 +17,28 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 - Preserve Android signing identity and validate package/version metadata in release builds.
 - Keep iOS capability claims separate from Android until physical-device validation is complete.
 
-## Initial capability audit
+## v3 priority status
 
-The v2.5 baseline has pairing, explicit approval, device presence/heartbeat, telemetry, flashlight and alarm commands. Live screen streaming, remote touch interaction, remote lock, and file transfer are not yet implemented and must be treated as v3 development work.
+| Priority | Current implementation state |
+|---|---|
+| Live screen streaming | Not implemented yet. Approved-session WebRTC signaling relay is in place; Android MediaProjection capture, peer connection, and Controller video rendering remain. |
+| Remote camera streaming | Not implemented yet. Uses the same planned WebRTC media plane; camera capture, permission flow, and rendering remain. |
+| Remote screen interaction | Android tap/swipe gesture injection is implemented through the user-enabled AccessibilityService. Controller currently sends normalized coordinates; tying gestures to a live video surface remains. |
+| Remote lock screen | Android lock action is implemented through AccessibilityService on Android 9+. The user must explicitly enable MEIZZO in Android Accessibility settings. |
+| File transfer | Not implemented yet. Requires an approved file session, Android Storage Access Framework, encrypted WebRTC data channel, chunking, and integrity checks. |
+
+## Session and signaling foundation
+
+- Client pairing remains a persistent app-managed connection; there is no Client-side Stop pairing control.
+- Session requests require explicit Client approval.
+- Controller session termination and reconnect cleanup remove stale authorization state so a fresh request can be shown.
+- Cloudflare Durable Object and local Node signaling implementations support approved-session WebRTC offer/answer/ICE signaling for screen, camera, and file sessions.
+- Regression tests cover repeated session requests, termination, Controller disconnect, Client reconnect, and authorized media-signal relay.
+
+## Security boundaries
+
+- WSS authenticates and authorizes signaling. It is not itself a media transport.
+- Media signaling is accepted only for an approved screen, camera, or file session and only from a session participant.
+- WebRTC media transport, TURN relay deployment, and end-to-end media encryption validation must be completed before screen/camera streaming is called production-ready.
+- Android permissions and Accessibility access remain controlled by the device owner and operating system.
+- A Device Owner grant must never be treated as silent consent or a bypass for MediaProjection.
