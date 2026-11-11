@@ -69,9 +69,10 @@ state. It is for local development and automated tests, not production.
 
 ## Known network and transfer limitations
 
-- The current WebRTC configuration uses STUN only. TURN relay is not deployed,
-  so direct connectivity can fail behind restrictive NATs, carrier-grade NAT,
-  or firewalls.
+- The default WebRTC configuration uses STUN. The Worker supports short-lived
+  Cloudflare TURN credentials when configured; until production TURN secrets
+  are added and tested, direct connectivity can fail behind restrictive NATs,
+  carrier-grade NAT, or firewalls.
 - File transfer is a stop-and-wait prototype with a 50 MiB per-file limit.
   It verifies a final SHA-256 hash but does not yet support resume or signed manifests.
 - Physical-device and cross-network acceptance testing remains outstanding.
