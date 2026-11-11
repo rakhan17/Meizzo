@@ -29,6 +29,10 @@ class RtcMediaController(
     private var remoteDescriptionSet = false
     private val queuedCandidates = mutableListOf<IceCandidate>()
     private var attachedTrackId: String? = null
+    var remoteWidth: Int = 0
+        private set
+    var remoteHeight: Int = 0
+        private set
 
     init {
         synchronized(FACTORY_LOCK) {
@@ -167,6 +171,10 @@ class RtcMediaController(
 
     fun onSignal(signal: JSONObject) {
         when (signal.optString("type")) {
+            "stream_info" -> {
+                remoteWidth = signal.optInt("width", 0).coerceAtLeast(0)
+                remoteHeight = signal.optInt("height", 0).coerceAtLeast(0)
+            }
             "answer" -> {
                 val sdp = signal.optString("sdp")
                 if (sdp.isBlank()) return onFailure("Client sent an empty WebRTC answer")
