@@ -119,6 +119,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
 - Remote Back, Home, Recents, and lock-screen actions through the user-enabled AccessibilityService.
 - Remote text insertion, Backspace, and newline for focused editable non-password fields.
+- Remote media volume up/down/mute/unmute controls during an approved interaction session.
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
 - Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, sequence and size validation, SHA-256 verification, and a 50 MiB transfer limit.
