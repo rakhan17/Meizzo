@@ -1289,7 +1289,10 @@ class MainActivity : Activity() {
             return
         }
         val stack = remoteFileBrowseStacks.getOrPut(clientId) { mutableListOf(rootDocumentId) }
-        if (stack.isEmpty()) stack.add(rootDocumentId)
+        if (stack.isEmpty() || stack.first() != rootDocumentId) {
+            stack.clear()
+            stack.add(rootDocumentId)
+        }
         if (stack.last() != documentId) {
             if (stack.contains(documentId)) {
                 while (stack.isNotEmpty() && stack.last() != documentId) stack.removeAt(stack.lastIndex)
