@@ -77,6 +77,7 @@ class MainActivity : Activity() {
     private val cameraPermissionRequestCode = 4102
     private val mediaCameraPermissionRequestCode = 4107
     private val screenCaptureRequestCode = 4106
+    private val mediaAudioPermissionRequestCode = 4110
     private val filePickRequestCode = 4108
     private val fileSaveRequestCode = 4109
     private var pendingIncomingFileName: String? = null
@@ -84,6 +85,9 @@ class MainActivity : Activity() {
     private var fileTransferCoordinator: FileTransferCoordinator? = null
     private var pendingMediaSessionId: String? = null
     private var pendingMediaKind: String? = null
+    private var pendingAudioSessionId: String? = null
+    private var pendingAudioKind: String? = null
+    private var pendingAudioProjectionData: android.content.Intent? = null
     private var activeMediaSessionId: String? = null
     private var rtcMediaClient: RtcMediaClient? = null
     private val pendingMediaSignals = mutableMapOf<String, MutableList<JSONObject>>()
@@ -575,6 +579,34 @@ class MainActivity : Activity() {
     }
 
     private fun startMediaPublisher(sessionId: String, kind: String, projectionData: android.content.Intent?) {
+        AlertDialog.Builder(this)
+            .setTitle("Share microphone audio?")
+            .setMessage("MEIZZO can include live microphone audio in this approved screen or camera session. This is microphone capture, not system-app audio. Choose video only if you do not want to share microphone sound.")
+            .setNegativeButton("Video only") { _, _ ->
+                startMediaPublisherInternal(sessionId, kind, projectionData, false)
+            }
+            .setPositiveButton("Allow audio") { _, _ ->
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    startMediaPublisherInternal(sessionId, kind, projectionData, true)
+                } else {
+                    pendingAudioSessionId = sessionId
+                    pendingAudioKind = kind
+                    pendingAudioProjectionData = projectionData
+                    requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), mediaAudioPermissionRequestCode)
+                }
+            }
+            .setOnCancelListener {
+                startMediaPublisherInternal(sessionId, kind, projectionData, false)
+            }
+            .show()
+    }
+
+    private fun startMediaPublisherInternal(
+        sessionId: String,
+        kind: String,
+        projectionData: android.content.Intent?,
+        includeAudio: Boolean
+    ) {
         rtcMediaClient?.close()
         activeMediaSessionId = sessionId
         rtcMediaClient = RtcMediaClient(
@@ -595,16 +627,18 @@ class MainActivity : Activity() {
             },
             iceServersJson = iceServersBySession.remove(sessionId)
         )
-        if (kind == "screen") MediaProjectionForegroundService.start(this)
+        if (kind == "screen" || includeAudio) {
+            MediaProjectionForegroundService.start(this, kind == "screen", includeAudio)
+        }
         if (kind == "screen") {
             Handler(Looper.getMainLooper()).postDelayed({
                 if (activeMediaSessionId == sessionId) {
-                    rtcMediaClient?.start(sessionId, kind, projectionData)
+                    rtcMediaClient?.start(sessionId, kind, projectionData, includeAudio)
                     flushPendingMediaSignals(sessionId)
                 }
             }, 450)
         } else {
-            rtcMediaClient?.start(sessionId, kind, projectionData)
+            rtcMediaClient?.start(sessionId, kind, projectionData, includeAudio)
             flushPendingMediaSignals(sessionId)
         }
         status.text = "Publishing $kind stream · waiting for Controller"
@@ -631,6 +665,9 @@ class MainActivity : Activity() {
         activeMediaSessionId = null
         pendingMediaSessionId = null
         pendingMediaKind = null
+        pendingAudioSessionId = null
+        pendingAudioKind = null
+        pendingAudioProjectionData = null
         MediaProjectionForegroundService.stop(this)
     }
 
@@ -700,6 +737,20 @@ class MainActivity : Activity() {
             preferences.edit().putBoolean("find_my_location_enabled", granted).apply()
             status.text = if (granted) "Find My location enabled · last-known location may be approximate or stale"
                 else "Find My location permission denied"
+            return
+        }
+        if (requestCode == mediaAudioPermissionRequestCode) {
+            val sessionId = pendingAudioSessionId
+            val kind = pendingAudioKind
+            val projectionData = pendingAudioProjectionData
+            pendingAudioSessionId = null
+            pendingAudioKind = null
+            pendingAudioProjectionData = null
+            if (sessionId != null && kind != null) {
+                val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+                startMediaPublisherInternal(sessionId, kind, projectionData, granted)
+                if (!granted) status.text = "Microphone permission denied · continuing video only"
+            }
             return
         }
         if (requestCode == mediaCameraPermissionRequestCode) {
