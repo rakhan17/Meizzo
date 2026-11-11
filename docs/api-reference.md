@@ -13,6 +13,8 @@ Node.js harness in `services/signaling/src/server.js` must remain compatible.
 - Media: WebRTC peer-to-peer video and DataChannel after Client approval.
 - Protocol version: `2`.
 - Session authorization is participant- and connection-bound.
+- Approved media sessions receive `media.ice_servers` before session status;
+  this includes Cloudflare STUN and optional short-lived TURN credentials.
 
 ## Client messages
 
@@ -61,6 +63,7 @@ Node.js harness in `services/signaling/src/server.js` must remain compatible.
 | `session.status` | Controller-side session state |
 | `client.session_status` | Client-side session state |
 | `media.signal` | Authenticated peer's WebRTC signaling payload |
+| `media.ice_servers` | Session-scoped STUN/TURN ICE server configuration delivered to both approved peers |
 | `heartbeat.ack` | Heartbeat acknowledgement |
 | `error` | Machine-readable error code and message |
 
