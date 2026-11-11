@@ -972,6 +972,86 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            "file_send" -> {
+                val sessionId = parameters.optString("sessionId")
+                val documentId = parameters.optString("documentId")
+                if (activeMediaKind != "files" || activeMediaSessionId != sessionId) {
+                    error = "An approved file-transfer session must be active before sending a remote file"
+                } else if (documentId.isBlank() || documentId.length > 512) {
+                    error = "Invalid remote file identifier"
+                } else {
+                    val treeUri = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+                        .getString("tree_uri", null)?.let(android.net.Uri::parse)
+                    if (treeUri == null) {
+                        error = "Choose a shared folder before sending remote files"
+                    } else {
+                        try {
+                            val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
+                            val rootDocument = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, rootId)
+                            val fileUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(treeUri, documentId)
+                            if (documentId == rootId ||
+                                !android.provider.DocumentsContract.isChildDocument(contentResolver, rootDocument, fileUri)
+                            ) {
+                                throw SecurityException("Requested file is outside the shared directory")
+                            }
+                            val mime = contentResolver.getType(fileUri)
+                                ?: "application/octet-stream"
+                            if (mime == android.provider.DocumentsContract.Document.MIME_TYPE_DIR) {
+                                throw IllegalArgumentException("Choose a file, not a folder")
+                            }
+                            var name = fileUri.lastPathSegment?.substringAfterLast('/') ?: "shared-file"
+                            var size = -1L
+                            contentResolver.query(
+                                fileUri,
+                                arrayOf(
+                                    android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                                    android.provider.DocumentsContract.Document.COLUMN_SIZE
+                                ),
+                                null, null, null
+                            )?.use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    val nameIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                                    val sizeIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_SIZE)
+                                    if (nameIndex >= 0) name = cursor.getString(nameIndex) ?: name
+                                    if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) size = cursor.getLong(sizeIndex)
+                                }
+                            }
+                            if (size > 50L * 1024L * 1024L) {
+                                throw IllegalArgumentException("File exceeds the 50 MiB transfer limit")
+                            }
+                            runOnUiThread {
+                                AlertDialog.Builder(this)
+                                    .setTitle("Allow file transfer?")
+                                    .setMessage("The paired Controller wants to receive this file:\n\n$name\n${if (size >= 0L) "${size / 1024} KB" else "Size unknown"}\n\nThe file will be sent only after you approve.")
+                                    .setNegativeButton("Deny") { _, _ ->
+                                        sendCommandFailure(webSocket, message, "File transfer was denied on the Client")
+                                    }
+                                    .setPositiveButton("Send file") { _, _ ->
+                                        try {
+                                            val coordinator = fileTransferCoordinator
+                                                ?: throw IllegalStateException("Secure file-transfer channel is not ready")
+                                            coordinator.sendFile(fileUri)
+                                            webSocket.send(JSONObject().apply {
+                                                put("type", "client.result")
+                                                put("requestId", message.optString("requestId"))
+                                                put("result", JSONObject().put("accepted", true))
+                                            }.toString())
+                                        } catch (exception: Exception) {
+                                            sendCommandFailure(webSocket, message, exception.message ?: "Unable to send the selected file")
+                                        }
+                                    }
+                                    .setOnCancelListener {
+                                        sendCommandFailure(webSocket, message, "File transfer request was cancelled")
+                                    }
+                                    .show()
+                            }
+                            return
+                        } catch (exception: Exception) {
+                            error = exception.message ?: "Unable to access the selected file"
+                        }
+                    }
+                }
+            }
             "file_browse" -> {
                 if (pendingRemoteFileBrowse != null) {
                     error = "Another remote folder permission request is already pending"
