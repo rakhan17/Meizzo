@@ -39,7 +39,7 @@ The v3 branch uses an isolated Worker configuration, `wrangler.v3.toml`, with it
 npx wrangler deploy --config wrangler.v3.toml
 ```
 
-Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../../services/signaling/README.md#meizzo-v3-deployment-with-cloudflare-workers-builds).
+Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../backend-deployment.md#isolated-meizzo-v3-worker).
 
 The expected hostname is `meizzo-signaling-v3.rakhanatanox.workers.dev`, but Cloudflare's dashboard is authoritative. Confirm the actual deployment URL and health endpoint before treating the Worker as live. Configure Cloudflare Realtime TURN secrets on the v3 Worker separately if relay is enabled.
 
