@@ -49,13 +49,10 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-        window.decorView.systemUiVisibility = 0
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(24), dp(22), dp(28))
-            background = uiBackdrop()
+            setBackgroundColor(Color.rgb(8, 8, 10))
         }
         content.addView(ImageView(this).apply {
             setImageResource(R.drawable.meizzo_logo)
@@ -145,30 +142,19 @@ class MainActivity : Activity() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    /** Shared smoked-glass surface styling for the native MEIZZO screens. */
-    private fun uiBackdrop(): android.graphics.drawable.Drawable =
-        android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.rgb(8, 9, 13), Color.rgb(19, 19, 25), Color.rgb(7, 8, 12))
-        )
-
     private fun uiCard(): LinearLayout = LinearLayout(this).apply {
-        background = android.graphics.drawable.GradientDrawable(
-            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
-            intArrayOf(Color.argb(34, 255, 255, 255), Color.argb(17, 255, 255, 255), Color.argb(25, 160, 160, 180))
-        ).apply {
-            cornerRadius = dp(25).toFloat()
-            setStroke(dp(1), Color.argb(48, 255, 255, 255))
+        background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.rgb(20, 20, 24))
+            cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(42, 42, 48))
         }
-        elevation = dp(8).toFloat()
-        clipToOutline = true
     }
 
     private fun uiEyebrow(value: String): TextView = TextView(this).apply {
         text = value
         textSize = 10f
-        letterSpacing = 0.18f
-        setTextColor(Color.rgb(174, 174, 186))
+        letterSpacing = 0.16f
+        setTextColor(Color.rgb(145, 145, 154))
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
 
@@ -178,16 +164,12 @@ class MainActivity : Activity() {
             textSize = 14f
             gravity = Gravity.CENTER
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setTextColor(if (primary) Color.rgb(15, 15, 18) else Color.WHITE)
-            background = android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                if (primary) intArrayOf(Color.rgb(255, 255, 255), Color.rgb(220, 220, 228))
-                else intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(25, 255, 255, 255))
-            ).apply {
-                cornerRadius = dp(17).toFloat()
-                if (!primary) setStroke(dp(1), Color.argb(58, 255, 255, 255))
+            setTextColor(if (primary) Color.rgb(12, 12, 14) else Color.WHITE)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(if (primary) Color.WHITE else Color.rgb(27, 27, 32))
+                cornerRadius = dp(14).toFloat()
+                if (!primary) setStroke(dp(1), Color.rgb(55, 55, 62))
             }
-            elevation = dp(3).toFloat()
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
