@@ -46,6 +46,7 @@ class RtcMediaClient(
     private var videoSource: VideoSource? = null
     private var audioSource: AudioSource? = null
     private var audioTrack: AudioTrack? = null
+    private var remoteAudioTrack: AudioTrack? = null
     private var textureHelper: SurfaceTextureHelper? = null
     private var sessionId: String = ""
     private var remoteDescriptionSet = false
@@ -253,8 +254,18 @@ class RtcMediaClient(
             override fun onRemoveStream(stream: org.webrtc.MediaStream?) = Unit
             override fun onDataChannel(channel: DataChannel?) { channel?.let(onDataChannel) }
             override fun onRenegotiationNeeded() = Unit
-            override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) = Unit
-            override fun onTrack(transceiver: org.webrtc.RtpTransceiver?) = Unit
+            override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) {
+                (receiver?.track() as? AudioTrack)?.let {
+                    remoteAudioTrack = it
+                    it.setEnabled(true)
+                }
+            }
+            override fun onTrack(transceiver: org.webrtc.RtpTransceiver?) {
+                (transceiver?.receiver?.track() as? AudioTrack)?.let {
+                    remoteAudioTrack = it
+                    it.setEnabled(true)
+                }
+            }
         })
         if (peer == null) {
             onFailure("Unable to create WebRTC peer connection")
@@ -320,6 +331,8 @@ class RtcMediaClient(
         audioTrack?.setEnabled(false)
         audioTrack?.dispose()
         audioTrack = null
+        remoteAudioTrack?.setEnabled(false)
+        remoteAudioTrack = null
         audioSource?.dispose()
         audioSource = null
         textureHelper?.dispose()
