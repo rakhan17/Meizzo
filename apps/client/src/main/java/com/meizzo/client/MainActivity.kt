@@ -846,6 +846,16 @@ class MainActivity : Activity() {
                     result.put("locked", true)
                 }
             }
+            "back", "home", "recents" -> {
+                val accessibility = RemoteAccessibilityService.instance
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!accessibility.navigate(message.optString("command"))) {
+                    error = "Android rejected the navigation action"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
             "tap" -> {
                 val x = parameters.optDouble("x", Double.NaN)
                 val y = parameters.optDouble("y", Double.NaN)
