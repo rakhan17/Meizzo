@@ -1690,6 +1690,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        ControllerVoiceForegroundService.stop(this)
         mediaDialogs.values.toList().forEach { it.dismiss() }
         mediaViewers.values.toList().forEach { it.close() }
         fileTransferCoordinators.values.toList().forEach { it.close() }
