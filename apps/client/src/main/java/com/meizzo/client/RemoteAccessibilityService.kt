@@ -21,6 +21,22 @@ class RemoteAccessibilityService : AccessibilityService() {
         return super.onUnbind(intent)
     }
 
+    fun longPress(normalizedX: Double, normalizedY: Double, durationMs: Long = 650L): Boolean {
+        val width = resources.displayMetrics.widthPixels.coerceAtLeast(1)
+        val height = resources.displayMetrics.heightPixels.coerceAtLeast(1)
+        val x = (normalizedX.coerceIn(0.0, 1.0) * width).toFloat()
+        val y = (normalizedY.coerceIn(0.0, 1.0) * height).toFloat()
+        val path = Path().apply { moveTo(x, y) }
+        val gesture = GestureDescription.Builder()
+            .addStroke(
+                GestureDescription.StrokeDescription(
+                    path, 0, durationMs.coerceIn(500, 2_000)
+                )
+            )
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
     fun tap(normalizedX: Double, normalizedY: Double): Boolean {
         val width = resources.displayMetrics.widthPixels.coerceAtLeast(1)
         val height = resources.displayMetrics.heightPixels.coerceAtLeast(1)
