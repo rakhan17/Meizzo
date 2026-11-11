@@ -14,6 +14,7 @@ import org.webrtc.MediaConstraints
 import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpTransceiver
+import org.webrtc.RtpSender
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceViewRenderer
@@ -41,6 +42,7 @@ class RtcMediaController(
     private var remoteAudioEnabled = true
     private var localAudioSource: org.webrtc.AudioSource? = null
     private var localAudioTrack: org.webrtc.AudioTrack? = null
+    private var localAudioSender: RtpSender? = null
     private var localAudioEnabled = false
     var remoteWidth: Int = 0
         private set
@@ -172,8 +174,13 @@ class RtcMediaController(
             val source = factory.createAudioSource(MediaConstraints())
             val track = factory.createAudioTrack("MEIZZO_CONTROLLER_MIC", source)
             track.setEnabled(true)
-            val sender = connection.addTrack(track, listOf("MEIZZO_CONTROLLER_AUDIO"))
-            if (sender == null) {
+            val existingSender = localAudioSender
+            val attached = if (existingSender != null) existingSender.setTrack(track, false)
+                else connection.addTrack(track, listOf("MEIZZO_CONTROLLER_AUDIO"))?.let {
+                    localAudioSender = it
+                    true
+                } ?: false
+            if (!attached) {
                 track.dispose()
                 source.dispose()
                 return false
@@ -207,6 +214,13 @@ class RtcMediaController(
 
     fun disableLocalMicrophone() {
         localAudioTrack?.setEnabled(false)
+        localAudioSender?.setTrack(null, false)
+        localAudioSender?.setTrack(null, false)
+        localAudioTrack?.dispose()
+        localAudioTrack = null
+        localAudioSource?.dispose()
+        localAudioSource = null
+        localAudioSender = null
         localAudioEnabled = false
     }
 
