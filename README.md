@@ -74,24 +74,11 @@ clearly marked as prerelease software.
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/#) |
-| **MEIZZO Controller** | Install on the operator device | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/#) |
+| **MEIZZO Client** | Install on the device receiving assistance | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Controller** | Install on the operator device | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
 
-[![View beta.5 release](https://img.shields.io/badge/VIEW-BETA.5%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
-
-The release also includes `MEIZZO-UPDATE.json` for the in-app updater and
-`SHA256SUMS.txt` for artifact integrity checks. See the
-[release notes](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5)
-for the exact assets.
-
-> **Release note:** v2.5.0 release assets are being prepared. Do not install an
-> APK from an older beta over an existing installation unless the signing
-> certificate matches. Do not use this build as the sole means of accessing or managing a critical device. Android
-> may restrict background services according to battery, OEM, and force-stop
-> policies. An update can only be installed over an existing copy when its
-> signing certificate is compatible. Back up any important app data before
-> uninstalling an older build.
-
+> The next beta will be published after the v2.5.0 stable release is built,
+> signed, and verified.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
