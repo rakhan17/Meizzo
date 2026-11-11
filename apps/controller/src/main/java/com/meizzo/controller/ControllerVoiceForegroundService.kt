@@ -24,12 +24,13 @@ class ControllerVoiceForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
         } else {
-            @Suppress("DEPRECATION")
             Notification.Builder(this)
-        }.setSmallIcon(android.R.drawable.ic_btn_speak_now)
+        }
+        val notification = builder
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentTitle("MEIZZO voice session active")
             .setContentText("Controller microphone is being shared with the approved Client")
             .setOngoing(true)
