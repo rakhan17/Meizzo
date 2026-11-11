@@ -293,17 +293,12 @@ async function run() {
       approved: true
     }));
     await controllerDropApproved;
-    const controllerDisconnected = nextMessage(clientB, (message) =>
-      message.type === 'client.session_status' && message.sessionId === controllerDropSession.sessionId &&
-      message.state === 'failed', 2000, 'session failed after Controller disconnect');
-
     controller.close();
-    const failedByControllerDisconnect = await controllerDisconnected;
-    if (failedByControllerDisconnect.terminationReason !== 'controller_disconnected') {
-      throw new Error('Controller disconnect did not terminate its active session');
-    }
     const replacementController = await openSocket('ws://127.0.0.1:8101');
     sockets.push(replacementController);
+    const restoredAfterControllerReconnect = nextMessage(replacementController, (message) =>
+      message.type === 'session.status' && message.sessionId === controllerDropSession.sessionId &&
+      message.state === 'approved', 2000, 'approved session restored after Controller reconnect');
     const reconnectA = nextMessage(replacementController, (message) => message.type === 'auth.connected' && message.clientId === 'client-a');
     const reconnectB = nextMessage(replacementController, (message) => message.type === 'auth.connected' && message.clientId === 'client-b');
     replacementController.send(JSON.stringify({
@@ -319,8 +314,9 @@ async function run() {
       authToken: pairedB.authToken
     }));
     await Promise.all([reconnectA, reconnectB]);
+    await restoredAfterControllerReconnect;
 
-    // A same-token Client reconnect must not inherit approval from the old socket.
+    // A same-token Client reconnect restores its previously approved session.
     const reconnectSessionPendingClient = nextMessage(clientB, (message) =>
       message.type === 'client.session_status' && message.state === 'pending', 2000, 'reconnect session pending at Client');
     const reconnectSessionPendingController = nextMessage(replacementController, (message) =>
