@@ -1,24 +1,27 @@
-# License status and recommendation
+# License
 
-No `LICENSE` file is currently committed, so the repository must not be
-described as open-source software under a specific license. Copyright and
-redistribution rights remain a repository-owner decision.
+MEIZZO project-owned source code and documentation are licensed under the
+[Apache License, Version 2.0](../LICENSE).
 
-## Recommended option: Apache License 2.0
+- SPDX identifier: `Apache-2.0`
+- Full legal text: [LICENSE](../LICENSE)
+- Official license information: [Apache Software Foundation](https://www.apache.org/licenses/LICENSE-2.0)
 
-Apache-2.0 is a permissive license with explicit copyright, patent, notice,
-and redistribution terms. It allows commercial and private use, modification,
-and distribution subject to its conditions. It does not provide a warranty and
-does not make third-party dependencies or branding automatically Apache-2.0.
+Apache-2.0 permits use, modification, and redistribution subject to its
+conditions, including preservation of required notices and provision of the
+license text. It includes an express patent license and a warranty/liability
+disclaimer.
 
-This is a recommendation, not legal advice. Before adding the official text,
-the repository owner should confirm:
+## Scope and exclusions
 
-1. the chosen license and copyright notice;
-2. whether all contributed source may be licensed under it;
-3. third-party dependency and asset notices;
-4. whether the MEIZZO name and logo should have separate trademark guidance.
+The project license applies to original MEIZZO project-owned material that
+the repository owner is authorized to license. Third-party dependencies,
+fonts, icons, screenshots, and other externally sourced assets may have
+separate licenses and notices. Check their upstream license terms before
+redistributing them.
 
-After approval, add the official license text as `LICENSE`, add a README badge,
-and document third-party notices. Until then, contributor and release
-instructions intentionally avoid claiming a final license.
+The Apache-2.0 license does not grant trademark rights to the MEIZZO name,
+logo, or branding. See the license text for the complete terms.
+
+This page is informational and is not legal advice. The authoritative legal
+text is the English [Apache License 2.0](../LICENSE).
