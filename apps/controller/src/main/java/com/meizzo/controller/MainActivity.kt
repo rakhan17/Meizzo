@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
+    private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,6 +115,8 @@ class MainActivity : Activity() {
         content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
         content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
+        content.addView(uiActionButton("Auto-Alert settings", false) { showAutoAlertSettings() },
+            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
 
         content.addView(uiEyebrow("YOUR DEVICES").apply {
             setPadding(dp(2), dp(28), 0, dp(8))
@@ -135,6 +138,53 @@ class MainActivity : Activity() {
         })
         renderDevices()
         connect()
+    }
+
+
+    private fun showAutoAlertSettings() {
+        val current = autoAlertManager.settings()
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(8), dp(22), 0)
+        }
+        fun field(label: String, value: String, inputType: Int): EditText {
+            form.addView(TextView(this).apply {
+                text = label; textSize = 13f; setTextColor(Color.LTGRAY)
+                setPadding(0, dp(10), 0, dp(4))
+            })
+            return EditText(this).apply {
+                setSingleLine(true); this.inputType = inputType; setText(value)
+                setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.GRAY)
+                form.addView(this)
+            }
+        }
+        val battery = field("Low battery threshold (%)", current.batteryPercent.toString(), 2)
+        val temperature = field("High temperature threshold (°C)", current.temperatureC.toString(), 8194)
+        val offline = field("Offline duration before alert (minutes)", current.offlineMinutes.toString(), 2)
+        val unplugged = android.widget.CheckBox(this).apply {
+            text = "Alert when charger is disconnected"; isChecked = current.chargerUnplugged
+            setTextColor(Color.WHITE); buttonTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            form.addView(this)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Auto-Alert thresholds")
+            .setMessage("Alerts are generated on this Controller while MEIZZO is running and receiving device status.")
+            .setView(form)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Save") { _, _ ->
+                val b = battery.text.toString().toIntOrNull()
+                val t = temperature.text.toString().toFloatOrNull()
+                val o = offline.text.toString().toIntOrNull()
+                if (b == null || t == null || o == null || b !in 1..100 || t !in 25f..80f || o !in 1..1440) {
+                    AlertDialog.Builder(this).setTitle("Invalid thresholds")
+                        .setMessage("Use battery 1–100%, temperature 25–80°C, and offline duration 1–1440 minutes.")
+                        .setPositiveButton("OK", null).show()
+                    return@setPositiveButton
+                }
+                autoAlertManager.updateSettings(AutoAlertManager.Settings(b, t, o, unplugged.isChecked))
+            }
+            .show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -354,6 +404,7 @@ class MainActivity : Activity() {
         if (message.has("lastSeen")) current.put("lastSeen", message.optLong("lastSeen"))
         if (message.optJSONObject("metadata") != null) current.put("metadata", message.getJSONObject("metadata"))
         devices[id] = current
+        autoAlertManager.evaluate(current)
     }
 
     private fun renderDevices() = runOnUiThread {
