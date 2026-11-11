@@ -85,9 +85,26 @@ class RtcMediaClient(
         textureHelper = SurfaceTextureHelper.create("MEIZZO-Capture", egl.eglBaseContext)
         videoSource = factory.createVideoSource(capture.isScreencast)
         capture.initialize(textureHelper, context, videoSource!!.capturerObserver)
-        capture.startCapture(if (kind == "screen") 1280 else 960, if (kind == "screen") 720 else 540, 15)
+        if (kind == "screen") {
+            val metrics = context.resources.displayMetrics
+            val maxDimension = maxOf(metrics.widthPixels, metrics.heightPixels).coerceAtLeast(1)
+            val scale = minOf(1.0, 1280.0 / maxDimension.toDouble())
+            val width = ((metrics.widthPixels * scale).toInt() / 2 * 2).coerceAtLeast(2)
+            val height = ((metrics.heightPixels * scale).toInt() / 2 * 2).coerceAtLeast(2)
+            capture.startCapture(width, height, 15)
+        } else {
+            capture.startCapture(960, 540, 15)
+        }
 
         if (!createPeerConnection()) return
+        if (kind == "screen") {
+            val metrics = context.resources.displayMetrics
+            sendSignal(JSONObject().apply {
+                put("type", "stream_info")
+                put("width", metrics.widthPixels)
+                put("height", metrics.heightPixels)
+            })
+        }
         val track = factory.createVideoTrack("MEIZZO_VIDEO_$sessionId", videoSource)
         track.setEnabled(true)
         peer?.addTrack(track, listOf("MEIZZO_STREAM_$sessionId"))
