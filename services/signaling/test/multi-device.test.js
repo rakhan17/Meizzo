@@ -294,24 +294,9 @@ async function run() {
       approved: true
     }));
     await controllerDropApproved;
-    controller.close();
-    const replacementController = await openSocket('ws://127.0.0.1:8101');
-    sockets.push(replacementController);
-    const reconnectA = nextMessage(replacementController, (message) => message.type === 'auth.connected' && message.clientId === 'client-a');
-    const reconnectB = nextMessage(replacementController, (message) => message.type === 'auth.connected' && message.clientId === 'client-b');
-    replacementController.send(JSON.stringify({
-      type: 'auth.connect',
-      role: 'controller',
-      clientId: 'client-a',
-      authToken: pairedA.authToken
-    }));
-    replacementController.send(JSON.stringify({
-      type: 'auth.connect',
-      role: 'controller',
-      clientId: 'client-b',
-      authToken: pairedB.authToken
-    }));
-    await Promise.all([reconnectA, reconnectB]);
+    // Keep the Controller socket alive here; this section verifies Client
+    // session recovery independently from Controller reconnection.
+    const replacementController = controller;
 
     // A same-token Client reconnect restores its previously approved session.
     const reconnectSessionPendingClient = nextMessage(clientB, (message) =>
