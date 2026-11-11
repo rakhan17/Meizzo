@@ -1418,6 +1418,23 @@ class MainActivity : Activity() {
                     result.put("accepted", true)
                 }
             }
+            "scroll" -> {
+                val deltaX = parameters.optDouble("deltaX", 0.0)
+                val deltaY = parameters.optDouble("deltaY", 0.0)
+                val accessibility = RemoteAccessibilityService.instance
+                val valid = deltaX.isFinite() && deltaY.isFinite() &&
+                    deltaX in -0.35..0.35 && deltaY in -0.35..0.35 &&
+                    (kotlin.math.abs(deltaX) >= 0.01 || kotlin.math.abs(deltaY) >= 0.01)
+                if (accessibility == null) {
+                    error = "Enable MEIZZO remote interaction in Android Accessibility settings first"
+                } else if (!valid) {
+                    error = "Scroll deltas must be finite normalized values within -0.35 to 0.35"
+                } else if (!accessibility.scroll(deltaX, deltaY)) {
+                    error = "Android rejected the remote scroll gesture"
+                } else {
+                    result.put("accepted", true)
+                }
+            }
             "emergency_message" -> {
                 val emergencyText = parameters.optString("message").trim()
                 if (emergencyText.isBlank() || emergencyText.length > 240) {
