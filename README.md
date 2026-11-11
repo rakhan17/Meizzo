@@ -123,7 +123,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
 - Remote folder browsing through a Client-granted Storage Access Framework tree URI, showing folder contents and file metadata. Individual files can be sent to the Controller after a separate file-session approval and per-file Client confirmation; rename and file deletion are available only when the storage provider supports them and the Client approves.
-- Bidirectional single- and multi-file transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, bounded chunk retries, sequence and size validation, SHA-256 verification, incremental progress, cancellation, and a 50 MiB transfer limit.
+- Bidirectional single- and multi-file transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, per-file transfer IDs, bounded chunk retries, sequence and size validation, SHA-256 verification, incremental progress, cancellation, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
 - Release metadata, SHA-256 verification, package checks, signing-certificate
