@@ -708,7 +708,7 @@ class MainActivity : Activity() {
                 val treeUri = data?.data
                 if (resultCode == RESULT_OK && treeUri != null && pending != null) {
                     try {
-                        val readPermission = (data.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        val readPermission = ((data?.flags ?: 0) and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         if (readPermission != 0) contentResolver.takePersistableUriPermission(treeUri, readPermission)
                         getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
                             .edit().putString("tree_uri", treeUri.toString()).apply()
@@ -859,13 +859,13 @@ class MainActivity : Activity() {
             val modifiedIndex = cursor.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
             while (cursor.moveToNext() && entries.length() < 40) {
                 val childId = if (idIndex >= 0) cursor.getString(idIndex).orEmpty() else ""
-                if (childId.isBlank()) continue
+                if (childId.isBlank() || childId.length > 512) continue
                 val name = if (nameIndex >= 0) cursor.getString(nameIndex).orEmpty() else childId
                 val mime = if (mimeIndex >= 0) cursor.getString(mimeIndex).orEmpty() else ""
                 val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else -1L
                 val modified = if (modifiedIndex >= 0 && !cursor.isNull(modifiedIndex)) cursor.getLong(modifiedIndex) else 0L
                 entries.put(JSONObject().apply {
-                    put("documentId", childId.take(256))
+                    put("documentId", childId)
                     put("name", name.take(120))
                     put("mimeType", mime.take(100))
                     put("size", size)
