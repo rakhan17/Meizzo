@@ -87,7 +87,12 @@ class FileTransferCoordinator(
         }
         outgoingQueue.clear()
         outgoingQueue.addAll(uris)
-        startNextFile()
+        try {
+            startNextFile()
+        } catch (error: Exception) {
+            outgoingQueue.clear()
+            throw error
+        }
     }
 
     private fun startNextFile() {
@@ -252,6 +257,7 @@ class FileTransferCoordinator(
             outgoingDigest?.update(chunk, 0, count)
             if (outgoingBytes > MAX_FILE_SIZE) {
                 closeOutgoing()
+                outgoingQueue.clear()
                 send(JSONObject().put("type", "file_reject"))
                 onStatus("File exceeds the 50 MiB transfer limit")
                 return
@@ -267,6 +273,7 @@ class FileTransferCoordinator(
             retryHandler.postDelayed(chunkRetryTask, CHUNK_ACK_TIMEOUT_MS)
         } catch (error: Exception) {
             closeOutgoing()
+            outgoingQueue.clear()
             send(JSONObject().put("type", "file_reject"))
             onStatus("File read failed: ${error.message ?: "storage error"}")
         }
