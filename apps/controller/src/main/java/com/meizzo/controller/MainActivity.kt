@@ -311,6 +311,22 @@ class MainActivity : Activity() {
                             if (error.isNotBlank() && error != "null") {
                                 setConnection("Device command failed · $error", false)
                             } else if (message.optJSONObject("result") != null) {
+                                val commandResult = message.getJSONObject("result")
+                                if (commandResult.has("clipboardText")) {
+                                    val clipboardText = commandResult.optString("clipboardText")
+                                    runOnUiThread {
+                                        AlertDialog.Builder(this)
+                                            .setTitle("Client clipboard")
+                                            .setMessage(if (clipboardText.isBlank()) "(The Client clipboard is empty or contains no text.)" else clipboardText)
+                                            .setNegativeButton("Close", null)
+                                            .setPositiveButton("Copy here") { _, _ ->
+                                                getSystemService(android.content.ClipboardManager::class.java)
+                                                    .setPrimaryClip(android.content.ClipData.newPlainText("MEIZZO Client", clipboardText))
+                                                setConnection("Client clipboard copied to Controller", true)
+                                            }
+                                            .show()
+                                    }
+                                } else if (!commandResult.has("clipboardWritten")) {
                                 val current = devices[id] ?: JSONObject().put("clientId", id)
                                 val metadata = current.optJSONObject("metadata") ?: JSONObject()
                                 val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
@@ -324,6 +340,7 @@ class MainActivity : Activity() {
                                 current.put("metadata", metadata)
                                 devices[id] = current
                                 renderDevices()
+                                }
                                 if (wasCommandPending) setConnection("Client confirmed · command completed", true)
                             }
                         }
@@ -526,6 +543,12 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send text to focused field", false) { showRemoteTextDialog(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Read Client clipboard", false) {
+                sendClipboardCommand(id, "clipboard_read", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Send text to Client clipboard", false) {
+                showClipboardWriteDialog(id)
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Lock Client screen", false) {
                 sendInteractionAction(id, "lock_screen", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
@@ -1065,6 +1088,53 @@ class MainActivity : Activity() {
                 setConnection("Emergency message sent to Client", true)
             }
             .show()
+    }
+
+    private fun showClipboardWriteDialog(clientId: String) {
+        val input = EditText(this).apply {
+            hint = "Text to place on the Client clipboard"
+            minLines = 3
+            maxLines = 6
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(10_000))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Send text to Client clipboard")
+            .setMessage("The Client must approve this request before its clipboard is replaced.")
+            .setView(input)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Send") { _, _ ->
+                val value = input.text.toString()
+                if (value.isBlank()) setConnection("Clipboard text cannot be empty", false)
+                else sendClipboardCommand(clientId, "clipboard_write", JSONObject().put("text", value))
+            }
+            .show()
+    }
+
+    private fun sendClipboardCommand(clientId: String, command: String, parameters: JSONObject) {
+        if (approvedInteractionSessions[clientId].isNullOrBlank()) {
+            setConnection("Request Client approval before clipboard access", false)
+            return
+        }
+        if (clientId in pendingCommandClients) {
+            setConnection("Waiting for the previous Client command to finish", false)
+            return
+        }
+        val webSocket = socket
+        if (webSocket == null) {
+            setConnection("Controller is disconnected · clipboard request not sent", false)
+            return
+        }
+        pendingCommandClients.add(clientId)
+        if (!webSocket.send(JSONObject().apply {
+            put("type", "controller.command")
+            put("clientId", clientId)
+            put("command", command)
+            put("parameters", parameters)
+        }.toString())) {
+            pendingCommandClients.remove(clientId)
+            setConnection("Clipboard request could not be queued", false)
+        } else setConnection("Waiting for Client clipboard approval", true)
     }
 
     private fun showRemoteTextDialog(clientId: String) {
