@@ -54,6 +54,7 @@ class FileTransferCoordinator(
     }
     private var outgoingDigest: MessageDigest? = null
     private var incomingDigest: MessageDigest? = null
+    private var lastCompletedIncomingHash: String? = null
     private var waitingForAck = false
     private var pendingName = ""
     private var pendingSize = 0L
@@ -209,11 +210,22 @@ class FileTransferCoordinator(
             }
             "file_end" -> {
                 val expectedHash = message.optString("sha256")
+                if (incomingOutput == null) {
+                    if (expectedHash.isNotBlank() && expectedHash == lastCompletedIncomingHash) {
+                        send(JSONObject().put("type", "file_complete"))
+                    }
+                    return
+                }
                 val actualHash = incomingDigest?.digest()?.toHex().orEmpty()
                 val sizeMatches = pendingSize < 0L || incomingBytes == pendingSize
                 val hashMatches = sizeMatches && expectedHash.isNotBlank() &&
                     actualHash.equals(expectedHash, ignoreCase = true)
-                if (hashMatches) closeIncoming() else discardIncoming()
+                if (hashMatches) {
+                    lastCompletedIncomingHash = actualHash
+                    closeIncoming()
+                } else {
+                    discardIncoming()
+                }
                 if (!hashMatches) {
                     send(JSONObject().put("type", "file_reject"))
                     onStatus(if (sizeMatches) "File integrity check failed for $pendingName" else "File size mismatch for $pendingName")
@@ -249,8 +261,12 @@ class FileTransferCoordinator(
             val count = input.read(chunk)
             if (count < 0) {
                 val hash = outgoingDigest?.digest()?.toHex().orEmpty()
-                send(JSONObject().put("type", "file_end").put("sha256", hash))
+                val endMessage = JSONObject().put("type", "file_end").put("sha256", hash)
+                pendingChunkMessage = endMessage
+                chunkRetryCount = 0
                 waitingForAck = true
+                send(endMessage)
+                retryHandler.postDelayed(chunkRetryTask, CHUNK_ACK_TIMEOUT_MS)
                 return
             }
             outgoingBytes += count
