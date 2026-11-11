@@ -143,6 +143,7 @@ jobs:
         if: github.event_name == 'push' || inputs.publish_release == true
         with:
           tag_name: ${{ env.MEIZZO_RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           name: MEIZZO ${{ env.MEIZZO_RELEASE_TAG }}
           generate_release_notes: true
           prerelease: ${{ contains(env.MEIZZO_RELEASE_TAG, '-') }}
