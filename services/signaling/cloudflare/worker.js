@@ -1,5 +1,5 @@
 const PROTOCOL_VERSION = 2;
-const SERVER_CAPABILITIES = ["pairing", "token-authentication", "presence", "telemetry", "device-commands", "multi-device-routing"];
+const SERVER_CAPABILITIES = ["pairing", "token-authentication", "presence", "telemetry", "device-commands", "multi-device-routing", "session-authorization", "media-signaling", "remote-interaction"];
 const PAIRING_MAX_TTL_MS = 10 * 60 * 1000;
 const HEARTBEAT_TIMEOUT_MS = 45 * 1000;
 const SESSION_PENDING_TTL_MS = 10 * 60 * 1000;
