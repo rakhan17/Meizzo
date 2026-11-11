@@ -150,8 +150,8 @@ uses Android's global Accessibility action.
 The current Android prototype uses an ordered, reliable WebRTC DataChannel.
 Files are selected through Android document pickers. The sender transmits a
 metadata offer; the receiver chooses a destination; content is sent in 12 KiB
-Base64-encoded chunks with one acknowledgement per chunk. The current maximum
-file size is 50 MiB.
+Base64-encoded chunks with one acknowledgement per chunk and a final SHA-256
+comparison. The current maximum file size is 50 MiB.
 
 Transfer resume, parallel chunking, large-file optimization, and signed
 integrity manifests are not implemented yet.
