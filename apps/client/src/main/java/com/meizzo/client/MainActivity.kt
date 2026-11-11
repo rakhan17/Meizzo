@@ -732,9 +732,8 @@ class MainActivity : Activity() {
     }
 
     private fun stopPeripheralOutputs() {
-        alarm?.stopTone()
-        alarm?.release()
-        alarm = null
+        // Alarm playback is owned by ConnectionForegroundService and is
+        // stopped there when the app terminates or the user explicitly stops it.
         if (torchEnabled) {
             try {
                 val manager = getSystemService(CameraManager::class.java)
