@@ -115,8 +115,14 @@ async function run() {
       throw new Error('Client media answer was not relayed intact to the Controller');
     }
 
-    const ended = nextMessage(controller, m => m.type === 'session.status' && m.sessionId === session.sessionId && m.state === 'ended', 'screen session end');
-    controller.send(JSON.stringify({ type: 'controller.end_session', sessionId: session.sessionId }));
+    const ended = nextMessage(controller, m => m.type === 'session.status' &&
+      m.sessionId === session.sessionId && m.state === 'ended' &&
+      m.terminationReason === 'screen_capture_consent_denied', 'Client-initiated screen session end');
+    client.send(JSON.stringify({
+      type: 'client.end_session',
+      sessionId: session.sessionId,
+      reason: 'screen_capture_consent_denied'
+    }));
     await ended;
 
     const rejected = nextMessage(controller, m => m.type === 'error' && m.code === 'session_required', 'signal rejected after session end');
