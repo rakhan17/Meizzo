@@ -65,26 +65,14 @@ jobs:
           MEIZZO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_PASSWORD }}
           MEIZZO_ANDROID_KEY_ALIAS: ${{ secrets.MEIZZO_ANDROID_KEY_ALIAS }}
           MEIZZO_ANDROID_KEY_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEY_PASSWORD }}
-          MEIZZO_SIGNALING_URL: ${{ secrets.MEIZZO_SIGNALING_URL }}
         run: |
-          for name in MEIZZO_ANDROID_KEYSTORE_BASE64 MEIZZO_ANDROID_KEYSTORE_PASSWORD MEIZZO_ANDROID_KEY_ALIAS MEIZZO_ANDROID_KEY_PASSWORD MEIZZO_SIGNALING_URL; do
+          for name in MEIZZO_ANDROID_KEYSTORE_BASE64 MEIZZO_ANDROID_KEYSTORE_PASSWORD MEIZZO_ANDROID_KEY_ALIAS MEIZZO_ANDROID_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name must be configured before publishing an Android release."
               exit 1
             fi
           done
-          case "$MEIZZO_SIGNALING_URL" in
-            wss://*) ;;
-            *) echo "::error::MEIZZO_SIGNALING_URL must use wss:// for release builds."; exit 1 ;;
-          esac
-          case "$MEIZZO_SIGNALING_URL" in
-          esac
-          case "$MEIZZO_SIGNALING_URL" in
-            *".invalid"*|wss://localhost*|wss://127.0.0.1*|wss://10.0.2.2*)
-              echo "::error::MEIZZO_SIGNALING_URL must be a reachable production endpoint."
-              exit 1
-              ;;
-          esac
+          MEIZZO_SIGNALING_URL="wss://meizzo-signaling.rakhanatanox.workers.dev"
           ./gradlew \
             -Pmeizzo.releaseSignalingUrl="$MEIZZO_SIGNALING_URL" \
             -Pmeizzo.releaseVersionName="$MEIZZO_VERSION_NAME" \
