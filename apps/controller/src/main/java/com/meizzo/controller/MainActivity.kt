@@ -755,6 +755,7 @@ class MainActivity : Activity() {
             .setView(root)
             .setNegativeButton("End session") { _, _ -> endMediaSession(clientId, sessionId) }
             .setNeutralButton("Save screenshot", null)
+            .setPositiveButton("Mute remote audio", null)
             .create()
         mediaDialogs[sessionId] = dialog
         val viewer = RtcMediaController(
@@ -847,6 +848,10 @@ class MainActivity : Activity() {
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
             saveRemoteScreenshot(video, clientId)
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener { button ->
+            val enabled = viewer.toggleRemoteAudio()
+            (button as? Button)?.text = if (enabled) "Mute remote audio" else "Unmute remote audio"
         }
         dialog.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.94).toInt(),
