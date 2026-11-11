@@ -126,7 +126,11 @@ class ConnectionForegroundService : Service() {
                         stopActiveOutputs()
                     }
                     "client.session_status" -> {
-                        if (message.optString("state") in setOf("rejected", "failed", "ended")) stopActiveOutputs()
+                        val state = message.optString("state")
+                        if (state in setOf("rejected", "failed", "ended")) stopActiveOutputs()
+                        if (state == "pending") {
+                            preferences.edit().putString("pending_server_message", text).apply()
+                        }
                     }
                     "client.snapshot_request" -> {
                         val result = runCatching { deviceMetrics() }.getOrElse { JSONObject() }
@@ -137,7 +141,7 @@ class ConnectionForegroundService : Service() {
                         }.toString())
                     }
                     "client.command" -> handleBackgroundCommand(webSocket, message)
-                    "client.pairing_request", "client.session_status" -> {
+                    "client.pairing_request" -> {
                         preferences.edit().putString("pending_server_message", text).apply()
                     }
                 }
