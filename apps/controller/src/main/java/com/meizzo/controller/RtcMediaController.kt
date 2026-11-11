@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONObject
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.DataChannel
 import org.webrtc.EglBase
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
@@ -18,7 +19,8 @@ import org.webrtc.VideoTrack
 class RtcMediaController(
     context: Context,
     private val sendSignal: (JSONObject) -> Unit,
-    private val onFailure: (String) -> Unit
+    private val onFailure: (String) -> Unit,
+    private val onDataChannel: (DataChannel) -> Unit = {}
 ) {
     private val egl = EglBase.create()
     private val factory: PeerConnectionFactory
@@ -78,7 +80,7 @@ class RtcMediaController(
                 stream?.videoTracks?.firstOrNull()?.let(::attachTrack)
             }
             override fun onRemoveStream(stream: org.webrtc.MediaStream?) = Unit
-            override fun onDataChannel(channel: org.webrtc.DataChannel?) = Unit
+            override fun onDataChannel(channel: DataChannel?) { channel?.let(onDataChannel) }
             override fun onRenegotiationNeeded() = Unit
             override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) {
                 (receiver?.track() as? VideoTrack)?.let(::attachTrack)
@@ -107,6 +109,59 @@ class RtcMediaController(
                 }, description)
             }
             override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create WebRTC offer")
+        }, MediaConstraints())
+    }
+
+    fun startFiles() {
+        val configuration = PeerConnection.RTCConfiguration(
+            listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
+        ).apply {
+            sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+        }
+        peer = factory.createPeerConnection(configuration, object : PeerConnection.Observer {
+            override fun onSignalingChange(state: PeerConnection.SignalingState?) = Unit
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+                if (state == PeerConnection.IceConnectionState.FAILED) onFailure("WebRTC data connection failed")
+            }
+            override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
+            override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) = Unit
+            override fun onIceCandidate(candidate: IceCandidate) {
+                sendSignal(JSONObject().apply {
+                    put("type", "candidate")
+                    put("sdpMid", candidate.sdpMid)
+                    put("sdpMLineIndex", candidate.sdpMLineIndex)
+                    put("candidate", candidate.sdp)
+                })
+            }
+            override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>) = Unit
+            override fun onAddStream(stream: org.webrtc.MediaStream?) = Unit
+            override fun onRemoveStream(stream: org.webrtc.MediaStream?) = Unit
+            override fun onDataChannel(channel: DataChannel?) { channel?.let(onDataChannel) }
+            override fun onRenegotiationNeeded() = Unit
+            override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) = Unit
+            override fun onTrack(transceiver: RtpTransceiver?) = Unit
+        }) ?: run {
+            onFailure("Unable to create WebRTC file-transfer peer")
+            return
+        }
+        val channel = peer?.createDataChannel("meizzo-files", DataChannel.Init().apply { ordered = true })
+        if (channel == null) {
+            onFailure("Unable to create the WebRTC file channel")
+            return
+        }
+        onDataChannel(channel)
+        peer?.createOffer(object : SimpleSdpObserver() {
+            override fun onCreateSuccess(description: SessionDescription?) {
+                if (description == null) return onFailure("Unable to create file-transfer offer")
+                peer?.setLocalDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        sendSignal(JSONObject().put("type", "offer").put("sdp", description.description))
+                    }
+                    override fun onSetFailure(error: String?) = onFailure(error ?: "Unable to set file-transfer offer")
+                }, description)
+            }
+            override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create file-transfer offer")
         }, MediaConstraints())
     }
 
@@ -154,7 +209,8 @@ class RtcMediaController(
         if (attachedTrackId == track.id()) return
         attachedTrackId = track.id()
         track.setEnabled(true)
-        renderer?.post { track.addSink(renderer) }
+        val target = renderer ?: return
+        target.post { track.addSink(target) }
     }
 
     private open class SimpleSdpObserver : SdpObserver {
