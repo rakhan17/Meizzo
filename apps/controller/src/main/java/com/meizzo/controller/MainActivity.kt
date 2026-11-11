@@ -531,6 +531,9 @@ class MainActivity : Activity() {
             }
         }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
         if (interactionSession != null) {
+            card.addView(uiActionButton("Flip remote camera", false) {
+                sendInteractionAction(id, "camera_flip", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
             card.addView(uiActionButton("Flashlight on", false) { sendDeviceCommand(id, "flashlight", true) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
             card.addView(uiActionButton("Flashlight off", false) { sendDeviceCommand(id, "flashlight", false) },
