@@ -527,6 +527,15 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Lock Client screen", false) {
                 sendInteractionAction(id, "lock_screen", JSONObject())
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Back", false) {
+                sendInteractionAction(id, "back", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Home", false) {
+                sendInteractionAction(id, "home", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Recent apps", false) {
+                sendInteractionAction(id, "recents", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Tap screen by coordinates", false) { showTapDialog(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Swipe screen by coordinates", false) { showSwipeDialog(id) },
@@ -714,6 +723,7 @@ class MainActivity : Activity() {
             .setTitle(if (kind == "screen") "Live screen" else "Remote camera")
             .setView(root)
             .setNegativeButton("End session") { _, _ -> endMediaSession(clientId, sessionId) }
+            .setNeutralButton("Save screenshot", null)
             .create()
         mediaDialogs[sessionId] = dialog
         val viewer = RtcMediaController(
@@ -793,6 +803,9 @@ class MainActivity : Activity() {
             if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
         }
         dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+            saveRemoteScreenshot(video, clientId)
+        }
         dialog.window?.setLayout(
             (resources.displayMetrics.widthPixels * 0.94).toInt(),
             (resources.displayMetrics.heightPixels * 0.82).toInt()
@@ -801,6 +814,80 @@ class MainActivity : Activity() {
         if (!approvedInteractionSessions.containsKey(clientId) &&
             !pendingInteractionSessions.containsKey(clientId)) {
             requestInteraction(clientId)
+        }
+    }
+
+    private fun saveRemoteScreenshot(view: SurfaceViewRenderer, clientId: String) {
+        if (view.width <= 0 || view.height <= 0) {
+            android.widget.Toast.makeText(this, "The live screen is not ready yet", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val bitmap = android.graphics.Bitmap.createBitmap(
+            view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888
+        )
+        try {
+            android.view.PixelCopy.request(view, bitmap, { result ->
+                if (result != android.view.PixelCopy.SUCCESS) {
+                    bitmap.recycle()
+                    android.widget.Toast.makeText(
+                        this, "Screenshot capture failed · code $result", android.widget.Toast.LENGTH_LONG
+                    ).show()
+                    return@request
+                }
+                try {
+                    val fileName = "MEIZZO-${clientId.takeLast(8)}-${System.currentTimeMillis()}.png"
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                        val values = android.content.ContentValues().apply {
+                            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+                            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                            put(
+                                android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                                android.os.Environment.DIRECTORY_PICTURES + "/MEIZZO"
+                            )
+                            put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
+                        }
+                        val uri = contentResolver.insert(
+                            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+                        ) ?: throw IllegalStateException("Could not create a gallery entry")
+                        contentResolver.openOutputStream(uri)?.use { output ->
+                            if (!bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)) {
+                                throw IllegalStateException("PNG encoding failed")
+                            }
+                        } ?: throw IllegalStateException("Could not open the screenshot file")
+                        values.clear()
+                        values.put(android.provider.MediaStore.Images.Media.IS_PENDING, 0)
+                        contentResolver.update(uri, values, null, null)
+                        android.widget.Toast.makeText(
+                            this, "Screenshot saved to Pictures/MEIZZO", android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        val directory = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+                            ?: filesDir
+                        val destination = File(directory, fileName)
+                        destination.outputStream().use { output ->
+                            if (!bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)) {
+                                throw IllegalStateException("PNG encoding failed")
+                            }
+                        }
+                        android.widget.Toast.makeText(
+                            this, "Screenshot saved in MEIZZO app storage", android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } catch (error: Exception) {
+                    android.widget.Toast.makeText(
+                        this, "Could not save screenshot · ${error.message ?: "storage error"}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } finally {
+                    bitmap.recycle()
+                }
+            }, Handler(Looper.getMainLooper()))
+        } catch (error: Exception) {
+            bitmap.recycle()
+            android.widget.Toast.makeText(
+                this, "Could not capture screenshot · ${error.message ?: "capture error"}",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
         }
     }
 
