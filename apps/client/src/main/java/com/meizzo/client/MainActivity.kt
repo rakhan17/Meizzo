@@ -911,8 +911,11 @@ class MainActivity : Activity() {
                                     val manager = getSystemService(android.content.ClipboardManager::class.java)
                                     if (command == "clipboard_read") {
                                         val clip = manager.primaryClip
-                                        val value = if (clip != null && clip.itemCount > 0) {
-                                            clip.getItemAt(0).coerceToText(this).toString().take(10_000)
+                                        val value = if (
+                                            clip != null && clip.itemCount > 0 &&
+                                            clip.description.hasMimeType(android.content.ClipDescription.MIMETYPE_TEXT_PLAIN)
+                                        ) {
+                                            clip.getItemAt(0).text?.toString()?.take(10_000).orEmpty()
                                         } else ""
                                         webSocket.send(JSONObject().apply {
                                             put("type", "client.result")
