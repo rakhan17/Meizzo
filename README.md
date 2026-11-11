@@ -11,7 +11,7 @@
 [![Cloudflare Worker](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml)
 [![Documentation](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml)
 [![Android Stable](https://img.shields.io/badge/ANDROID-STABLE%20v2.5.0-111111)](https://github.com/rakhan17/Meizzo/releases)
-[![License](https://img.shields.io/badge/license-Apache--2.0-111111.svg)](LICENSE)
+[![MEIZZO source license](https://img.shields.io/badge/MEIZZO%20source-Apache--2.0-111111.svg)](LICENSE) [![RustDesk integration license](https://img.shields.io/badge/RustDesk%20component-AGPL--3.0-555555.svg)](LICENSE-AGPL-3.0-only)
 [![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
 
 A consent-first device assistance platform with separate Android Client and
@@ -134,7 +134,9 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 The v3 media and file-transfer paths are implemented as Android prototypes, not
 yet certified for production use. Android system consent and permissions remain
-mandatory. See [v3 implementation status](docs/v3/README.md),
+mandatory. MEIZZO-owned code retains its Apache-2.0 licensing where applicable;
+any RustDesk-derived combined app component must comply with AGPL-3.0-only.
+See [v3 implementation status](docs/v3/README.md),
 [upstream and license notes](docs/v3/UPSTREAM_AND_LICENSES.md), and the
 [security model](docs/v2/security-model.md).
 
