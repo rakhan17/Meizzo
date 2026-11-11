@@ -525,6 +525,31 @@ function onSessionEnd(ws, message) {
   sessions.delete(session.sessionId);
 }
 
+function onMediaSignal(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || session.state !== 'approved' ||
+      !['screen', 'camera', 'files'].includes(session.sessionType)) {
+    return sendError(ws, 'session_required', 'An approved screen, camera, or file session is required');
+  }
+  if (!message.signal || typeof message.signal !== 'object' || Array.isArray(message.signal) ||
+      JSON.stringify(message.signal).length > 48000) {
+    return sendError(ws, 'invalid_signal', 'Invalid or oversized media signaling payload');
+  }
+  if (ws.auth?.role === 'client' && session.clientId === ws.auth.clientId &&
+      session.clientConnection === ws) {
+    return sendJson(session.controllerConnection, {
+      type: 'media.signal', sessionId: session.sessionId, fromRole: 'client', signal: message.signal
+    });
+  }
+  if (ws.auth?.role === 'controller' && session.controllerId === ws.auth.controllerId &&
+      session.controllerConnection === ws) {
+    return sendJson(session.clientConnection, {
+      type: 'media.signal', sessionId: session.sessionId, fromRole: 'controller', signal: message.signal
+    });
+  }
+  return sendError(ws, 'unauthorized', 'Not a participant in this media session');
+}
+
 function onDeviceList(ws) {
   const devices = [];
   for (const device of pairedDevices.values()) {
@@ -691,6 +716,7 @@ function routeMessage(ws, rawPayload) {
     case 'controller.start_session': return onSessionStart(ws, message);
     case 'client.session_decision': return onClientSessionDecision(ws, message);
     case 'controller.end_session': return onSessionEnd(ws, message);
+    case 'media.signal': return onMediaSignal(ws, message);
     case 'controller.list_devices': return onDeviceList(ws);
     case 'controller.request_snapshot': return onControllerSnapshot(ws, message);
     case 'controller.command': return onControllerCommand(ws, message);
