@@ -1,6 +1,8 @@
 package com.meizzo.controller
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import org.json.JSONObject
 import org.json.JSONArray
 import org.webrtc.DefaultVideoDecoderFactory
@@ -30,6 +32,10 @@ class RtcMediaController(
     private var renderer: SurfaceViewRenderer? = null
     private var remoteDescriptionSet = false
     private val queuedCandidates = mutableListOf<IceCandidate>()
+    private val recoveryHandler = Handler(Looper.getMainLooper())
+    private var iceRestartAttempts = 0
+    private var iceRestartInProgress = false
+    private val iceRestartTask = Runnable { restartIceIfNeeded() }
     private var attachedTrackId: String? = null
     var remoteWidth: Int = 0
         private set
@@ -69,7 +75,23 @@ class RtcMediaController(
         peer = factory.createPeerConnection(configuration, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                if (state == PeerConnection.IceConnectionState.FAILED) onFailure("WebRTC connection failed. Check network or TURN availability.")
+                when (state) {
+                    PeerConnection.IceConnectionState.CONNECTED,
+                    PeerConnection.IceConnectionState.COMPLETED -> recoveryHandler.post {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        iceRestartAttempts = 0
+                        iceRestartInProgress = false
+                    }
+                    PeerConnection.IceConnectionState.DISCONNECTED -> {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        recoveryHandler.postDelayed(iceRestartTask, 2_500)
+                    }
+                    PeerConnection.IceConnectionState.FAILED -> {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        recoveryHandler.post(iceRestartTask)
+                    }
+                    else -> Unit
+                }
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) = Unit
@@ -116,6 +138,50 @@ class RtcMediaController(
             }
             override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create WebRTC offer")
         }, MediaConstraints())
+    }
+
+    private fun restartIceIfNeeded() {
+        val connection = peer ?: return
+        if (iceRestartInProgress) return
+        val state = connection.iceConnectionState()
+        if (state == PeerConnection.IceConnectionState.CONNECTED ||
+            state == PeerConnection.IceConnectionState.COMPLETED
+        ) return
+        if (iceRestartAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
+            onFailure("WebRTC stream could not recover after network interruption. End the session and reconnect.")
+            return
+        }
+        iceRestartAttempts += 1
+        iceRestartInProgress = true
+        remoteDescriptionSet = false
+        val constraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
+        }
+        connection.createOffer(object : SimpleSdpObserver() {
+            override fun onCreateSuccess(description: SessionDescription?) {
+                if (description == null) {
+                    scheduleIceRestartRetry()
+                    return
+                }
+                connection.setLocalDescription(object : SimpleSdpObserver() {
+                    override fun onSetSuccess() {
+                        sendSignal(JSONObject().put("type", "offer").put("sdp", description.description))
+                    }
+                    override fun onSetFailure(error: String?) = scheduleIceRestartRetry()
+                }, description)
+            }
+            override fun onCreateFailure(error: String?) = scheduleIceRestartRetry()
+        }, constraints)
+    }
+
+    private fun scheduleIceRestartRetry() {
+        iceRestartInProgress = false
+        if (iceRestartAttempts >= MAX_ICE_RESTART_ATTEMPTS) {
+            onFailure("WebRTC ICE restart failed. Check TURN availability and reconnect the session.")
+        } else {
+            recoveryHandler.removeCallbacks(iceRestartTask)
+            recoveryHandler.postDelayed(iceRestartTask, 3_000)
+        }
     }
 
     fun startFiles() {
@@ -183,6 +249,8 @@ class RtcMediaController(
                 peer?.setRemoteDescription(object : SimpleSdpObserver() {
                     override fun onSetSuccess() {
                         remoteDescriptionSet = true
+                        iceRestartInProgress = false
+                        iceRestartAttempts = 0
                         synchronized(queuedCandidates) {
                             queuedCandidates.forEach { peer?.addIceCandidate(it) }
                             queuedCandidates.clear()
@@ -206,6 +274,8 @@ class RtcMediaController(
     }
 
     fun close() {
+        recoveryHandler.removeCallbacks(iceRestartTask)
+        iceRestartInProgress = false
         peer?.close()
         peer?.dispose()
         peer = null
