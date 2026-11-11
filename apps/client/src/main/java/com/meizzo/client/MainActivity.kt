@@ -708,16 +708,22 @@ class MainActivity : Activity() {
                 val treeUri = data?.data
                 if (resultCode == RESULT_OK && treeUri != null && pending != null) {
                     try {
-                        val readPermission = ((data?.flags ?: 0) and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        if (readPermission == 0) throw SecurityException("Android did not grant read access to the selected folder")
-                        contentResolver.takePersistableUriPermission(treeUri, readPermission)
+                        val grantFlags = (data?.flags ?: 0) and (
+                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            )
+                        if (grantFlags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION == 0) {
+                            throw SecurityException("Android did not grant read access to the selected folder")
+                        }
+                        contentResolver.takePersistableUriPermission(treeUri, grantFlags)
                         val fileAccessPreferences = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
                         val previousTree = fileAccessPreferences.getString("tree_uri", null)
                         if (!previousTree.isNullOrBlank() && previousTree != treeUri.toString()) {
                             try {
                                 contentResolver.releasePersistableUriPermission(
                                     android.net.Uri.parse(previousTree),
-                                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                                 )
                             } catch (_: Exception) { }
                         }
