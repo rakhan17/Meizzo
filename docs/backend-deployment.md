@@ -36,6 +36,34 @@ The current beta uses a single named Durable Object for the signaling
 namespace. Review capacity, failure recovery, abuse controls, retention, and
 operational monitoring before production use.
 
+## Optional Cloudflare Realtime TURN relay
+
+The Android v3 WebRTC implementation requests session-scoped ICE server
+configuration after Client approval. The Worker always returns Cloudflare STUN
+and, when TURN credentials are configured, requests short-lived Cloudflare
+Realtime TURN credentials and sends them only to the two approved session
+participants. The long-lived TURN key never leaves the Worker.
+
+### Configure TURN
+
+1. In the Cloudflare Dashboard, open **Realtime → TURN Server** and create a
+   TURN key. Record its key ID and secret securely.
+2. Store the key ID as a Worker secret:
+   `npx wrangler secret put REALTIME_TURN_TOKEN_ID`
+3. Store the TURN key API secret as a Worker secret:
+   `npx wrangler secret put REALTIME_TURN_TOKEN_SECRET`
+4. Deploy the Worker with the authorized Cloudflare credentials.
+5. Approve a screen, camera, or file session and verify that the Worker returns
+   short-lived ICE credentials to both participants.
+
+The Worker requests a 24-hour credential lifetime. If the two secrets are not
+configured or Cloudflare's credential API is unavailable, MEIZZO falls back to
+STUN-only connectivity. TURN credentials must never be hardcoded in Android
+build configuration or committed to the repository.
+
+Cloudflare Realtime TURN is a metered relay service. Check current account
+pricing and usage limits before enabling it for public users.
+
 ## Local Node.js development harness
 
 The Node.js implementation is for local development and tests. It uses
@@ -59,8 +87,8 @@ in a public release build.
 
 - Use WSS in published builds and keep normal TLS certificate validation.
 - Never commit Cloudflare API tokens, keystore passwords, or release secrets.
-- Keep Worker credentials in GitHub Actions Secrets or the provider's secret
-  store.
+- Keep Worker credentials and Realtime TURN key secrets in the provider's
+  secret store. Never expose them to Client or Controller APKs.
 - Avoid logging WebSocket message bodies, pairing codes, and auth tokens.
 - Define retention, token rotation, incident response, and access policies.
 - Add independent security review and abuse monitoring before production use.
