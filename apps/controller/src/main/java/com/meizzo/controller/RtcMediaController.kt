@@ -250,7 +250,6 @@ class RtcMediaController(
                     override fun onSetSuccess() {
                         remoteDescriptionSet = true
                         iceRestartInProgress = false
-                        iceRestartAttempts = 0
                         synchronized(queuedCandidates) {
                             queuedCandidates.forEach { peer?.addIceCandidate(it) }
                             queuedCandidates.clear()
