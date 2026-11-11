@@ -46,6 +46,11 @@ class AutoAlertManager(context: Context) {
     }
 
     fun evaluate(device: JSONObject) {
+        val snapshot = JSONObject(device.toString())
+        handler.post { evaluateOnMainThread(snapshot) }
+    }
+
+    private fun evaluateOnMainThread(device: JSONObject) {
         val clientId = device.optString("clientId")
         if (clientId.isBlank()) return
         val metadata = device.optJSONObject("metadata") ?: JSONObject()
