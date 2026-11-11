@@ -467,7 +467,11 @@ class MainActivity : Activity() {
                 }.toString())
             },
             { reason ->
-                runOnUiThread { status.text = "Media session error · $reason" }
+                runOnUiThread {
+                    status.text = "Media session error · $reason"
+                    terminateMediaSession(sessionId, "media_error")
+                    stopMediaPublisher()
+                }
             }
         )
         if (kind == "screen") MediaProjectionForegroundService.start(this)
@@ -487,6 +491,14 @@ class MainActivity : Activity() {
 
     private fun flushPendingMediaSignals(sessionId: String) {
         pendingMediaSignals.remove(sessionId)?.forEach { rtcMediaClient?.onSignal(it) }
+    }
+
+    private fun terminateMediaSession(sessionId: String, reason: String) {
+        socket?.send(JSONObject().apply {
+            put("type", "client.end_session")
+            put("sessionId", sessionId)
+            put("reason", reason)
+        }.toString())
     }
 
     private fun stopMediaPublisher() {
@@ -509,13 +521,9 @@ class MainActivity : Activity() {
             startMediaPublisher(sessionId, "screen", data)
         } else {
             status.text = "Screen sharing was not allowed"
+            if (sessionId != null) terminateMediaSession(sessionId, "screen_capture_consent_denied")
             pendingMediaSessionId = null
             pendingMediaKind = null
-            socket?.send(JSONObject().apply {
-                put("type", "media.signal")
-                put("sessionId", sessionId ?: "")
-                put("signal", JSONObject().put("type", "error").put("message", "Client declined Android screen-capture consent"))
-            }.toString())
         }
     }
 
@@ -551,6 +559,7 @@ class MainActivity : Activity() {
                 startMediaPublisher(sessionId, "camera", null)
             } else {
                 status.text = "Camera streaming permission was denied"
+                sessionId?.let { terminateMediaSession(it, "camera_permission_denied") }
                 pendingMediaSessionId = null
                 pendingMediaKind = null
             }
