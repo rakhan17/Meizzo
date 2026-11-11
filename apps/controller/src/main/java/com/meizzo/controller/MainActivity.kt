@@ -680,7 +680,7 @@ class MainActivity : Activity() {
     private fun coordinateField(label: String): EditText = EditText(this).apply {
         hint = label
         inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        singleLine = true
+        maxLines = 1
         setTextColor(Color.WHITE)
         setHintTextColor(Color.GRAY)
     }
