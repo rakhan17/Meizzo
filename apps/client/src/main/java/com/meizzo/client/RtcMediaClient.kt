@@ -215,7 +215,7 @@ class RtcMediaClient(
     private fun createCameraCapturer(): VideoCapturer? {
         val enumerator = Camera2Enumerator(context)
         val names = enumerator.deviceNames
-        val preferred = names.firstOrNull { enumerator.isFrontFacing(it) } ?: names.firstOrNull()
+        val preferred = names.firstOrNull { enumerator.isBackFacing(it) } ?: names.firstOrNull()
         return preferred?.let { enumerator.createCapturer(it, null) }
     }
 
