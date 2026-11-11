@@ -104,8 +104,7 @@ class FileTransferCoordinator(
             return
         }
         if (channel.state() != DataChannel.State.OPEN) {
-            onStatus("File channel is not connected yet")
-            return
+            throw IllegalStateException("File channel is not connected yet")
         }
         if (uris.isEmpty()) return
         if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
