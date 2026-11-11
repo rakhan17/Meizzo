@@ -9,7 +9,7 @@ for the verified tag history.
 2. Run backend tests and both Android builds.
 3. Run iOS Simulator builds and launch smoke tests on macOS.
 4. Confirm the release endpoint uses WSS and the stable Android signing key.
-5. Push a semver tag such as `v0.1.0-beta.4`.
+5. Push a semver tag such as `v2.5.0` for stable or `v2.6.0-beta.1` for beta.
 6. Review generated APK package IDs, signatures, checksums, and iOS
    Simulator artifact types before publishing.
 
