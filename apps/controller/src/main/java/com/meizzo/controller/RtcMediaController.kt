@@ -111,10 +111,16 @@ class RtcMediaController(
             override fun onDataChannel(channel: DataChannel?) { channel?.let(onDataChannel) }
             override fun onRenegotiationNeeded() = Unit
             override fun onAddTrack(receiver: org.webrtc.RtpReceiver?, streams: Array<out org.webrtc.MediaStream>?) {
-                (receiver?.track() as? VideoTrack)?.let(::attachTrack)
+                when (val track = receiver?.track()) {
+                    is VideoTrack -> attachTrack(track)
+                    is org.webrtc.AudioTrack -> track.setEnabled(true)
+                }
             }
             override fun onTrack(transceiver: RtpTransceiver?) {
-                (transceiver?.receiver?.track() as? VideoTrack)?.let(::attachTrack)
+                when (val track = transceiver?.receiver?.track()) {
+                    is VideoTrack -> attachTrack(track)
+                    is org.webrtc.AudioTrack -> track.setEnabled(true)
+                }
             }
         }) ?: run {
             onFailure("Unable to create WebRTC viewer")
@@ -124,6 +130,10 @@ class RtcMediaController(
         val init = RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY)
         if (peer?.addTransceiver(org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO, init) == null) {
             onFailure("Unable to request the Client video track")
+            return
+        }
+        if (peer?.addTransceiver(org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO, init) == null) {
+            onFailure("Unable to request the Client microphone audio track")
             return
         }
         peer?.createOffer(object : SimpleSdpObserver() {
