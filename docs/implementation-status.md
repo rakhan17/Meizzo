@@ -76,8 +76,7 @@ for real Android device testing, network traversal testing, or a security audit.
   restrictive NATs, carrier-grade NAT, and firewalls may prevent connectivity.
 - Adaptive bitrate, congestion control tuning, stream recovery, and network
   handover behavior.
-- Resumable transfers, large-file optimization, and transfer integrity
-  verification beyond ordered reliable DTLS-protected DataChannel delivery.
+- Resumable transfers, large-file optimization, and signed transfer manifests.
 - Physical-device acceptance across Android OEMs, screen sizes, and Android
   versions, including backgrounding and battery-management behavior.
 - iOS screen/camera hosting, remote input, and file transfer.
