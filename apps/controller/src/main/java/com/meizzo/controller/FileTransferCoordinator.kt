@@ -10,6 +10,7 @@ import org.json.JSONObject
 import org.webrtc.DataChannel
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.ArrayDeque
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 
@@ -26,6 +27,7 @@ class FileTransferCoordinator(
     private var incomingOutput: OutputStream? = null
     private var incomingUri: Uri? = null
     private var outgoingInput: InputStream? = null
+    private val outgoingQueue = ArrayDeque<Uri>()
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
     private var incomingBytes = 0L
@@ -41,6 +43,7 @@ class FileTransferCoordinator(
                 pendingChunkMessage = null
                 closeOutgoing()
                 send(JSONObject().put("type", "file_reject"))
+                outgoingQueue.clear()
                 onStatus("File transfer stopped · chunk acknowledgement timed out")
                 return
             }
@@ -70,12 +73,25 @@ class FileTransferCoordinator(
         })
     }
 
-    fun sendFile(uri: Uri) {
+    fun sendFile(uri: Uri) = sendFiles(listOf(uri))
+
+    fun sendFiles(uris: List<Uri>) {
         if (channel.state() != DataChannel.State.OPEN) {
             onStatus("File channel is not connected yet")
             return
         }
-        closeOutgoing()
+        if (uris.isEmpty()) return
+        if (outgoingInput != null) {
+            onStatus("Wait for the current file transfer to finish")
+            return
+        }
+        outgoingQueue.clear()
+        outgoingQueue.addAll(uris)
+        startNextFile()
+    }
+
+    private fun startNextFile() {
+        val uri = outgoingQueue.pollFirst() ?: return
         val metadata = queryMetadata(uri)
         val input = context.contentResolver.openInputStream(uri)
             ?: throw IllegalStateException("Android could not open the selected file")
@@ -112,6 +128,7 @@ class FileTransferCoordinator(
 
     fun close() {
         closeOutgoing()
+        outgoingQueue.clear()
         discardIncoming()
         retryHandler.removeCallbacksAndMessages(null)
         try { channel.unregisterObserver() } catch (_: Exception) { }
@@ -138,6 +155,7 @@ class FileTransferCoordinator(
             "file_reject" -> {
                 cancelChunkRetry()
                 closeOutgoing()
+                outgoingQueue.clear()
                 discardIncoming()
                 onStatus("The other device declined or could not complete the file")
             }
@@ -204,7 +222,16 @@ class FileTransferCoordinator(
             "file_complete" -> {
                 cancelChunkRetry()
                 closeOutgoing()
-                onStatus("File sent successfully")
+                if (outgoingQueue.isNotEmpty()) {
+                    try {
+                        startNextFile()
+                    } catch (error: Exception) {
+                        outgoingQueue.clear()
+                        onStatus("Next file could not be opened · ${error.message ?: "storage error"}")
+                    }
+                } else {
+                    onStatus("File batch sent successfully")
+                }
             }
         }
     }
