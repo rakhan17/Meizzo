@@ -178,11 +178,12 @@ class RtcMediaController(
             val track = factory.createAudioTrack("MEIZZO_CONTROLLER_MIC", source)
             track.setEnabled(true)
             val existingSender = localAudioSender
-            val attached = if (existingSender != null) existingSender.setTrack(track, false)
-                else connection.addTrack(track, listOf("MEIZZO_CONTROLLER_AUDIO"))?.let {
-                    localAudioSender = it
-                    true
-                } ?: false
+            val attached = if (existingSender != null) {
+                existingSender.setTrack(track, false)
+            } else {
+                localAudioSender = connection.addTrack(track, listOf("MEIZZO_CONTROLLER_AUDIO"))
+                true
+            }
             if (!attached) {
                 track.dispose()
                 source.dispose()
