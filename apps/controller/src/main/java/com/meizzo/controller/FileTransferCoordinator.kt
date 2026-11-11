@@ -22,6 +22,7 @@ class FileTransferCoordinator(
     private val onStatus: (String) -> Unit
 ) {
     private var incomingOutput: OutputStream? = null
+    private var incomingUri: Uri? = null
     private var outgoingInput: InputStream? = null
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
@@ -73,6 +74,7 @@ class FileTransferCoordinator(
     fun acceptIncoming(uri: Uri) {
         incomingOutput = context.contentResolver.openOutputStream(uri, "wt")
             ?: throw IllegalStateException("Android could not create the destination file")
+        incomingUri = uri
         incomingBytes = 0L
         incomingDigest = MessageDigest.getInstance("SHA-256")
         send(JSONObject().put("type", "file_accept"))
@@ -87,7 +89,7 @@ class FileTransferCoordinator(
 
     fun close() {
         closeOutgoing()
-        closeIncoming()
+        discardIncoming()
         try { channel.unregisterObserver() } catch (_: Exception) { }
     }
 
@@ -121,7 +123,7 @@ class FileTransferCoordinator(
                     val bytes = Base64.decode(encoded, Base64.NO_WRAP)
                     incomingBytes += bytes.size
                     if (incomingBytes > MAX_FILE_SIZE) {
-                        closeIncoming()
+                        discardIncoming()
                         send(JSONObject().put("type", "file_reject"))
                         onStatus("Incoming file exceeded the 50 MiB transfer limit")
                         return
@@ -130,7 +132,7 @@ class FileTransferCoordinator(
                     incomingOutput?.write(bytes)
                     send(JSONObject().put("type", "file_ack").put("sequence", sequence))
                 } catch (error: Exception) {
-                    closeIncoming()
+                    discardIncoming()
                     send(JSONObject().put("type", "file_reject"))
                     onStatus("File write failed: ${error.message ?: "storage error"}")
                 }
@@ -145,8 +147,9 @@ class FileTransferCoordinator(
             "file_end" -> {
                 val expectedHash = message.optString("sha256")
                 val actualHash = incomingDigest?.digest()?.toHex().orEmpty()
-                closeIncoming()
-                if (expectedHash.isBlank() || !actualHash.equals(expectedHash, ignoreCase = true)) {
+                val hashMatches = expectedHash.isNotBlank() && actualHash.equals(expectedHash, ignoreCase = true)
+                if (hashMatches) closeIncoming() else discardIncoming()
+                if (!hashMatches) {
                     send(JSONObject().put("type", "file_reject"))
                     onStatus("File integrity check failed for $pendingName")
                 } else {
@@ -228,8 +231,17 @@ class FileTransferCoordinator(
     private fun closeIncoming() {
         try { incomingOutput?.flush(); incomingOutput?.close() } catch (_: Exception) { }
         incomingOutput = null
+        incomingUri = null
         incomingBytes = 0L
         incomingDigest = null
+    }
+
+    private fun discardIncoming() {
+        val destination = incomingUri
+        closeIncoming()
+        if (destination != null) {
+            try { context.contentResolver.delete(destination, null, null) } catch (_: Exception) { }
+        }
     }
 
     companion object {
