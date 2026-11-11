@@ -24,9 +24,7 @@ session-scoped authorization.
 
 </div>
 
- > **Current channel: Android Stable 2.5.0.** The v2.5 foundation has been integrated into `main`. The signed `v2.5.0` release assets are pending publication by the release workflow. iOS remains under development and is not available for physical
-> device installation. Read the [implementation status](docs/implementation-status.md)
-> before relying on a capability.
+ > **Current stable channel: Android v2.5.0.** The release is published. MEIZZO v3 is being developed separately on `develop/v3`, beginning at `v3.0.0-beta.1`. v3 media features are Android prototypes and still require physical-device and cross-network acceptance testing. iOS remains under development.
 
 ## What is MEIZZO?
 
@@ -59,7 +57,7 @@ clearly marked as prerelease software.
 
 #### Stable release
 
-<sub>**STABLE CHANNEL** · `v2.5.0` · Integrated into `main`; signed release assets pending publication.</sub>
+<sub>**STABLE CHANNEL** · `v2.5.0` · Published and available.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
@@ -70,15 +68,14 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**NEXT BETA LINE** · `v2.6.0-beta.1` · Development channel; not yet published.</sub>
+<sub>**V3 BETA LINE** · `v3.0.0-beta.1` · Development channel; not yet published.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
 | **MEIZZO Client** | Install on the device receiving assistance | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
 | **MEIZZO Controller** | Install on the operator device | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
 
-> The next beta will be published after the v2.5.0 stable release is built,
-> signed, and verified.
+> The v3 beta will be published only after remote media and file transfer pass physical-device, cross-network, security, and release verification.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -115,36 +112,40 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
   network transport, and available device metadata.
 - Supported device commands such as flashlight and alarm, subject to
   permissions and hardware availability.
-- Session request, approval, rejection, and termination state.
-- Interaction commands are gated behind an approved interaction session.
+- Session request, approval, rejection, and termination state, including Client-initiated termination.
+- Live Android screen streaming prototype using MediaProjection and WebRTC.
+- Android camera streaming prototype using Camera2 and WebRTC.
+- Tap/swipe from the Controller's live video surface, gated by a separate approved interaction session.
+- Remote Android lock-screen action through the user-enabled AccessibilityService.
+- Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, chunk acknowledgements, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
 - Release metadata, SHA-256 verification, package checks, signing-certificate
   checks, and Android Package Installer handoff for updates.
 
-### Not available yet
+### Still in development / not release-ready
 
-- Live screen or camera streaming.
-- WebRTC media transport, STUN/TURN relay, and adaptive media quality.
-- General remote touch/input control or Accessibility-based interaction.
-- Arbitrary file browsing or transfer.
-- Location tracking or sharing.
+- TURN relay deployment and reliable media connectivity across restrictive NATs.
+- Adaptive bitrate, reconnect recovery, resumable file transfer, and large-file optimization.
+- Physical-device acceptance testing across Android vendors and networks.
+- iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
-- A signed iOS build for physical devices.
-- A completed independent security audit or formal security certification.
+- Independent security audit or formal security certification.
 
-A session marked **approved** is an authorization state only. It is not proof
-that a screen, camera, file, or input channel exists. See
-[implementation status](docs/implementation-status.md) and the
+The v3 media and file-transfer paths are implemented as Android prototypes, not
+yet certified for production use. Android system consent and permissions remain
+mandatory. See [v3 implementation status](docs/v3/README.md),
+[upstream and license notes](docs/v3/UPSTREAM_AND_LICENSES.md), and the
 [security model](docs/v2/security-model.md).
 
 ## Architecture
 
-MEIZZO separates the control plane from any future media plane. The current
-Android apps communicate with the signaling service over WebSocket Secure
-(WSS). The deployed Cloudflare Worker routes connections to a Durable Object,
-which coordinates pairing, authentication, presence, telemetry, commands, and
-authorization-only sessions.
+MEIZZO separates its control plane from its peer-to-peer media plane. Pairing,
+authentication, presence, telemetry, commands, and session authorization use
+WebSocket Secure (WSS) through the Cloudflare Worker and Durable Object. After
+the Client approves a screen, camera, or file session, the Android apps
+negotiate a direct WebRTC connection using the signaling channel. STUN is
+configured; TURN relay deployment remains outstanding.
 
 ```mermaid
 flowchart LR
@@ -158,15 +159,21 @@ flowchart LR
   end
 
   subgraph ControlPlane["MEIZZO control plane"]
-    W[Cloudflare Worker<br/>WSS entry point]
+    W[Cloudflare Worker<br/>WSS signaling]
     D[Durable Object<br/>state and routing]
     W --> D
+  end
+
+  subgraph MediaPlane["Approved WebRTC media plane"]
+    C <-->|DTLS-SRTP video| O
+    C <-->|DTLS data channel| O
   end
 
   CS <-->|WSS · protocol v2| W
   OS <-->|WSS · protocol v2| W
   D <--> P[Pairing · auth · presence<br/>telemetry · commands · sessions]
   D <--> S[(Durable Object storage)]
+  W -.->|Offer · answer · ICE only| MediaPlane
 ```
 
 ### Pairing and session lifecycle
@@ -191,9 +198,11 @@ sequenceDiagram
   Service-->>Controller: Session state
 ```
 
-An approved interaction session is required before supported interaction
-commands are routed. This consent state does not implement media streaming or
-unrestricted device control.
+Screen, camera, and file sessions each require explicit Client approval before
+WebRTC signaling is relayed. Android also requests the operating system's
+MediaProjection consent for screen capture and runtime camera permission for
+camera streaming. Remote taps, swipes, and lock-screen actions require the
+separately approved interaction session and user-enabled AccessibilityService.
 
 ### Technology map
 
@@ -203,8 +212,10 @@ unrestricted device control.
 | Android connection lifecycle | Foreground services, reconnect backoff, boot receivers |
 | Android credential storage | AES-GCM protected values using Android Keystore keys |
 | iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
-| Signaling protocol | JSON messages over WebSocket, protocol version 2 |
+| Signaling protocol | JSON messages over WSS, protocol version 2 |
 | Hosted signaling | Cloudflare Workers + Durable Objects |
+| Android media | WebRTC video tracks, STUN, MediaProjection, Camera2 |
+| Android file transfer | Ordered WebRTC DataChannel, SAF, acknowledged 12 KiB chunks |
 | Local signaling harness | Node.js + `ws`, in-memory process state |
 | Release distribution | GitHub Actions and GitHub Releases |
 | Android updates | Release manifest, checksum/package/signature checks, Package Installer |
@@ -269,8 +280,8 @@ MkDocs site can be built locally with `mkdocs build --strict`.
 Security is a product requirement, not a badge. The current beta includes
 short-lived single-use pairing offers, explicit Client approval, rate-limited
 pairing attempts, random authentication tokens, per-device authorization,
-WSS transport, Android Keystore-backed local credentials, and session-scoped
-approval for supported interaction commands.
+WSS signaling, DTLS-protected WebRTC media/data channels, Android Keystore-backed
+local credentials, and session-scoped approval for sensitive operations.
 
 Important boundaries remain:
 
@@ -281,8 +292,11 @@ Important boundaries remain:
   development/testing only.
 - Android background execution is subject to Android and OEM restrictions.
 - iOS platform privacy rules remain in force.
-- Screen capture, camera, files, location, and general remote input are not
-  implemented capabilities.
+- TURN relay is not deployed. Direct WebRTC connections may fail on restrictive
+  NATs, carrier networks, or firewalls.
+- File transfer is limited to 50 MiB per file and is not resumable yet.
+- Android OEM permission restrictions and background-execution behavior need
+  physical-device validation.
 
 **Certification status:** MEIZZO has not been independently security-audited
 and does not claim ISO/IEC 27001, SOC 2, GDPR certification, or any other
@@ -293,7 +307,7 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The previous beta.5 Android release workflow completed successfully and published both signed APKs. The v2.5.0 release pipeline validates the version, requires release secrets and a WSS endpoint, builds Client and Controller independently, signs the APKs, verifies their signatures and package/version metadata, and creates checksums plus the updater manifest.
+The v2.5.0 Android stable release is published with separate Client and Controller APKs. The v3 development branch now adds WebRTC screen/camera streaming, live-view touch control, Android lock-screen support, and bidirectional file transfer. CI builds both Android apps and runs signaling regression tests; automated builds do not replace real-device and cross-network validation.
 
 Relevant workflow runs:
 
@@ -359,13 +373,20 @@ See [development setup](docs/development.md) for complete instructions.
 - [x] Consent-based pairing and token authentication
 - [x] Multi-device presence, telemetry, and isolated routing
 - [x] Hosted WSS signaling with Durable Object state
-- [x] Authorization-only session lifecycle
+- [x] Consent-scoped session lifecycle and Client-initiated session termination
+- [x] Android MediaProjection screen-stream publisher and Controller video viewer
+- [x] Android Camera2 stream publisher and Controller camera viewer
+- [x] Tap/swipe control mapped to the live video surface
+- [x] Remote lock-screen action through AccessibilityService
+- [x] Bidirectional WebRTC DataChannel file-transfer prototype
 - [x] Android background connection services and reconnect handling
 - [x] Signed Android beta release pipeline and in-app update verification
 - [ ] Full Android physical-device and multi-instance runtime acceptance
 - [ ] Durable token hardening, rotation, audit events, and independent security review
-- [ ] WebRTC screen/camera media with explicit OS consent and STUN/TURN
-- [ ] Scoped file, location, and interaction capabilities
+- [ ] TURN relay deployment, bitrate adaptation, and network recovery
+- [ ] Physical-device testing across Android OEMs and mobile networks
+- [ ] Resumable and optimized file transfer
+- [ ] iOS media hosting and remote interaction
 - [ ] iOS physical-device signing, testing, and distribution
 - [ ] Enterprise enrollment and policy management, if pursued
 
