@@ -269,6 +269,7 @@ class RtcMediaClient(
                 val sdp = signal.optString("sdp")
                 if (sdp.isBlank()) return onFailure("Controller sent an empty WebRTC offer")
                 val description = SessionDescription(SessionDescription.Type.OFFER, sdp)
+                remoteDescriptionSet = false
                 peer?.setRemoteDescription(object : SimpleSdpObserver() {
                     override fun onSetSuccess() {
                         remoteDescriptionSet = true
