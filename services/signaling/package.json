@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "check": "node --check src/server.js && node --input-type=module --check < cloudflare/worker.js",
-    "test": "node test/pairing-smoke.test.js && node test/multi-device.test.js && node test/revocation.test.js && node test/worker-sessions.test.mjs"
+    "test": "node test/pairing-smoke.test.js && node test/multi-device.test.js && node test/revocation.test.js && node test/worker-sessions.test.mjs && node test/media-signaling.test.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
