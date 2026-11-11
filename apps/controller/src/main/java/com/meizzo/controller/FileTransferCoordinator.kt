@@ -113,7 +113,8 @@ class FileTransferCoordinator(
             }
             "file_reject" -> {
                 closeOutgoing()
-                onStatus("The other device declined the file")
+                discardIncoming()
+                onStatus("The other device declined or could not complete the file")
             }
             "file_chunk" -> {
                 val sequence = message.optInt("sequence", -1)
