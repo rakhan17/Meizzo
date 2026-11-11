@@ -836,6 +836,58 @@ class MainActivity : Activity() {
                     }
                 }
             }
+            "clipboard_read", "clipboard_write" -> {
+                val command = message.optString("command")
+                val clipboardText = parameters.optString("text")
+                if (command == "clipboard_write" && (clipboardText.isBlank() || clipboardText.length > 10_000)) {
+                    error = "Clipboard text must contain 1–10,000 characters"
+                } else {
+                    runOnUiThread {
+                        val title = if (command == "clipboard_read") "Allow clipboard access?" else "Allow clipboard update?"
+                        val detail = if (command == "clipboard_read") {
+                            "The paired Controller is requesting the current text clipboard. Only text is shared, and only after you approve."
+                        } else {
+                            "The paired Controller wants to replace this device's text clipboard with the following content:\n\n${clipboardText.take(500)}"
+                        }
+                        AlertDialog.Builder(this)
+                            .setTitle(title)
+                            .setMessage(detail)
+                            .setNegativeButton("Deny") { _, _ ->
+                                sendCommandFailure(webSocket, message, "Clipboard access was denied on the Client")
+                            }
+                            .setPositiveButton("Allow") { _, _ ->
+                                try {
+                                    val manager = getSystemService(android.content.ClipboardManager::class.java)
+                                    if (command == "clipboard_read") {
+                                        val clip = manager.primaryClip
+                                        val value = if (clip != null && clip.itemCount > 0) {
+                                            clip.getItemAt(0).coerceToText(this).toString().take(10_000)
+                                        } else ""
+                                        webSocket.send(JSONObject().apply {
+                                            put("type", "client.result")
+                                            put("requestId", message.optString("requestId"))
+                                            put("result", JSONObject().put("clipboardText", value))
+                                        }.toString())
+                                    } else {
+                                        manager.setPrimaryClip(android.content.ClipData.newPlainText("MEIZZO", clipboardText))
+                                        webSocket.send(JSONObject().apply {
+                                            put("type", "client.result")
+                                            put("requestId", message.optString("requestId"))
+                                            put("result", JSONObject().put("clipboardWritten", true))
+                                        }.toString())
+                                    }
+                                } catch (exception: Exception) {
+                                    sendCommandFailure(webSocket, message, exception.message ?: "Clipboard operation failed")
+                                }
+                            }
+                            .setOnCancelListener {
+                                sendCommandFailure(webSocket, message, "Clipboard request was cancelled")
+                            }
+                            .show()
+                    }
+                    return
+                }
+            }
             "text_input" -> {
                 val text = parameters.optString("text")
                 val accessibility = RemoteAccessibilityService.instance
