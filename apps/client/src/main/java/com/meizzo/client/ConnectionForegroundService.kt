@@ -25,6 +25,12 @@ class ConnectionForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // A sticky restart has no live WebSocket owner to restore yet. Do not
+        // show a misleading foreground notification after process recreation.
+        if (intent == null) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -35,7 +41,7 @@ class ConnectionForegroundService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -65,7 +71,7 @@ class ConnectionForegroundService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setContentTitle("MEIZZO Client is active")
-            .setContentText("Maintaining your paired device connection")
+            .setContentText("MEIZZO is active in the background")
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
