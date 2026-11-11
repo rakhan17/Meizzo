@@ -65,6 +65,7 @@ async function run() {
     stdio: ['ignore', 'pipe', 'pipe']
   });
   const sockets = [];
+  let heartbeatTimer;
   try {
     await wait(300);
     const controller = await openSocket('ws://127.0.0.1:8101');
@@ -74,6 +75,14 @@ async function run() {
 
     const pairedA = await pair(clientA, controller, '111111', 'client-a');
     const pairedB = await pair(clientB, controller, '222222', 'client-b');
+    // Keep test devices alive like the Android Client's real 15-second heartbeat.
+    heartbeatTimer = setInterval(() => {
+      for (const socket of sockets) {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'heartbeat' }));
+        }
+      }
+    }, 100);
 
     const listPromise = nextMessage(controller, (message) => message.type === 'controller.device_list');
     controller.send(JSON.stringify({ type: 'controller.list_devices' }));
@@ -388,6 +397,7 @@ async function run() {
 
     console.log('multi-device.test: OK');
   } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     sockets.forEach((socket) => socket.close());
     server.kill('SIGTERM');
   }
