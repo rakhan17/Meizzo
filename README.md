@@ -221,8 +221,8 @@ separately approved interaction session and user-enabled AccessibilityService.
 | iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
 | Signaling protocol | JSON messages over WSS, protocol version 2 |
 | Hosted signaling | Cloudflare Workers + Durable Objects |
-| Android media | WebRTC video and optional microphone audio tracks, STUN, MediaProjection, Camera2 |
-| Android file transfer | Ordered WebRTC DataChannel, SAF, acknowledged 12 KiB chunks |
+| Android media | WebRTC video and optional two-way microphone audio, STUN/TURN, adaptive bitrate, bounded ICE recovery, MediaProjection, Camera2 |
+| Android file transfer | Ordered WebRTC DataChannel, SAF folder browser, transfer IDs, acknowledged 12 KiB chunks, SHA-256 |
 | Local signaling harness | Node.js + `ws`, in-memory process state |
 | Release distribution | GitHub Actions and GitHub Releases |
 | Android updates | Release manifest, checksum/package/signature checks, Package Installer |
