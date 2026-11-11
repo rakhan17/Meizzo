@@ -6,6 +6,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
@@ -24,6 +26,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -81,7 +84,7 @@ class MainActivity : ComponentActivity() {
             preferences.edit().putString("client_id", it).apply()
         }
     }
-    private val pairingCode by lazy { "%06d".format(SecureRandom().nextInt(1_000_000)) }
+    private val pairingCode by lazy { preferences.getString("pairing_code", null) ?: "%06d".format(SecureRandom().nextInt(1_000_000)).also { preferences.edit().putString("pairing_code", it).apply() } }
     private lateinit var status: TextView
     private val httpClient by lazy { OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build() }
     private var socket: WebSocket? = null
@@ -111,6 +114,50 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var connectionReceiverRegistered = false
+    private val connectionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            if (intent == null) return
+            when (intent.action) {
+                ConnectionForegroundService.ACTION_MESSAGE -> {
+                    socket = ConnectionForegroundService.activeSocket
+                    val payload = intent.getStringExtra(ConnectionForegroundService.EXTRA_MESSAGE) ?: return
+                    val active = socket ?: return
+                    handleServerMessage(active, payload)
+                }
+                ConnectionForegroundService.ACTION_STATE -> {
+                    socket = ConnectionForegroundService.activeSocket
+                    val label = intent.getStringExtra(ConnectionForegroundService.EXTRA_STATE).orEmpty()
+                    if (label.isNotBlank()) {
+                        status.text = label
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!connectionReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(ConnectionForegroundService.ACTION_MESSAGE)
+                addAction(ConnectionForegroundService.ACTION_STATE)
+            }
+            ContextCompat.registerReceiver(this, connectionReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            connectionReceiverRegistered = true
+        }
+        socket = ConnectionForegroundService.activeSocket
+        startService(Intent(this, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_REFRESH))
+    }
+
+    override fun onStop() {
+        if (connectionReceiverRegistered) {
+            runCatching { unregisterReceiver(connectionReceiver) }
+            connectionReceiverRegistered = false
+        }
+        super.onStop()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         status = TextView(this).apply {
@@ -127,16 +174,15 @@ class MainActivity : ComponentActivity() {
                     shouldMaintainConnection = false
                     reconnectHandler.removeCallbacksAndMessages(null)
                     reconnectScheduled = false
-                    socket?.close(1000, "Pairing stopped")
+                    startService(Intent(this@MainActivity, ConnectionForegroundService::class.java).setAction(ConnectionForegroundService.ACTION_STOP))
                     socket = null
-                    stopService(Intent(this@MainActivity, ConnectionForegroundService::class.java))
                     status.text = "Pairing stopped"
                 },
                 onCheckUpdates = { checkForUpdate() }
             )
         }
         startConnectionKeepAlive()
-        connect()
+        socket = ConnectionForegroundService.activeSocket
     }
 
     private fun startConnectionKeepAlive() {
@@ -202,18 +248,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun connect() {
-        socket = httpClient.newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    reconnectAttempt = 0
-                    reconnectScheduled = false
-                    // Re-authenticate before refreshing an offer for an already-paired Client.
-                    secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
-                    registerPairingOffer(webSocket)
-                    runOnUiThread { status.text = "Connected · registering device" }
-                }
-
-                override fun onMessage(webSocket: WebSocket, text: String) {
+    private fun handleServerMessage(webSocket: WebSocket, text: String) {
                     val message = try {
                         JSONObject(text)
                     } catch (_: Exception) {
@@ -306,27 +341,6 @@ class MainActivity : ComponentActivity() {
                             status.text = "Error: ${message.optString("message")}"
                         }
                     }
-                }
-
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                    if (heartbeatSocket === webSocket) heartbeatSocket = null
-                    if (socket === webSocket && shouldMaintainConnection) {
-                        runOnUiThread { status.text = "Connection closed · reconnecting" }
-                        scheduleReconnect()
-                    }
-                }
-
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                    if (heartbeatSocket === webSocket) heartbeatSocket = null
-                    runOnUiThread {
-                        pendingSessionDialogs.values.forEach { it.dismiss() }
-                        pendingSessionDialogs.clear()
-                        stopActiveOutputs()
-                        status.text = connectionFailureMessage(t)
-                    }
-                    if (socket === webSocket && shouldMaintainConnection) scheduleReconnect()
-                }
-            })
     }
 
     private fun connectionFailureMessage(error: Throwable): String {
