@@ -84,12 +84,19 @@ async function run() {
     await clientPending;
 
     const approved = nextMessage(controller, m => m.type === 'session.status' && m.sessionId === session.sessionId && m.state === 'approved', 'screen approval');
+    const controllerIce = nextMessage(controller, m => m.type === 'media.ice_servers' && m.sessionId === session.sessionId, 'Controller ICE configuration');
+    const clientIce = nextMessage(client, m => m.type === 'media.ice_servers' && m.sessionId === session.sessionId, 'Client ICE configuration');
     client.send(JSON.stringify({
       type: 'client.session_decision',
       sessionId: session.sessionId,
       approved: true
     }));
     await approved;
+    const [controllerIceConfig, clientIceConfig] = await Promise.all([controllerIce, clientIce]);
+    if (!controllerIceConfig.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478')) ||
+        !clientIceConfig.iceServers?.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478'))) {
+      throw new Error('STUN fallback was not delivered to both session participants');
+    }
 
     const offerSignal = { type: 'offer', sdp: 'v=0\\r\\no=meizzo-test' };
     const deliveredOffer = nextMessage(client, m => m.type === 'media.signal' && m.sessionId === session.sessionId, 'WebRTC offer at Client');
