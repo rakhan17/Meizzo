@@ -1007,6 +1007,9 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.rgb(8, 8, 10))
             addView(details)
             addView(choose, LinearLayout.LayoutParams(-1, dp(46)))
+            addView(uiActionButton("Cancel active transfer", false) {
+                fileTransferCoordinators[sessionId]?.cancelTransfer()
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
         }
         val dialog = AlertDialog.Builder(this)
             .setTitle("Secure file transfer")
