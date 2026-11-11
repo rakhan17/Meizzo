@@ -581,6 +581,23 @@ class MainActivity : Activity() {
                 }
             }
             card.addView(keyboardArrows, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            val shortcutRows = listOf(
+                listOf("Select all" to "select_all", "Copy" to "copy", "Paste" to "paste"),
+                listOf("Cut" to "cut", "Undo" to "undo", "Redo" to "redo")
+            )
+            shortcutRows.forEach { row ->
+                val shortcutLayout = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    row.forEachIndexed { index, (label, shortcut) ->
+                        addView(uiActionButton(label, false) {
+                            sendInteractionAction(id, "key_shortcut", JSONObject().put("shortcut", shortcut))
+                        }, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                            if (index > 0) leftMargin = dp(6)
+                        })
+                    }
+                }
+                card.addView(shortcutLayout, LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(6) })
+            }
             card.addView(uiActionButton("Keyboard · New line", false) {
                 sendInteractionAction(id, "text_input", JSONObject().put("text", "\n"))
             }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
