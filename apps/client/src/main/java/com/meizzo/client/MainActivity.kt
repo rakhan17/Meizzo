@@ -256,10 +256,7 @@ class MainActivity : ComponentActivity() {
                         return
                     }
                     when (message.optString("type")) {
-                        "auth.connected" -> {
-                            startHeartbeat(webSocket)
-                            runOnUiThread { status.text = "Online · waiting for Controller" }
-                        }
+                        "auth.connected" -> runOnUiThread { status.text = "Online · waiting for Controller" }
                         "client.pairing_request" -> runOnUiThread {
                             AlertDialog.Builder(this@MainActivity)
                                 .setTitle("Approve Controller?")
@@ -306,30 +303,7 @@ class MainActivity : ComponentActivity() {
                         "client.pairing_completed" -> {
                             val token = message.optString("authToken")
                             secureStore.put("auth_token", token)
-                            authenticate(webSocket, token)
                             runOnUiThread { status.text = "Connected · Controller authorized" }
-                        }
-                        "client.snapshot_request" -> {
-                            val response = try {
-                                JSONObject().apply {
-                                    put("type", "client.result")
-                                    put("requestId", message.optString("requestId"))
-                                    put("result", deviceMetrics())
-                                }
-                            } catch (error: Exception) {
-                                JSONObject().apply {
-                                    put("type", "client.result")
-                                    put("requestId", message.optString("requestId"))
-                                    put("result", JSONObject())
-                                    put("error", error.message ?: "Device telemetry is temporarily unavailable")
-                                }
-                            }
-                            webSocket.send(response.toString())
-                        }
-                        "client.command" -> try {
-                            handleCommand(webSocket, message)
-                        } catch (error: Exception) {
-                            sendCommandFailure(webSocket, message, error.message ?: "Command could not be completed")
                         }
                         "device.revoked" -> runOnUiThread {
                             secureStore.remove("auth_token")
