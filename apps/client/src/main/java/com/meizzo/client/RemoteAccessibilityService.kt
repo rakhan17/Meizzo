@@ -52,6 +52,13 @@ class RemoteAccessibilityService : AccessibilityService() {
         return dispatchGesture(gesture, null, null)
     }
 
+    fun navigate(action: String): Boolean = when (action) {
+        "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
+        "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
+        "recents" -> performGlobalAction(GLOBAL_ACTION_RECENTS)
+        else -> false
+    }
+
     fun lockScreen(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
             performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
