@@ -30,7 +30,7 @@ function nextMessage(socket, predicate, label) {
 async function run() {
   const server = spawn(process.execPath, ['src/server.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: '8103' },
+    env: { ...process.env, PORT: '8103', REALTIME_TURN_TOKEN_ID: '', REALTIME_TURN_TOKEN_SECRET: '' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   const sockets = [];
