@@ -2,68 +2,56 @@
 
 MEIZZO includes two signaling runtimes:
 
-- **Cloudflare Workers + Durable Objects** for the hosted beta service.
-- **Node.js + ws** for local development and the existing regression tests.
+- **Cloudflare Workers + Durable Objects** for hosted beta deployments.
+- **Node.js + ws** for local development and regression tests.
 
-The Cloudflare Worker is defined in `services/signaling/cloudflare/worker.js`; the repository-root `wrangler.toml` binds its Durable Object. The Durable Object stores pairing offers, device credentials, controller credentials, pending requests, and session state in SQLite-backed Durable Object storage.
+The Cloudflare Worker entry point is `services/signaling/cloudflare/worker.js`. The root `wrangler.toml` defines the stable Worker and its Durable Object binding. `wrangler.v3.toml` defines an isolated v3 Worker with its own Durable Object namespace.
 
-## Deploy with Cloudflare Workers Builds
+## Stable deployment
 
-1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) and go to **Workers & Pages**.
-2. Choose **Create application → Workers → Connect to Git** (wording may vary).
-3. Connect GitHub and select `rakhan17/Meizzo`, branch `main`.
-4. Set the Worker name to **meizzo-signaling**. It must match `name` in the root `wrangler.toml`.
-5. Set **Root directory** to the repository root (leave it blank if blank means repository root).
-6. Leave **Build command** blank. The project has no separate compile step.
-7. Keep **Preview builds** disabled for the initial setup. Leave **Protect with Cloudflare Access** disabled because the Android and iOS apps must connect directly.
-8. For **Deploy command**, use the default `npx wrangler deploy`.
-9. Use the automatically generated Cloudflare API token. Do not paste a personal API token into the repository or commit it.
-10. Save and deploy. Wait for the build to finish successfully.
+The stable Cloudflare Workers Builds project is connected to the repository's `main` branch and deploys the root `wrangler.toml` configuration as `meizzo-signaling`.
 
-Cloudflare's Workers Builds uses the Wrangler deploy command by default and supports GitHub-triggered deployments. The Worker name must match the Wrangler configuration.
+Keep that project on `main`. Do not change its branch or Wrangler config to v3.
 
-## MEIZZO v3 isolated Worker
+## MEIZZO v3 deployment with Cloudflare Workers Builds
 
-The v3 development branch uses a separate Worker configuration,
-`wrangler.v3.toml`, with Worker name `meizzo-signaling-v3`. It preserves the
-stable `meizzo-signaling` deployment and has an independent Durable Object
-namespace.
+The v3 branch uses a separate Worker named `meizzo-signaling-v3`. Deploy it using a **second Cloudflare Workers Builds project**, connected to the same GitHub repository but configured for branch `develop/v3`.
 
-The expected endpoint in this repository is:
+One-time setup in Cloudflare Dashboard:
+
+1. Open [Cloudflare Dashboard](https://dash.cloudflare.com/) → **Workers & Pages**.
+2. Choose **Create application → Workers → Connect to Git**.
+3. Select repository `rakhan17/Meizzo`.
+4. Set the production branch to `develop/v3`.
+5. Set the Worker name to `meizzo-signaling-v3` if Cloudflare asks for one. The authoritative name is already in `wrangler.v3.toml`.
+6. Keep the repository root as the root directory.
+7. Leave the build command blank.
+8. Set the deploy command to:
+
+   ```bash
+   npx wrangler deploy --config wrangler.v3.toml
+   ```
+
+9. Use Cloudflare Workers Builds' automatically generated API token. Do not create GitHub Actions secrets for Cloudflare and never commit a personal API token.
+10. Save and deploy.
+
+After this one-time setup, pushes to `develop/v3` automatically build and deploy only the v3 Worker. The existing `main` → `meizzo-signaling` project remains unchanged. GitHub Actions separately runs the Worker dry-run and regression tests.
+
+Expected v3 endpoint for the existing account subdomain:
 
 `wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
 
-Deploy it through the guarded
-[MEIZZO v3 Cloudflare workflow](https://github.com/rakhan17/Meizzo/blob/develop/v3/.github/workflows/deploy-cloudflare-v3.yml)
-after configuring `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in GitHub
-Actions repository secrets. Configure the Realtime TURN secrets separately on
-the v3 Worker if TURN relay is enabled.
+Treat that hostname as provisional until Cloudflare confirms the deployment URL in its dashboard. Verify `/healthz` and a WebSocket handshake before using it for real sessions or release builds.
 
-The v3 Worker adds approved-session WebRTC signaling and short-lived TURN
-credential delivery. Do not point v3 release builds at the stable Worker.
+The v3 Worker adds approved-session WebRTC signaling and short-lived TURN credential delivery. If TURN relay is enabled, configure `REALTIME_TURN_TOKEN_ID` and `REALTIME_TURN_TOKEN_SECRET` as secrets on the v3 Worker in Cloudflare. These are TURN credentials, not Cloudflare deployment credentials.
 
 ## Verify the deployment
 
 Open:
 
-`https://meizzo-signaling.<your-subdomain>.workers.dev/healthz`
+`https://meizzo-signaling-v3.<your-subdomain>.workers.dev/healthz`
 
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "service": "meizzo-signaling",
-  "runtime": "cloudflare-workers",
-  "protocolVersion": 2
-}
-```
-
-The public signaling endpoint is:
-
-`wss://meizzo-signaling.<your-subdomain>.workers.dev`
-
-Use the exact hostname Cloudflare assigns to the Worker. Do not guess the account subdomain.
+Use the exact hostname Cloudflare assigns. The expected health response has `status: "ok"`, `service: "meizzo-signaling-v3"`, and `runtime: "cloudflare-workers"`.
 
 ## Runtime behavior and limitations
 
@@ -72,7 +60,7 @@ Use the exact hostname Cloudflare assigns to the Worker. Do not guess the accoun
 - Presence becomes offline after 45 seconds without a Client heartbeat.
 - Pairing offers expire after at most 10 minutes. Pairing attempts are rate-limited per Controller ID and source IP.
 - This service handles signaling, pairing, authorization, and device commands only. It does **not** relay screen, camera, or other media streams.
-- Cloudflare Free has usage limits. Check the current Workers and Durable Objects quotas in the Cloudflare dashboard; exceeding free quotas can require a paid plan.
+- Cloudflare plan usage limits apply. Check current Workers and Durable Objects quotas in the Cloudflare dashboard.
 - This is a beta deployment. Validate real Client/Controller pairing and reconnection before publishing an Android release against this endpoint.
 
 ## Local Node.js server
@@ -87,7 +75,7 @@ npm start
 
 Default port: `8080` (override with `PORT`).
 
-Run existing regression tests:
+Run regression tests:
 
 ```bash
 npm test
@@ -95,4 +83,4 @@ npm test
 
 ## Legacy Render configuration
 
-The repository still contains `render.yaml` for reference/rollback. It is not required for the Cloudflare deployment.
+The repository still contains `render.yaml` for reference/rollback. It is not required for Cloudflare deployment.
