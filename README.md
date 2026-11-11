@@ -10,7 +10,7 @@
 [![iOS CI](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/ios.yml)
 [![Cloudflare Worker](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml)
 [![Documentation](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml)
-[![Latest Beta](https://img.shields.io/github/v/release/rakhan17/Meizzo?include_prereleases&label=latest%20beta)](https://github.com/rakhan17/Meizzo/releases)
+[![Android Stable](https://img.shields.io/badge/ANDROID-STABLE%20v2.5.0-111111)](https://github.com/rakhan17/Meizzo/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-111111.svg)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
 
@@ -24,9 +24,7 @@ session-scoped authorization.
 
 </div>
 
-> **Current channel: Android beta.** The latest published build is
-> `v0.1.0-beta.5`. It is a testing release, not a stable or enterprise-ready
-> product. iOS remains under development and is not available for physical
+ > **Current channel: Android Stable 2.5.0.** The v2.5 foundation has been integrated into `main`. The signed `v2.5.0` release assets are pending publication by the release workflow. iOS remains under development and is not available for physical
 > device installation. Read the [implementation status](docs/implementation-status.md)
 > before relying on a capability.
 
@@ -61,33 +59,34 @@ clearly marked as prerelease software.
 
 #### Stable release
 
-<sub>**STABLE CHANNEL** · `v0.1.0-beta.3` · Retained as the previous stable-channel build.</sub>
+<sub>**STABLE CHANNEL** · `v2.5.0` · Integrated into `main`; signed release assets pending publication.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
-| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Client-v2.5.0.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Controller-v2.5.0.apk) |
 
-[![View stable channel release](https://img.shields.io/badge/VIEW-STABLE%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
+[![View stable channel release](https://img.shields.io/badge/VIEW-STABLE%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 
 #### Beta
 
-<sub>**LATEST BETA** · `v0.1.0-beta.5` · Published 11 November 2026 · Android APKs signed and verified by the release workflow.</sub>
+<sub>**NEXT BETA LINE** · `v2.6.0-beta.1` · Development channel; not yet published.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.5/MEIZZO-Client-v0.1.0-beta.5.apk) |
-| **MEIZZO Controller** | Install on the operator device | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.5/MEIZZO-Controller-v0.1.0-beta.5.apk) |
+| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/#) |
+| **MEIZZO Controller** | Install on the operator device | [![Download Controller](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/#) |
 
-[![View beta.5 release](https://img.shields.io/badge/VIEW-BETA.5%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5)
+[![View beta.5 release](https://img.shields.io/badge/VIEW-BETA.5%20RELEASE-111111?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases)
 
 The release also includes `MEIZZO-UPDATE.json` for the in-app updater and
 `SHA256SUMS.txt` for artifact integrity checks. See the
 [release notes](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5)
 for the exact assets.
 
-> **Beta warning:** expect bugs and incomplete capabilities. Do not use this
-> build as the sole means of accessing or managing a critical device. Android
+> **Release note:** v2.5.0 release assets are being prepared. Do not install an
+> APK from an older beta over an existing installation unless the signing
+> certificate matches. Do not use this build as the sole means of accessing or managing a critical device. Android
 > may restrict background services according to battery, OEM, and force-stop
 > policies. An update can only be installed over an existing copy when its
 > signing certificate is compatible. Back up any important app data before
@@ -307,11 +306,7 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The beta.5 Android release workflow completed successfully and published both
-signed APKs. The release pipeline validates the version, requires release
-secrets and a WSS endpoint, builds Client and Controller independently, signs
-the APKs, verifies their signatures and package/version metadata, and creates
-checksums plus the updater manifest.
+The previous beta.5 Android release workflow completed successfully and published both signed APKs. The v2.5.0 release pipeline validates the version, requires release secrets and a WSS endpoint, builds Client and Controller independently, signs the APKs, verifies their signatures and package/version metadata, and creates checksums plus the updater manifest.
 
 Relevant workflow runs:
 
@@ -399,9 +394,9 @@ not grant rights to the MEIZZO name or branding beyond customary reference.
 
 <div align="center">
 
-**MEIZZO** · Android beta · iOS under development
+**MEIZZO** · Android Stable 2.5.0 · iOS under development
 
-[Download beta.5](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.5) ·
+[Stable release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0) ·
 [Documentation](docs/index.md) ·
 [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md) ·
