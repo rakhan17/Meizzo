@@ -39,6 +39,9 @@ class RtcMediaController(
     private var attachedTrackId: String? = null
     private var remoteAudioTrack: org.webrtc.AudioTrack? = null
     private var remoteAudioEnabled = true
+    private var localAudioSource: org.webrtc.AudioSource? = null
+    private var localAudioTrack: org.webrtc.AudioTrack? = null
+    private var localAudioEnabled = false
     var remoteWidth: Int = 0
         private set
     var remoteHeight: Int = 0
@@ -157,6 +160,57 @@ class RtcMediaController(
             override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create WebRTC offer")
         }, MediaConstraints())
     }
+
+    fun enableLocalMicrophone(): Boolean {
+        val connection = peer ?: return false
+        if (localAudioTrack != null) {
+            localAudioTrack?.setEnabled(true)
+            localAudioEnabled = true
+            return true
+        }
+        return try {
+            val source = factory.createAudioSource(MediaConstraints())
+            val track = factory.createAudioTrack("MEIZZO_CONTROLLER_MIC", source)
+            track.setEnabled(true)
+            val sender = connection.addTrack(track, listOf("MEIZZO_CONTROLLER_AUDIO"))
+            if (sender == null) {
+                track.dispose()
+                source.dispose()
+                return false
+            }
+            localAudioSource = source
+            localAudioTrack = track
+            localAudioEnabled = true
+            remoteDescriptionSet = false
+            connection.createOffer(object : SdpObserver {
+                override fun onCreateSuccess(description: SessionDescription?) {
+                    if (description == null) return onFailure("Unable to renegotiate voice audio")
+                    connection.setLocalDescription(object : SdpObserver {
+                        override fun onSetSuccess() {
+                            sendSignal(JSONObject().put("type", "offer").put("sdp", description.description))
+                        }
+                        override fun onSetFailure(error: String?) = onFailure(error ?: "Unable to set voice offer")
+                        override fun onCreateSuccess(description: SessionDescription?) = Unit
+                        override fun onCreateFailure(error: String?) = Unit
+                    }, description)
+                }
+                override fun onSetSuccess() = Unit
+                override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create voice offer")
+                override fun onSetFailure(error: String?) = Unit
+            }, MediaConstraints())
+            true
+        } catch (error: Exception) {
+            onFailure(error.message ?: "Unable to enable Controller microphone")
+            false
+        }
+    }
+
+    fun disableLocalMicrophone() {
+        localAudioTrack?.setEnabled(false)
+        localAudioEnabled = false
+    }
+
+    fun isLocalMicrophoneEnabled(): Boolean = localAudioEnabled
 
     fun toggleRemoteAudio(): Boolean {
         remoteAudioEnabled = !remoteAudioEnabled
@@ -317,6 +371,12 @@ class RtcMediaController(
         iceRestartInProgress = false
         remoteAudioTrack?.setEnabled(false)
         remoteAudioTrack = null
+        localAudioTrack?.setEnabled(false)
+        localAudioTrack?.dispose()
+        localAudioTrack = null
+        localAudioSource?.dispose()
+        localAudioSource = null
+        localAudioEnabled = false
         peer?.close()
         peer?.dispose()
         peer = null
