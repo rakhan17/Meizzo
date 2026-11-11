@@ -25,7 +25,7 @@ build does not prove runtime behavior on every Android vendor or network.
   - Camera2 capture after Android runtime CAMERA permission.
   - WebRTC video publishing and Controller preview.
 - Remote screen interaction:
-  - Tap and swipe gestures from the live video surface.
+  - Tap, swipe, long-press, and two-finger trackpad scrolling from the live video surface.
   - A separate approved interaction session is required.
   - Android AccessibilityService must be enabled manually by the device owner.
 - Remote lock screen:
