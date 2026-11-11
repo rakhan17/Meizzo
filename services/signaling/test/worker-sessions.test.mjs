@@ -43,6 +43,7 @@ async function run() {
     sessions: {}
   };
   let alarmAt = null;
+  const sockets = [client, controller];
   const ctx = {
     storage: {
       async get(key) { return key === 'state' ? stored : alarmAt; },
@@ -50,7 +51,7 @@ async function run() {
       async getAlarm() { return alarmAt; },
       async setAlarm(value) { alarmAt = value; }
     },
-    getWebSockets() { return [client, controller]; }
+    getWebSockets() { return sockets; }
   };
   const client = new FakeSocket({ role: 'client', clientId: 'client-1', connId: 'client-connection' });
   const controller = new FakeSocket({
@@ -129,6 +130,21 @@ async function run() {
   }));
   controller.take(m => m.type === 'session.status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'screen session ended');
   client.take(m => m.type === 'client.session_status' && m.sessionId === screenPending.sessionId && m.state === 'ended', 'Client screen session ended');
+
+  await start();
+  const beforeReconnect = controller.take(m => m.type === 'session.status' && m.state === 'pending', 'session pending before Client reconnect');
+  client.take(m => m.type === 'client.session_status' && m.sessionId === beforeReconnect.sessionId, 'Client consent before reconnect');
+  await approve(beforeReconnect.sessionId);
+  controller.take(m => m.type === 'session.status' && m.sessionId === beforeReconnect.sessionId && m.state === 'approved', 'session approved before Client reconnect');
+
+  const replacementClient = new FakeSocket({ role: 'guest', connId: 'replacement-client-connection' });
+  sockets.push(replacementClient);
+  await signaling.webSocketMessage(replacementClient, JSON.stringify({
+    type: 'auth.connect', role: 'client', clientId: 'client-1', authToken: 'client-token'
+  }));
+  controller.take(m => m.type === 'session.status' && m.sessionId === beforeReconnect.sessionId &&
+    m.state === 'failed' && m.terminationReason === 'client_reconnected', 'session cleanup on Client reconnect');
+  if (Object.keys(stored.sessions).length !== 0) throw new Error('Client reconnect left an orphaned session');
 
   console.log('worker-sessions.test: OK');
 }
