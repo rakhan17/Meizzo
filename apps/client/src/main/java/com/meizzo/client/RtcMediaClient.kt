@@ -8,6 +8,8 @@ import android.util.Log
 import org.json.JSONObject
 import org.json.JSONArray
 import org.webrtc.Camera2Enumerator
+import org.webrtc.AudioSource
+import org.webrtc.AudioTrack
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
 import org.webrtc.DataChannel
@@ -41,6 +43,8 @@ class RtcMediaClient(
     private var peer: PeerConnection? = null
     private var capturer: VideoCapturer? = null
     private var videoSource: VideoSource? = null
+    private var audioSource: AudioSource? = null
+    private var audioTrack: AudioTrack? = null
     private var textureHelper: SurfaceTextureHelper? = null
     private var sessionId: String = ""
     private var remoteDescriptionSet = false
@@ -75,7 +79,7 @@ class RtcMediaClient(
             .createPeerConnectionFactory()
     }
 
-    fun start(sessionId: String, kind: String, projectionData: Intent? = null) {
+    fun start(sessionId: String, kind: String, projectionData: Intent? = null, includeAudio: Boolean = false) {
         this.sessionId = sessionId
         val capture = when (kind) {
             "screen" -> {
@@ -128,6 +132,16 @@ class RtcMediaClient(
         if (videoSender == null) {
             onFailure("Unable to attach the video track to WebRTC")
             return
+        }
+        if (includeAudio) {
+            audioSource = factory.createAudioSource(MediaConstraints())
+            audioTrack = factory.createAudioTrack("MEIZZO_AUDIO_$sessionId", audioSource).apply {
+                setEnabled(true)
+            }
+            if (peer?.addTrack(audioTrack, listOf("MEIZZO_AUDIO_STREAM_$sessionId")) == null) {
+                onFailure("Unable to attach the microphone audio track to WebRTC")
+                return
+            }
         }
         startAdaptiveBitrate()
     }
@@ -288,6 +302,11 @@ class RtcMediaClient(
         capturer = null
         videoSource?.dispose()
         videoSource = null
+        audioTrack?.setEnabled(false)
+        audioTrack?.dispose()
+        audioTrack = null
+        audioSource?.dispose()
+        audioSource = null
         textureHelper?.dispose()
         textureHelper = null
         peer?.close()
