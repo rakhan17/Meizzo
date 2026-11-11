@@ -15,7 +15,7 @@ Keep that project on `main`. Do not change its branch or Wrangler config to v3.
 
 ## MEIZZO v3 deployment with Cloudflare Workers Builds
 
-The v3 branch uses a separate Worker named `meizzo-signaling-v3`. Deploy it using a **second Cloudflare Workers Builds project**, connected to the same GitHub repository but configured for branch `develop/v3`.
+The v3 branch uses a shared beta Worker named `meizzo-signaling-beta`. Deploy it using a **second Cloudflare Workers Builds project**, connected to the same GitHub repository but configured for branch `develop/v3`.
 
 One-time setup in Cloudflare Dashboard:
 
@@ -23,7 +23,7 @@ One-time setup in Cloudflare Dashboard:
 2. Choose **Create application → Workers → Connect to Git**.
 3. Select repository `rakhan17/Meizzo`.
 4. Set the production branch to `develop/v3`.
-5. Set the Worker name to `meizzo-signaling-v3` if Cloudflare asks for one. The authoritative name is already in `wrangler.v3.toml`.
+5. Set the Worker name to `meizzo-signaling-beta` if Cloudflare asks for one. The authoritative name is already in `wrangler.v3.toml`.
 6. Keep the repository root as the root directory.
 7. Leave the build command blank.
 8. Set the deploy command to:
@@ -39,7 +39,7 @@ After this one-time setup, pushes to `develop/v3` automatically build and deploy
 
 Expected v3 endpoint for the existing account subdomain:
 
-`wss://meizzo-signaling-v3.rakhanatanox.workers.dev`
+`wss://meizzo-signaling-beta.rakhanatanox.workers.dev`
 
 Treat that hostname as provisional until Cloudflare confirms the deployment URL in its dashboard. Verify `/healthz` and a WebSocket handshake before using it for real sessions or release builds.
 
@@ -49,9 +49,9 @@ The v3 Worker adds approved-session WebRTC signaling and short-lived TURN creden
 
 Open:
 
-`https://meizzo-signaling-v3.<your-subdomain>.workers.dev/healthz`
+`https://meizzo-signaling-beta.<your-subdomain>.workers.dev/healthz`
 
-Use the exact hostname Cloudflare assigns. The expected health response has `status: "ok"`, `service: "meizzo-signaling-v3"`, and `runtime: "cloudflare-workers"`.
+Use the exact hostname Cloudflare assigns. The expected health response has `status: "ok"`, `service: "meizzo-signaling-beta"`, and `runtime: "cloudflare-workers"`.
 
 ## Runtime behavior and limitations
 
