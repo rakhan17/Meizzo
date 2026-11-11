@@ -257,9 +257,6 @@ async function run() {
       approved: true
     }));
     await disconnectApproved;
-    const failedSession = nextMessage(controller, (message) =>
-      message.type === 'session.status' && message.sessionId === disconnectSession.sessionId &&
-      message.state === 'failed', 2000, 'session failed after Client disconnect');
     const clientDisconnectOfflinePromise = nextMessage(controller, (message) =>
       message.type === 'device.status' && message.clientId === 'client-a' && message.status === 'offline');
     const pendingSnapshotResult = nextMessage(controller, (message) =>
@@ -269,10 +266,7 @@ async function run() {
       clientId: 'client-a'
     }));
     clientAReconnect.close();
-    const failed = await failedSession;
-    if (failed.terminationReason !== 'client_disconnected') {
-      throw new Error('Client disconnect did not terminate its active session');
-    }
+    // Approved sessions remain stored while the Client is temporarily offline.
     await clientDisconnectOfflinePromise;
     const disconnectedSnapshot = await pendingSnapshotResult;
     if (!disconnectedSnapshot.error?.includes('Client disconnected')) {
@@ -352,9 +346,9 @@ async function run() {
     sockets.push(clientBReplacement);
     const clientBAuthenticated = nextMessage(clientBReplacement, (message) =>
       message.type === 'auth.connected' && message.clientId === 'client-b', 2000, 'Client B same-token reconnect');
-    const reconnectSessionFailed = nextMessage(replacementController, (message) =>
+    const reconnectSessionRestored = nextMessage(replacementController, (message) =>
       message.type === 'session.status' && message.sessionId === reconnectSession.sessionId &&
-      message.state === 'failed', 2000, 'approved session invalidated on Client reconnect');
+      message.state === 'approved', 2000, 'approved session restored on Client reconnect');
     clientBReplacement.send(JSON.stringify({
       type: 'auth.connect',
       role: 'client',
@@ -362,19 +356,19 @@ async function run() {
       authToken: pairedB.clientToken
     }));
     await clientBAuthenticated;
-    const failedOnReconnect = await reconnectSessionFailed;
-    if (failedOnReconnect.terminationReason !== 'client_reconnected') {
-      throw new Error('Client reconnect did not invalidate the approved session');
+    const restoredSession = await reconnectSessionRestored;
+    if (restoredSession.state !== 'approved') {
+      throw new Error('Approved session was not restored after Client reconnect');
     }
-    const commandDenied = nextMessage(replacementController, (message) =>
-      message.type === 'error' && message.code === 'session_required', 2000, 'command denied after Client reconnect');
+    const resumedCommand = nextMessage(clientBReplacement, (message) =>
+      message.type === 'client.command' && message.command === 'flashlight', 2000, 'command routed through restored session');
     replacementController.send(JSON.stringify({
       type: 'controller.command',
       clientId: 'client-b',
       command: 'flashlight',
       parameters: { enabled: true }
     }));
-    await commandDenied;
+    await resumedCommand;
 
     console.log('multi-device.test: OK');
   } finally {
