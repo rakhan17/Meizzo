@@ -298,6 +298,30 @@ export class MeizzoSignaling {
         this.sendController(session.controllerId, payload); this.sendClient(session.clientId, { ...payload, type: "client.session_status" });
         delete s.sessions[m.sessionId]; await this.save(s); return;
       }
+      case "media.signal": {
+        const session = s.sessions[m.sessionId];
+        if (!session || session.state !== "approved" || !["screen", "camera", "files"].includes(session.sessionType)) {
+          return this.sendError(ws, "session_required", "An approved screen, camera, or file session is required");
+        }
+        if (!m.signal || typeof m.signal !== "object" || Array.isArray(m.signal) || JSON.stringify(m.signal).length > 48000) {
+          return this.sendError(ws, "invalid_signal", "Invalid or oversized media signaling payload");
+        }
+        const payload = { type: "media.signal", sessionId: session.sessionId, fromRole: a.role, signal: m.signal };
+        if (a.role === "client" && a.clientId === session.clientId) {
+          for (const peer of this.ctx.getWebSockets()) {
+            const peerAuth = this.attachment(peer);
+            if (peerAuth.role === "controller" && peerAuth.controllerId === session.controllerId &&
+                (peerAuth.tokens || [peerAuth.token]).includes(session.controllerToken)) this.send(peer, payload);
+          }
+          return;
+        }
+        if (a.role === "controller" && a.controllerId === session.controllerId &&
+            (a.tokens || [a.token]).includes(session.controllerToken)) {
+          this.sendClient(session.clientId, payload);
+          return;
+        }
+        return this.sendError(ws, "unauthorized", "Not a participant in this media session");
+      }
       case "controller.request_snapshot":
       case "controller.command": {
         const d = this.authorizedDevice(s, a, m.clientId);
