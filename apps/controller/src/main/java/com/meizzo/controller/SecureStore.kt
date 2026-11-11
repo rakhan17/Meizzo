@@ -1,5 +1,6 @@
 package com.meizzo.controller
 
+import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -10,7 +11,8 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-class SecureStore(private val activity: MainActivity) {
+class SecureStore(private val context: Context) {
+    private val preferences = context.getSharedPreferences("MainActivity", Context.MODE_PRIVATE)
     private val keyAlias = "meizzo.controller.credentials"
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
@@ -18,7 +20,7 @@ class SecureStore(private val activity: MainActivity) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey())
         val encrypted = cipher.doFinal(value.toByteArray(StandardCharsets.UTF_8))
-        activity.getPreferences(0).edit()
+        preferences.edit()
             .putString("secure_$key", "${encode(cipher.iv)}:${encode(encrypted)}").apply()
     }
 
