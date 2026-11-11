@@ -61,12 +61,14 @@ clearly marked as prerelease software.
 
 #### Stable release
 
-<sub>**STABLE** · No stable Android version has been published yet.</sub>
+<sub>**STABLE CHANNEL** · `v0.1.0-beta.3` · Retained as the previous stable-channel build.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
-| **MEIZZO Client** | Device receiving assistance | ![Coming soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![Coming soon](https://img.shields.io/badge/COMING%20SOON-Not%20Released-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Device receiving assistance | [![Download Stable Client](https://img.shields.io/badge/DOWNLOAD-STABLE%20CLIENT-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Client-v0.1.0-beta.3.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Stable Controller](https://img.shields.io/badge/DOWNLOAD-STABLE%20CONTROLLER-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v0.1.0-beta.3/MEIZZO-Controller-v0.1.0-beta.3.apk) |
+
+[![View stable channel release](https://img.shields.io/badge/VIEW-STABLE%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v0.1.0-beta.3)
 
 #### Beta
 
