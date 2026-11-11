@@ -35,6 +35,10 @@ build does not prove runtime behavior on every Android vendor or network.
   - 50 MiB maximum file size; transfer resume is not implemented.
 - Android Keystore-backed AES-GCM credential storage, foreground connection
   services, reconnect backoff, and updater verification.
+- RustDesk upstream source pinned as a Git submodule at
+  `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`).
+  The source is available for integration work, but its engine is not yet
+  linked into the MEIZZO APKs.
 - Remote alarm playback uses a looping AudioTrack in the Client foreground
   service with a local notification stop action. Controller command feedback
   now waits for the Client result instead of claiming success on send. Runtime
