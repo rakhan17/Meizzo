@@ -479,6 +479,13 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
             card.addView(uiActionButton("Send emergency message", false) { composeEmergencyMessage(id) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Lock Client screen", false) {
+                sendInteractionAction(id, "lock_screen", JSONObject())
+            }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Tap screen by coordinates", false) { showTapDialog(id) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
+            card.addView(uiActionButton("Swipe screen by coordinates", false) { showSwipeDialog(id) },
+                LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         }
         devicesLayout.addView(card, LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 12, 0, 0) })
     }
@@ -668,6 +675,89 @@ class MainActivity : Activity() {
             put("parameters", JSONObject().put("enabled", enabled))
         }.toString())
         setConnection("Command sent · $command ${if (enabled) "on" else "off"}", true)
+    }
+
+    private fun coordinateField(label: String): EditText = EditText(this).apply {
+        hint = label
+        inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        singleLine = true
+        setTextColor(Color.WHITE)
+        setHintTextColor(Color.GRAY)
+    }
+
+    private fun showTapDialog(clientId: String) {
+        val x = coordinateField("X position (0.0 to 1.0)")
+        val y = coordinateField("Y position (0.0 to 1.0)")
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(x)
+            addView(y)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Tap Client screen")
+            .setMessage("Coordinates are normalized: (0,0) is top-left and (1,1) is bottom-right.")
+            .setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Send tap") { _, _ ->
+                val nx = x.text.toString().toDoubleOrNull()
+                val ny = y.text.toString().toDoubleOrNull()
+                if (nx == null || ny == null || nx !in 0.0..1.0 || ny !in 0.0..1.0) {
+                    setConnection("Enter valid X and Y values from 0 to 1", false)
+                } else {
+                    sendInteractionAction(clientId, "tap", JSONObject().put("x", nx).put("y", ny))
+                }
+            }
+            .show()
+    }
+
+    private fun showSwipeDialog(clientId: String) {
+        val startX = coordinateField("Start X (0.0 to 1.0)")
+        val startY = coordinateField("Start Y (0.0 to 1.0)")
+        val endX = coordinateField("End X (0.0 to 1.0)")
+        val endY = coordinateField("End Y (0.0 to 1.0)")
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+            addView(startX)
+            addView(startY)
+            addView(endX)
+            addView(endY)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Swipe Client screen")
+            .setMessage("Coordinates are normalized from 0 to 1 across the Client display.")
+            .setView(fields)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Send swipe") { _, _ ->
+                val values = listOf(startX, startY, endX, endY).map { it.text.toString().toDoubleOrNull() }
+                if (values.any { it == null || it !in 0.0..1.0 }) {
+                    setConnection("Enter four valid coordinate values from 0 to 1", false)
+                } else {
+                    sendInteractionAction(clientId, "swipe", JSONObject().apply {
+                        put("startX", values[0])
+                        put("startY", values[1])
+                        put("endX", values[2])
+                        put("endY", values[3])
+                        put("durationMs", 350)
+                    })
+                }
+            }
+            .show()
+    }
+
+    private fun sendInteractionAction(clientId: String, command: String, parameters: JSONObject) {
+        if (approvedInteractionSessions[clientId].isNullOrBlank()) {
+            setConnection("Request Client approval before sending controls", false)
+            return
+        }
+        socket?.send(JSONObject().apply {
+            put("type", "controller.command")
+            put("clientId", clientId)
+            put("command", command)
+            put("parameters", parameters)
+        }.toString())
+        setConnection("Remote action sent · $command", true)
     }
 
     private fun sendSnapshot(clientId: String) {
