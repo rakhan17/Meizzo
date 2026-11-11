@@ -171,6 +171,12 @@ class MainActivity : Activity() {
         content.addView(uiActionButton("Enable remote interaction", false) {
             startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) })
+        content.addView(uiActionButton("Stop alarm on this device", false) {
+            startForegroundService(
+                Intent(this, ConnectionForegroundService::class.java)
+                    .setAction(ConnectionForegroundService.ACTION_ALARM_OFF)
+            )
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         content.addView(uiActionButton(
             if (preferences.getBoolean("find_my_location_enabled", false)) "Disable Find My location" else "Enable Find My location",
             false
