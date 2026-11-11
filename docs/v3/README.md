@@ -29,21 +29,25 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | File transfer | Android bidirectional prototype implemented over an ordered WebRTC DataChannel with per-chunk acknowledgements, 12 KiB chunks, final SHA-256 verification, a 50 MiB limit, and Storage Access Framework destination consent. Needs interrupted-transfer, large-file, and cross-network testing. |
 | RustDesk engine | Upstream source is pinned at `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`) and verified in CI. Native Rust engine, Flutter bridge, and RustDesk server are not yet integrated into MEIZZO runtime. |
 
+## Cloudflare v3 deployment
+
+The stable Cloudflare Workers Builds project remains connected to `main` and deploys `wrangler.toml` as `meizzo-signaling`.
+
+The v3 branch uses an isolated Worker configuration, `wrangler.v3.toml`, with its own Durable Object namespace. Create a **second Cloudflare Workers Builds project** for the same GitHub repository, set its production branch to `develop/v3`, leave the build command blank, and use this deploy command:
+
+```bash
+npx wrangler deploy --config wrangler.v3.toml
+```
+
+Use Cloudflare Workers Builds' automatically generated API token. No Cloudflare API token or account ID GitHub Actions secrets are required. After the one-time setup, pushes to `develop/v3` deploy the isolated Worker automatically. Follow the full [Cloudflare deployment instructions](../../services/signaling/README.md#meizzo-v3-deployment-with-cloudflare-workers-builds).
+
+The expected hostname is `meizzo-signaling-v3.rakhanatanox.workers.dev`, but Cloudflare's dashboard is authoritative. Confirm the actual deployment URL and health endpoint before treating the Worker as live. Configure Cloudflare Realtime TURN secrets on the v3 Worker separately if relay is enabled.
+
 ## Upstream engine integration
 
-RustDesk is now tracked as a pinned source submodule. This is source acquisition
-and provenance, not feature integration. RustDesk's Android app uses Flutter,
-a Rust `cdylib` built for Android ABIs, generated Flutter-Rust bridge code,
-Android native services, and its own rendezvous/relay protocol. MEIZZO currently
-uses native Kotlin apps and a Cloudflare Worker/Durable Object for control
-signaling. These paths must be deliberately integrated rather than assumed to
-be drop-in replacements.
+RustDesk is now tracked as a pinned source submodule. This is source acquisition and provenance, not feature integration. RustDesk's Android app uses Flutter, a Rust `cdylib` built for Android ABIs, generated Flutter-Rust bridge code, Android native services, and its own rendezvous/relay protocol. MEIZZO currently uses native Kotlin apps and a Cloudflare Worker/Durable Object for control signaling. These paths must be deliberately integrated rather than assumed to be drop-in replacements.
 
-Cloudflare Workers continue to host MEIZZO pairing and control signaling.
-They cannot host RustDesk's `hbbs`/`hbbr` server processes; adopting RustDesk's
-native network protocol requires a separately hosted rendezvous/relay service.
-The migration and deployment plan is documented in
-[upstream and license notes](UPSTREAM_AND_LICENSES.md).
+Cloudflare Workers continue to host MEIZZO pairing and control signaling. They cannot host RustDesk's `hbbs`/`hbbr` server processes; adopting RustDesk's native network protocol requires a separately hosted rendezvous/relay service. The migration and deployment plan is documented in [upstream and license notes](UPSTREAM_AND_LICENSES.md).
 
 ## Session and signaling foundation
 
