@@ -61,7 +61,7 @@ async function pair(client, controller, code, clientId) {
 async function run() {
   const server = spawn(process.execPath, ['src/server.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: '8101', HEARTBEAT_TIMEOUT_MS: '500' },
+    env: { ...process.env, PORT: '8101', HEARTBEAT_TIMEOUT_MS: '500', PRUNE_INTERVAL_MS: '50' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   const sockets = [];

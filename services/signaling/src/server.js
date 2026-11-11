@@ -711,7 +711,8 @@ const healthServer = http.createServer((req, res) => {
 });
 healthServer.listen(PORT, '0.0.0.0');
 const wss = new WebSocketServer({ server: healthServer, maxPayload: 64 * 1024 });
-setInterval(prune, 15 * 1000).unref();
+const PRUNE_INTERVAL_MS = Math.max(25, Number(process.env.PRUNE_INTERVAL_MS || 15_000));
+setInterval(prune, PRUNE_INTERVAL_MS).unref();
 
 wss.on('connection', (ws) => {
   ws.on('message', (payload) => routeMessage(ws, payload));
