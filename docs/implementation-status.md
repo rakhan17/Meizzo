@@ -35,6 +35,11 @@ build does not prove runtime behavior on every Android vendor or network.
   - 50 MiB maximum file size; transfer resume is not implemented.
 - Android Keystore-backed AES-GCM credential storage, foreground connection
   services, reconnect backoff, and updater verification.
+- Remote alarm playback uses a looping AudioTrack in the Client foreground
+  service with a local notification stop action. Controller command feedback
+  now waits for the Client result instead of claiming success on send. Runtime
+  audio, OEM background, and acknowledgement behavior still require device
+  acceptance.
 
 ## Signaling and media architecture
 
@@ -104,12 +109,14 @@ Before calling a capability production-ready, record:
 3. Client and Controller installation result.
 4. Pairing and explicit approval result.
 5. Screen/camera stream start, quality, latency, and stop behavior.
-6. Tap, swipe, lock, and Accessibility permission-denial behavior.
-7. File transfer in both directions, including cancellation and interrupted
+6. Remote alarm: verify continuous playback beyond 30 seconds, immediate remote
+   OFF, local notification Stop alarm, background playback, and volume behavior.
+7. Tap, swipe, lock, and Accessibility permission-denial behavior.
+8. File transfer in both directions, including cancellation and interrupted
    transfers.
-8. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
-9. Multi-device isolation, revocation, and session cleanup.
-10. Sanitized logs without tokens, codes, passwords, or private data.
+9. Direct and relayed network behavior, Wi-Fi/mobile handover, and reconnect.
+10. Multi-device isolation, revocation, and session cleanup.
+11. Sanitized logs without tokens, codes, passwords, or private data.
 
 See [v3 implementation notes](v3/README.md),
 [upstream/license notes](v3/UPSTREAM_AND_LICENSES.md), and
