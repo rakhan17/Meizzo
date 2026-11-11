@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
     private var socket: WebSocket? = null
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
+    private var shouldMaintainConnection = true
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private val devices = linkedMapOf<String, JSONObject>()
     private val approvedInteractionSessions = mutableMapOf<String, String>()
@@ -254,6 +255,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (socket === webSocket && shouldMaintainConnection) {
+                        setConnection("Connection closed · reconnecting", false)
+                        scheduleReconnect()
+                    }
+                }
+
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     runOnUiThread {
                         approvedInteractionSessions.clear()
@@ -261,7 +269,7 @@ class MainActivity : ComponentActivity() {
                         renderDevices()
                     }
                     setConnection(connectionFailureLabel(t), false)
-                    scheduleReconnect()
+                    if (socket === webSocket && shouldMaintainConnection) scheduleReconnect()
                 }
             })
     }
@@ -286,10 +294,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleReconnect() {
-        if (reconnectScheduled) return
+        if (!shouldMaintainConnection || reconnectScheduled) return
         reconnectScheduled = true
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
-        reconnectHandler.postDelayed({ connect() }, (1L shl reconnectAttempt) * 1000L)
+        reconnectHandler.postDelayed({
+            reconnectScheduled = false
+            if (shouldMaintainConnection) connect()
+        }, (1L shl reconnectAttempt) * 1000L)
     }
 
     private fun authenticateExisting(webSocket: WebSocket) {
