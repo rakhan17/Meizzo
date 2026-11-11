@@ -107,8 +107,10 @@ function prune() {
       device.lastSeen = now;
       logEvent('presence.offline', { clientId });
       broadcastDeviceStatus(clientId);
+      // Approved sessions are durable permissions, not socket leases. Keep them
+      // until an explicit end/revoke; a reconnect reattaches the live sockets.
       for (const [sessionId, session] of sessions) {
-        if (session.clientId !== clientId || !['pending', 'approved'].includes(session.state)) continue;
+        if (session.clientId !== clientId || session.state !== 'pending') continue;
         session.state = 'failed';
         session.endedAtMs = now;
         session.terminationReason = 'client_heartbeat_timeout';
@@ -215,6 +217,12 @@ function authenticate(ws, message) {
     ws.authenticatedControllerTokens = ws.authenticatedControllerTokens || new Set();
     ws.authenticatedControllerTokens.add(message.authToken);
     ws.auth = { role: 'controller', controllerId: session.controllerId };
+    for (const active of sessions.values()) {
+      if (active.controllerId === session.controllerId && active.state === 'approved') {
+        active.controllerConnection = ws;
+        notifySession(active);
+      }
+    }
     for (const device of pairedDevices.values()) {
       if (device.controllerTokens.has(message.authToken)) device.controllerConnections.add(ws);
     }
@@ -234,6 +242,12 @@ function authenticate(ws, message) {
     device.lastSeen = nowMs();
     device.status = 'online';
     ws.auth = { role: 'client', clientId: message.clientId };
+    for (const session of sessions.values()) {
+      if (session.clientId === message.clientId && session.state === 'approved') {
+        session.clientConnection = ws;
+        notifySession(session);
+      }
+    }
     broadcastDeviceStatus(device.clientId);
     logEvent('presence.heartbeat', { clientId: device.clientId });
     return device;
