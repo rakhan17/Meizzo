@@ -59,6 +59,11 @@ class MainActivity : Activity() {
     private val cameraPermissionRequestCode = 4102
     private val mediaCameraPermissionRequestCode = 4107
     private val screenCaptureRequestCode = 4106
+    private val filePickRequestCode = 4108
+    private val fileSaveRequestCode = 4109
+    private var pendingIncomingFileName: String? = null
+    private var pendingIncomingFileMime: String = "application/octet-stream"
+    private var fileTransferCoordinator: FileTransferCoordinator? = null
     private var pendingMediaSessionId: String? = null
     private var pendingMediaKind: String? = null
     private var activeMediaSessionId: String? = null
@@ -131,6 +136,19 @@ class MainActivity : Activity() {
         content.addView(connectionCard, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(12)
         })
+        content.addView(uiActionButton("Send file to Controller", false) {
+            if (fileTransferCoordinator == null) {
+                status.text = "Request and approve a file-transfer session first"
+            } else {
+                startActivityForResult(
+                    android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                        type = "*/*"
+                    },
+                    filePickRequestCode
+                )
+            }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) })
         content.addView(uiActionButton("Enable remote interaction", false) {
             startActivity(android.content.Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(12) })
@@ -308,8 +326,9 @@ class MainActivity : Activity() {
                                 }
                                 "approved" -> runOnUiThread {
                                     status.text = "$sessionType session approved"
-                                    if (sessionType == "screen" || sessionType == "camera") {
-                                        beginMediaSession(sessionId, sessionType)
+                                    when (sessionType) {
+                                        "screen", "camera" -> beginMediaSession(sessionId, sessionType)
+                                        "files" -> beginFileTransferSession(sessionId)
                                     }
                                 }
                                 "rejected", "failed", "ended" -> runOnUiThread {
@@ -438,6 +457,62 @@ class MainActivity : Activity() {
         }.toString())
     }
 
+    private fun beginFileTransferSession(sessionId: String) {
+        stopMediaPublisher()
+        activeMediaSessionId = sessionId
+        rtcMediaClient = RtcMediaClient(
+            this,
+            { signal ->
+                socket?.send(JSONObject().apply {
+                    put("type", "media.signal")
+                    put("sessionId", sessionId)
+                    put("signal", signal)
+                }.toString())
+            },
+            { reason ->
+                runOnUiThread {
+                    status.text = "File-transfer session error · $reason"
+                    terminateMediaSession(sessionId, "media_error")
+                    stopMediaPublisher()
+                }
+            },
+            onDataChannel = { channel ->
+                runOnUiThread {
+                    fileTransferCoordinator?.close()
+                    fileTransferCoordinator = FileTransferCoordinator(
+                        this,
+                        channel,
+                        { name, size, mime ->
+                            runOnUiThread {
+                                pendingIncomingFileName = name
+                                pendingIncomingFileMime = mime
+                                AlertDialog.Builder(this)
+                                    .setTitle("Receive file?")
+                                    .setMessage("$name · ${size / 1024} KB\nSave this file to this device?")
+                                    .setNegativeButton("Decline") { _, _ -> fileTransferCoordinator?.rejectIncoming() }
+                                    .setPositiveButton("Choose destination") { _, _ ->
+                                        startActivityForResult(
+                                            android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+                                                addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                                                type = pendingIncomingFileMime
+                                                putExtra(android.content.Intent.EXTRA_TITLE, pendingIncomingFileName)
+                                            },
+                                            fileSaveRequestCode
+                                        )
+                                    }
+                                    .show()
+                            }
+                        },
+                        { message -> runOnUiThread { status.text = message } }
+                    )
+                }
+            }
+        )
+        rtcMediaClient?.startFiles(sessionId)
+        flushPendingMediaSignals(sessionId)
+        status.text = "Secure file-transfer session · waiting for Controller"
+    }
+
     private fun beginMediaSession(sessionId: String, kind: String) {
         pendingMediaSessionId = sessionId
         pendingMediaKind = kind
@@ -503,6 +578,8 @@ class MainActivity : Activity() {
 
     private fun stopMediaPublisher() {
         pendingMediaSignals.clear()
+        fileTransferCoordinator?.close()
+        fileTransferCoordinator = null
         rtcMediaClient?.close()
         rtcMediaClient = null
         activeMediaSessionId = null
@@ -514,16 +591,43 @@ class MainActivity : Activity() {
     @Deprecated("Deprecated in Android API")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != screenCaptureRequestCode) return
-        val sessionId = pendingMediaSessionId
-        val kind = pendingMediaKind
-        if (resultCode == RESULT_OK && data != null && sessionId != null && kind == "screen") {
-            startMediaPublisher(sessionId, "screen", data)
-        } else {
-            status.text = "Screen sharing was not allowed"
-            if (sessionId != null) terminateMediaSession(sessionId, "screen_capture_consent_denied")
-            pendingMediaSessionId = null
-            pendingMediaKind = null
+        when (requestCode) {
+            screenCaptureRequestCode -> {
+                val sessionId = pendingMediaSessionId
+                val kind = pendingMediaKind
+                if (resultCode == RESULT_OK && data != null && sessionId != null && kind == "screen") {
+                    startMediaPublisher(sessionId, "screen", data)
+                } else {
+                    status.text = "Screen sharing was not allowed"
+                    if (sessionId != null) terminateMediaSession(sessionId, "screen_capture_consent_denied")
+                    pendingMediaSessionId = null
+                    pendingMediaKind = null
+                }
+            }
+            filePickRequestCode -> {
+                if (resultCode == RESULT_OK && data?.data != null) {
+                    try {
+                        fileTransferCoordinator?.sendFile(data.data!!)
+                    } catch (error: Exception) {
+                        status.text = "Could not send file · ${error.message ?: "storage error"}"
+                    }
+                }
+            }
+            fileSaveRequestCode -> {
+                val destination = data?.data
+                if (resultCode == RESULT_OK && destination != null) {
+                    try {
+                        fileTransferCoordinator?.acceptIncoming(destination)
+                    } catch (error: Exception) {
+                        fileTransferCoordinator?.rejectIncoming()
+                        status.text = "Could not save file · ${error.message ?: "storage error"}"
+                    }
+                } else {
+                    fileTransferCoordinator?.rejectIncoming()
+                }
+                pendingIncomingFileName = null
+                pendingIncomingFileMime = "application/octet-stream"
+            }
         }
     }
 
