@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import org.json.JSONObject
+import org.json.JSONArray
 import org.webrtc.Camera2Enumerator
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -29,7 +30,8 @@ class RtcMediaClient(
     private val context: Context,
     private val sendSignal: (JSONObject) -> Unit,
     private val onFailure: (String) -> Unit,
-    private val onDataChannel: (DataChannel) -> Unit = {}
+    private val onDataChannel: (DataChannel) -> Unit = {},
+    private val iceServersJson: JSONArray? = null
 ) {
     private val egl = EglBase.create()
     private val factory: PeerConnectionFactory
@@ -118,7 +120,7 @@ class RtcMediaClient(
     private fun createPeerConnection(): Boolean {
         if (peer != null) return true
         val configuration = PeerConnection.RTCConfiguration(
-            listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
+            createIceServers()
         ).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
@@ -217,6 +219,41 @@ class RtcMediaClient(
         val names = enumerator.deviceNames
         val preferred = names.firstOrNull { enumerator.isBackFacing(it) } ?: names.firstOrNull()
         return preferred?.let { enumerator.createCapturer(it, null) }
+    }
+
+    private fun createIceServers(): List<PeerConnection.IceServer> {
+        val result = mutableListOf<PeerConnection.IceServer>()
+        val source = iceServersJson
+        if (source != null) {
+            for (index in 0 until source.length()) {
+                val item = source.optJSONObject(index) ?: continue
+                val urls = item.optJSONArray("urls")
+                val username = item.optString("username")
+                val credential = item.optString("credential")
+                if (urls != null) {
+                    for (urlIndex in 0 until urls.length()) {
+                        val url = urls.optString(urlIndex)
+                        if (url.isBlank()) continue
+                        val builder = PeerConnection.IceServer.builder(url)
+                        if (username.isNotBlank()) builder.setUsername(username)
+                        if (credential.isNotBlank()) builder.setPassword(credential)
+                        result.add(builder.createIceServer())
+                    }
+                } else {
+                    val url = item.optString("urls")
+                    if (url.isNotBlank()) {
+                        val builder = PeerConnection.IceServer.builder(url)
+                        if (username.isNotBlank()) builder.setUsername(username)
+                        if (credential.isNotBlank()) builder.setPassword(credential)
+                        result.add(builder.createIceServer())
+                    }
+                }
+            }
+        }
+        if (result.isEmpty()) {
+            result.add(PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer())
+        }
+        return result
     }
 
     private open class SimpleSdpObserver : SdpObserver {
