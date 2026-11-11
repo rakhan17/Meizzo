@@ -9,6 +9,8 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.widget.Button
+import android.widget.FrameLayout
+import org.webrtc.SurfaceViewRenderer
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -44,6 +46,10 @@ class MainActivity : Activity() {
     private val devices = linkedMapOf<String, JSONObject>()
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
+    private val pendingMediaRequests = mutableSetOf<String>()
+    private val activeMediaSessions = mutableMapOf<String, String>()
+    private val mediaViewers = mutableMapOf<String, RtcMediaController>()
+    private val mediaDialogs = mutableMapOf<String, AlertDialog>()
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
@@ -283,6 +289,7 @@ class MainActivity : Activity() {
                             renderDevices()
                         }
                         "session.status" -> handleSessionStatus(message)
+                        "media.signal" -> handleMediaSignal(message)
                         "device.result" -> {
                             val id = message.optString("clientId")
                             val error = message.optString("error")
@@ -453,6 +460,22 @@ class MainActivity : Activity() {
             card.addView(uiActionButton("Open last known location", false) { openLastKnownLocation(location) },
                 LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
         }
+        card.addView(uiActionButton(
+            when {
+                activeMediaSessions.values.contains(id) -> "Media session active"
+                pendingMediaRequests.contains(id) -> "Waiting for media approval"
+                else -> "Request live screen"
+            },
+            online && !pendingMediaRequests.contains(id) && !activeMediaSessions.values.contains(id)
+        ) {
+            if (online && !pendingMediaRequests.contains(id) && !activeMediaSessions.values.contains(id)) {
+                requestMediaSession(id, "screen")
+            }
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(8) })
+        card.addView(uiActionButton("Request remote camera", false) {
+            if (online) requestMediaSession(id, "camera")
+            else setConnection("Client is offline", false)
+        }, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(6) })
         val interactionSession = approvedInteractionSessions[id]
         val pendingInteraction = pendingInteractionSessions[id]
         card.addView(uiActionButton(
@@ -589,26 +612,133 @@ class MainActivity : Activity() {
     private fun handleSessionStatus(message: JSONObject) = runOnUiThread {
         val clientId = message.optString("clientId")
         val sessionId = message.optString("sessionId")
-        if (clientId.isBlank() || sessionId.isBlank() ||
-            message.optString("sessionType") != "interaction") return@runOnUiThread
-        when (message.optString("state")) {
-            "pending" -> {
-                pendingInteractionSessions[clientId] = sessionId
-                setConnection("Waiting for Client approval", false)
-            }
-            "approved" -> {
-                pendingInteractionSessions.remove(clientId, sessionId)
-                approvedInteractionSessions[clientId] = sessionId
-                setConnection("Interaction approved · controls unlocked", true)
-            }
-            "failed", "rejected", "ended" -> {
-                pendingInteractionSessions.remove(clientId, sessionId)
-                if (approvedInteractionSessions[clientId] == sessionId) {
-                    approvedInteractionSessions.remove(clientId)
+        val sessionType = message.optString("sessionType")
+        val state = message.optString("state")
+        if (clientId.isBlank() || sessionId.isBlank()) return@runOnUiThread
+        when (sessionType) {
+            "interaction" -> when (state) {
+                "pending" -> {
+                    pendingInteractionSessions[clientId] = sessionId
+                    setConnection("Waiting for Client approval", false)
                 }
-                setConnection("Interaction session ${message.optString("state")}", false)
+                "approved" -> {
+                    pendingInteractionSessions.remove(clientId, sessionId)
+                    approvedInteractionSessions[clientId] = sessionId
+                    setConnection("Interaction approved · controls unlocked", true)
+                }
+                "failed", "rejected", "ended" -> {
+                    pendingInteractionSessions.remove(clientId, sessionId)
+                    if (approvedInteractionSessions[clientId] == sessionId) {
+                        approvedInteractionSessions.remove(clientId)
+                    }
+                    setConnection("Interaction session $state", false)
+                }
+            }
+            "screen", "camera" -> when (state) {
+                "pending" -> {
+                    pendingMediaRequests.add(clientId)
+                    setConnection("Waiting for Client $sessionType approval", false)
+                }
+                "approved" -> {
+                    pendingMediaRequests.remove(clientId)
+                    activeMediaSessions[sessionId] = clientId
+                    openMediaViewer(clientId, sessionId, sessionType)
+                }
+                "failed", "rejected", "ended" -> {
+                    pendingMediaRequests.remove(clientId)
+                    activeMediaSessions.remove(sessionId)
+                    closeMediaViewer(sessionId)
+                    setConnection("$sessionType session $state", false)
+                }
             }
         }
+        renderDevices()
+    }
+
+    private fun requestMediaSession(clientId: String, kind: String) {
+        if (pendingMediaRequests.contains(clientId) || activeMediaSessions.values.contains(clientId)) {
+            setConnection("A media session is already pending or active for this Client", false)
+            return
+        }
+        pendingMediaRequests.add(clientId)
+        socket?.send(JSONObject().apply {
+            put("type", "controller.start_session")
+            put("clientId", clientId)
+            put("sessionType", kind)
+        }.toString())
+        setConnection("Requesting $kind stream · waiting for Client approval", false)
+        renderDevices()
+    }
+
+    private fun openMediaViewer(clientId: String, sessionId: String, kind: String) {
+        closeMediaViewer(sessionId)
+        val video = SurfaceViewRenderer(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(Color.rgb(8, 8, 10))
+            addView(TextView(this@MainActivity).apply {
+                text = "LIVE $kind · $clientId"
+                textSize = 12f
+                setTextColor(Color.LTGRAY)
+                gravity = Gravity.CENTER
+                setPadding(0, 0, 0, dp(8))
+            })
+            addView(video, LinearLayout.LayoutParams(-1, 0, 1f))
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (kind == "screen") "Live screen" else "Remote camera")
+            .setView(root)
+            .setNegativeButton("End session") { _, _ -> endMediaSession(clientId, sessionId) }
+            .create()
+        mediaDialogs[sessionId] = dialog
+        val viewer = RtcMediaController(
+            this,
+            { signal ->
+                socket?.send(JSONObject().apply {
+                    put("type", "media.signal")
+                    put("sessionId", sessionId)
+                    put("signal", signal)
+                }.toString())
+            },
+            { reason ->
+                runOnUiThread { setConnection("Media stream error · $reason", false) }
+            }
+        )
+        mediaViewers[sessionId] = viewer
+        dialog.setOnDismissListener {
+            mediaDialogs.remove(sessionId)
+            mediaViewers.remove(sessionId)?.close()
+            if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
+        }
+        dialog.show()
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.94).toInt(),
+            (resources.displayMetrics.heightPixels * 0.82).toInt()
+        )
+        viewer.start(video)
+    }
+
+    private fun handleMediaSignal(message: JSONObject) {
+        val sessionId = message.optString("sessionId")
+        val signal = message.optJSONObject("signal") ?: return
+        mediaViewers[sessionId]?.onSignal(signal)
+    }
+
+    private fun closeMediaViewer(sessionId: String) {
+        mediaDialogs.remove(sessionId)?.dismiss()
+        mediaViewers.remove(sessionId)?.close()
+    }
+
+    private fun endMediaSession(clientId: String, sessionId: String) {
+        activeMediaSessions.remove(sessionId)
+        closeMediaViewer(sessionId)
+        socket?.send(JSONObject().apply {
+            put("type", "controller.end_session")
+            put("sessionId", sessionId)
+            put("reason", "controller_ended")
+        }.toString())
+        setConnection("Media session ended", false)
         renderDevices()
     }
 
@@ -762,6 +892,16 @@ class MainActivity : Activity() {
 
     private fun sendSnapshot(clientId: String) {
         socket?.send(JSONObject().apply { put("type", "controller.request_snapshot"); put("clientId", clientId) }.toString())
+    }
+
+    override fun onDestroy() {
+        mediaDialogs.values.toList().forEach { it.dismiss() }
+        mediaViewers.values.toList().forEach { it.close() }
+        mediaDialogs.clear()
+        mediaViewers.clear()
+        reconnectHandler.removeCallbacksAndMessages(null)
+        socket?.close(1000, "Controller activity destroyed")
+        super.onDestroy()
     }
 
     private fun formatUpdateSize(bytes: Long): String = when {
