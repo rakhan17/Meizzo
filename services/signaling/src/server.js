@@ -507,6 +507,15 @@ function onClientSessionDecision(ws, message) {
   session.state = message.approved ? 'approved' : 'rejected';
   session.endedAtMs = message.approved ? undefined : nowMs();
   session.terminationReason = message.approved ? undefined : 'client_rejected';
+  if (message.approved && ['screen', 'camera', 'files'].includes(session.sessionType)) {
+    const icePayload = {
+      type: 'media.ice_servers',
+      sessionId: session.sessionId,
+      iceServers: [{ urls: ['stun:stun.cloudflare.com:3478'] }]
+    };
+    sendJson(session.controllerConnection, icePayload);
+    sendJson(session.clientConnection, icePayload);
+  }
   notifySession(session);
   if (!message.approved) sessions.delete(session.sessionId);
 }
