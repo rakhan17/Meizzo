@@ -1,6 +1,6 @@
 name: Deploy MEIZZO Cloudflare Worker
 
-on:
+"on":
   workflow_dispatch:
 
 permissions:
