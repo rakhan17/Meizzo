@@ -389,7 +389,7 @@ See [development setup](docs/development.md) for complete instructions.
 - [x] Signed Android beta release pipeline and in-app update verification
 - [ ] Full Android physical-device and multi-instance runtime acceptance
 - [ ] Durable token hardening, rotation, audit events, and independent security review
-- [ ] TURN relay deployment, bitrate adaptation, and network recovery
+- [ ] Configure Cloudflare Realtime TURN secrets and validate relay fallback, bitrate adaptation, and ICE recovery across physical networks
 - [ ] Physical-device testing across Android OEMs and mobile networks
 - [ ] Resumable and optimized file transfer
 - [ ] iOS media hosting and remote interaction
