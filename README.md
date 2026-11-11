@@ -122,7 +122,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 - Remote media volume up/down/mute/unmute controls during an approved interaction session.
 - Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
 - Save a screenshot from the active remote live-screen viewer to the Controller device.
-- Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, sequence and size validation, SHA-256 verification, and a 50 MiB transfer limit.
+- Bidirectional file-transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, bounded chunk retries, sequence and size validation, SHA-256 verification, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
 - Release metadata, SHA-256 verification, package checks, signing-certificate
