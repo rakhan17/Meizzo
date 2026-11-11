@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
       - name: Verify pinned RustDesk source and license
         run: |
           expected="95cca3f661f635b3cc85c04935fe8d96d8f432ef"
