@@ -210,7 +210,7 @@ class RtcMediaController(
 
     fun startFiles() {
         val configuration = PeerConnection.RTCConfiguration(
-            listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
+            createIceServers()
         ).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
@@ -218,7 +218,23 @@ class RtcMediaController(
         peer = factory.createPeerConnection(configuration, object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) = Unit
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                if (state == PeerConnection.IceConnectionState.FAILED) onFailure("WebRTC data connection failed")
+                when (state) {
+                    PeerConnection.IceConnectionState.CONNECTED,
+                    PeerConnection.IceConnectionState.COMPLETED -> recoveryHandler.post {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        iceRestartAttempts = 0
+                        iceRestartInProgress = false
+                    }
+                    PeerConnection.IceConnectionState.DISCONNECTED -> {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        recoveryHandler.postDelayed(iceRestartTask, 2_500)
+                    }
+                    PeerConnection.IceConnectionState.FAILED -> {
+                        recoveryHandler.removeCallbacks(iceRestartTask)
+                        recoveryHandler.post(iceRestartTask)
+                    }
+                    else -> Unit
+                }
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) = Unit
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) = Unit
