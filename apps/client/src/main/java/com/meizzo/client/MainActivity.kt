@@ -688,6 +688,10 @@ class MainActivity : Activity() {
 
     private fun stopActiveOutputs() {
         stopMediaPublisher()
+        stopPeripheralOutputs()
+    }
+
+    private fun stopPeripheralOutputs() {
         alarm?.stopTone()
         alarm?.release()
         alarm = null
