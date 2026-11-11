@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to build (for example v0.1.0-beta.4)"
+        description: "Release tag to build (for example v2.5.0)"
         required: true
         type: string
-        default: "v0.1.0-beta.4"
+        default: "v2.5.0"
       publish_release:
         description: "Publish a GitHub Release after all validation gates pass"
         required: true
