@@ -710,8 +710,17 @@ class MainActivity : Activity() {
                     try {
                         val readPermission = ((data?.flags ?: 0) and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         if (readPermission != 0) contentResolver.takePersistableUriPermission(treeUri, readPermission)
-                        getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
-                            .edit().putString("tree_uri", treeUri.toString()).apply()
+                        val fileAccessPreferences = getSharedPreferences("meizzo_remote_file_access", MODE_PRIVATE)
+                        val previousTree = fileAccessPreferences.getString("tree_uri", null)
+                        if (!previousTree.isNullOrBlank() && previousTree != treeUri.toString()) {
+                            try {
+                                contentResolver.releasePersistableUriPermission(
+                                    android.net.Uri.parse(previousTree),
+                                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                )
+                            } catch (_: Exception) { }
+                        }
+                        fileAccessPreferences.edit().putString("tree_uri", treeUri.toString()).apply()
                         val rootId = android.provider.DocumentsContract.getTreeDocumentId(treeUri)
                         val requestedId = pending.second.optJSONObject("parameters")
                             ?.optString("documentId")?.takeIf { it.isNotBlank() } ?: rootId
