@@ -31,6 +31,8 @@ class FileTransferCoordinator(
     private var outgoingSequence = 0
     private var outgoingBytes = 0L
     private var incomingBytes = 0L
+    private var lastOutgoingProgressBytes = 0L
+    private var lastIncomingProgressBytes = 0L
     private var incomingExpectedSequence = 0
     private var pendingChunkMessage: JSONObject? = null
     private var chunkRetryCount = 0
@@ -125,6 +127,7 @@ class FileTransferCoordinator(
         outgoingInput = input
         outgoingSequence = 0
         outgoingBytes = 0L
+        lastOutgoingProgressBytes = 0L
         outgoingDigest = MessageDigest.getInstance("SHA-256")
         waitingForAck = true
         send(JSONObject().apply {
@@ -142,6 +145,7 @@ class FileTransferCoordinator(
             ?: throw IllegalStateException("Android could not create the destination file")
         incomingUri = uri
         incomingBytes = 0L
+        lastIncomingProgressBytes = 0L
         incomingExpectedSequence = 0
         incomingDigest = MessageDigest.getInstance("SHA-256")
         send(JSONObject().put("type", "file_accept"))
@@ -240,6 +244,10 @@ class FileTransferCoordinator(
                     incomingDigest?.update(bytes)
                     incomingOutput?.write(bytes)
                     incomingExpectedSequence += 1
+                    if (incomingBytes - lastIncomingProgressBytes >= PROGRESS_INTERVAL_BYTES) {
+                        lastIncomingProgressBytes = incomingBytes
+                        onStatus("Receiving file · ${incomingBytes / MEBIBYTE} MiB received")
+                    }
                     send(JSONObject().put("type", "file_ack").put("sequence", sequence))
                 } catch (error: Exception) {
                     discardIncoming()
@@ -320,6 +328,10 @@ class FileTransferCoordinator(
             }
             outgoingBytes += count
             outgoingDigest?.update(chunk, 0, count)
+            if (outgoingBytes - lastOutgoingProgressBytes >= PROGRESS_INTERVAL_BYTES) {
+                lastOutgoingProgressBytes = outgoingBytes
+                onStatus("Sending file · ${outgoingBytes / MEBIBYTE} MiB sent")
+            }
             if (outgoingBytes > MAX_FILE_SIZE) {
                 closeOutgoing()
                 outgoingQueue.clear()
@@ -400,6 +412,8 @@ class FileTransferCoordinator(
     companion object {
         private const val CHUNK_SIZE = 12 * 1024
         private const val MAX_FILE_SIZE = 50L * 1024L * 1024L
+        private const val MEBIBYTE = 1024L * 1024L
+        private const val PROGRESS_INTERVAL_BYTES = MEBIBYTE
         private const val MAX_CHUNK_RETRIES = 3
         private const val CHUNK_ACK_TIMEOUT_MS = 5_000L
     }
