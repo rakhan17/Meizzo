@@ -261,6 +261,8 @@ class FileTransferCoordinator(
                 if (sequence != incomingExpectedSequence) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     discardIncoming()
+                    pendingName = ""
+                    pendingSize = 0L
                     onStatus("File transfer stopped · unexpected chunk sequence")
                     return
                 }
@@ -270,6 +272,10 @@ class FileTransferCoordinator(
                     if (incomingBytes > MAX_FILE_SIZE) {
                         send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                         discardIncoming()
+                        pendingName = ""
+                        pendingSize = 0L
+                    pendingName = ""
+                    pendingSize = 0L
                         onStatus("Incoming file exceeded the 50 MiB transfer limit")
                         return
                     }
@@ -284,6 +290,8 @@ class FileTransferCoordinator(
                 } catch (error: Exception) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     discardIncoming()
+                    pendingName = ""
+                    pendingSize = 0L
                     onStatus("File write failed: ${error.message ?: "storage error"}")
                 }
             }
