@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
     private val reconnectHandler = Handler(Looper.getMainLooper())
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
+    private var shouldMaintainConnection = true
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
@@ -108,7 +109,11 @@ class MainActivity : ComponentActivity() {
                 pairingCode = pairingCode,
                 statusView = status,
                 onStopPairing = {
+                    shouldMaintainConnection = false
+                    reconnectHandler.removeCallbacksAndMessages(null)
+                    reconnectScheduled = false
                     socket?.close(1000, "Pairing stopped")
+                    socket = null
                     status.text = "Pairing stopped"
                 },
                 onCheckUpdates = { checkForUpdate() }
@@ -272,6 +277,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (heartbeatSocket === webSocket) heartbeatSocket = null
+                    if (socket === webSocket && shouldMaintainConnection) {
+                        runOnUiThread { status.text = "Connection closed · reconnecting" }
+                        scheduleReconnect()
+                    }
+                }
+
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     if (heartbeatSocket === webSocket) heartbeatSocket = null
                     runOnUiThread {
@@ -280,7 +293,7 @@ class MainActivity : ComponentActivity() {
                         stopActiveOutputs()
                         status.text = connectionFailureMessage(t)
                     }
-                    scheduleReconnect()
+                    if (socket === webSocket && shouldMaintainConnection) scheduleReconnect()
                 }
             })
     }
@@ -321,11 +334,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleReconnect() {
-        if (reconnectScheduled) return
+        if (!shouldMaintainConnection || reconnectScheduled) return
         reconnectScheduled = true
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
         val delay = (1L shl reconnectAttempt) * 1000L
-        reconnectHandler.postDelayed({ connect() }, delay)
+        reconnectHandler.postDelayed({
+            reconnectScheduled = false
+            if (shouldMaintainConnection) connect()
+        }, delay)
     }
 
     private fun registerPairingOffer(webSocket: WebSocket) {
