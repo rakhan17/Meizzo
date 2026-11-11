@@ -154,7 +154,10 @@ async function run() {
     }));
     const command = await commandPromise;
     let clientBReceivedCommand = false;
-    clientB.once('message', () => { clientBReceivedCommand = true; });
+    clientB.on('message', (raw) => {
+      const message = JSON.parse(raw.toString());
+      if (message.type === 'client.command') clientBReceivedCommand = true;
+    });
     const resultPromise = nextMessage(controller, (message) => message.type === 'device.result');
     clientA.send(JSON.stringify({
       type: 'client.result',
