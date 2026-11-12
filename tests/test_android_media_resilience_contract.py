@@ -52,6 +52,21 @@ class MediaResilienceContract(unittest.TestCase):
         self.assertIn("KeyEvent(downTime, downTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)", source)
         self.assertIn("KeyEvent.ACTION_UP", source)
 
+
+    def test_client_reconnects_after_socket_close_and_network_changes(self):
+        source = (ROOT / "apps/client/src/main/java/com/meizzo/client/MainActivity.kt").read_text()
+        for marker in (
+            "ConnectivityManager.NetworkCallback()",
+            "registerDefaultNetworkCallback(networkCallback)",
+            "unregisterNetworkCallback(networkCallback)",
+            "override fun onClosed(webSocket: WebSocket, code: Int, reason: String)",
+            "if (socket !== webSocket) return",
+            "socket = null",
+            "scheduleReconnect()",
+            "if (isFinishing || reconnectScheduled) return",
+        ):
+            self.assertIn(marker, source)
+
     def test_file_transfer_rejects_oversized_and_overdeclared_chunks(self):
         for role in ("client", "controller"):
             source = (ROOT / f"apps/{role}/src/main/java/com/meizzo/{role}/FileTransferCoordinator.kt").read_text()
