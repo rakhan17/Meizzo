@@ -995,7 +995,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openMediaViewer(clientId: String, sessionId: String, kind: String) {
-        closeMediaViewer(sessionId)
+        mediaDialogs[sessionId]?.let { existing ->
+            if (existing.isShowing) return
+            mediaDialogs.remove(sessionId)
+        }
+        val existingViewer = mediaViewers[sessionId]
         val video = SurfaceViewRenderer(this)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1268,7 +1272,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openFileTransferDialog(clientId: String, sessionId: String) {
-        closeMediaViewer(sessionId)
+        mediaDialogs[sessionId]?.let { existing ->
+            if (existing.isShowing) return
+            mediaDialogs.remove(sessionId)
+        }
+        val existingViewer = mediaViewers[sessionId]
         val details = TextView(this).apply {
             text = "Files are transferred directly through an encrypted WebRTC data channel after Client approval. Each transfer requires the receiving device to choose a save location."
             textSize = 13f
