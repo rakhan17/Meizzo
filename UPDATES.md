@@ -5,7 +5,7 @@
 > **Stable channel:** `v2.5.0` (published, unchanged).  
 > **Current beta line:** `v3.0.0-beta.1` (beta prerelease; signed APK publication is handled by the dedicated release workflow).
 
-- [Latest beta candidate](#v300-beta1--liquid-glass-ui-candidate)
+- [Latest beta release](#v300-beta1--liquid-glass-ui-beta)
 - [Stable release](#v250--stable)
 - [Historical beta releases](#historical-beta-releases)
 - [Architecture and release policy](#architecture-and-release-policy)
@@ -17,7 +17,7 @@
 
 <sub>12 November 2026 · Beta prerelease · Published after release validation</sub>
 
-This is the current v3 beta candidate on the `develop/v3` development line, including the Android UI work merged through [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
+This is the current v3 beta release from the `develop/v3` development line, including the Android UI work merged through [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
 
 ### Android Controller
 
@@ -46,7 +46,7 @@ This is the current v3 beta candidate on the `develop/v3` development line, incl
 - Keeps the upstream Apache-2.0 license and third-party notices with the copied/adapted sample source.
 - The design is iOS-inspired, but remains a native Android Compose application. It does not bundle Apple's proprietary SF Pro font or replace Android-owned system permission/document pickers.
 
-### Existing v3 capabilities carried into this candidate
+### Existing v3 capabilities carried into this beta release
 
 - Six-digit expiring pairing offers, explicit Client pairing approval, role-specific credentials, multi-device relationships, presence, telemetry, and revocation.
 - Session request/approval/rejection and participant-bound signaling for screen, camera, interaction, and files sessions.
