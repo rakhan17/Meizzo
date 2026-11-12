@@ -150,6 +150,22 @@ class ConnectionForegroundService : Service() {
         var error: String? = null
         val accessibility = RemoteAccessibilityService.instance
         when (command) {
+            "flashlight" -> {
+                try {
+                    if (checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                        throw SecurityException("Camera permission must be granted on the Client first")
+                    }
+                    val manager = getSystemService(CameraManager::class.java)
+                    val cameraId = manager.cameraIdList.firstOrNull {
+                        manager.getCameraCharacteristics(it).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+                    } ?: throw IllegalStateException("No flashlight hardware is available")
+                    val enabled = parameters.optBoolean("enabled")
+                    manager.setTorchMode(cameraId, enabled)
+                    result.put("enabled", enabled)
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Flashlight control failed"
+                }
+            }
             "volume_up", "volume_down", "volume_mute", "volume_unmute" -> {
                 val adjustment = when (command) {
                     "volume_up" -> AudioManager.ADJUST_RAISE
@@ -203,6 +219,35 @@ class ConnectionForegroundService : Service() {
                 else if (value.isEmpty() || value.length > 2_000) error = "Text input must contain 1–2,000 characters"
                 else if (!accessibility.appendText(value)) error = "No editable non-password field is focused"
                 else result.put("charactersInserted", value.length)
+            }
+            "key_backspace", "key_enter", "key_tab", "key_escape" -> {
+                val keyCode = when (command) {
+                    "key_backspace" -> android.view.KeyEvent.KEYCODE_DEL
+                    "key_enter" -> android.view.KeyEvent.KEYCODE_ENTER
+                    "key_tab" -> android.view.KeyEvent.KEYCODE_TAB
+                    else -> android.view.KeyEvent.KEYCODE_ESCAPE
+                }
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else {
+                    val sent = accessibility.sendKey(keyCode)
+                    val fallback = command == "key_backspace" && accessibility.deleteBackward()
+                    if (!sent && !fallback) error = "The focused editor rejected this key"
+                    else result.put("accepted", true)
+                }
+            }
+            "key_shortcut" -> {
+                val keyCode = when (parameters.optString("shortcut")) {
+                    "select_all" -> android.view.KeyEvent.KEYCODE_A
+                    "copy" -> android.view.KeyEvent.KEYCODE_C
+                    "paste" -> android.view.KeyEvent.KEYCODE_V
+                    "cut" -> android.view.KeyEvent.KEYCODE_X
+                    "undo" -> android.view.KeyEvent.KEYCODE_Z
+                    "redo" -> android.view.KeyEvent.KEYCODE_Y
+                    else -> -1
+                }
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (keyCode < 0 || !accessibility.sendShortcut(keyCode)) error = "Shortcut is unavailable in the current editor"
+                else result.put("accepted", true)
             }
             else -> return false
         }
