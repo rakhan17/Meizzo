@@ -29,9 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -109,24 +113,18 @@ fun ControllerGlassScreen(
                                     singleLine = true,
                                     textStyle = TextStyle(foreground, 28.sp, FontWeight.Medium, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    decorationBox = { inner ->
-                                        Box(
-                                            Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            if (pairingCode.isEmpty()) {
-                                                BasicText(
-                                                    "000000",
-                                                    style = TextStyle(
-                                                        secondary.copy(alpha = 0.45f),
-                                                        28.sp,
-                                                        FontWeight.Medium,
-                                                        letterSpacing = 8.sp,
-                                                        fontFamily = FontFamily.Monospace,
-                                                        textAlign = TextAlign.Center
-                                                    )
-                                                )
+                                    visualTransformation = VisualTransformation { input ->
+                                        val visible = input.text.padEnd(6, '0')
+                                        TransformedText(
+                                            AnnotatedString(visible),
+                                            object : OffsetMapping {
+                                                override fun originalToTransformed(offset: Int): Int = offset.coerceIn(0, 6)
+                                                override fun transformedToOriginal(offset: Int): Int = offset.coerceIn(0, input.text.length)
                                             }
+                                        )
+                                    },
+                                    decorationBox = { inner ->
+                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                             inner()
                                         }
                                     },
