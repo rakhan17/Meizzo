@@ -42,6 +42,22 @@ class FakeSocket {
 }
 
 async function run() {
+  const health = await (await import('../cloudflare/worker.js')).default.fetch(
+    new Request('https://meizzo-signaling.test/healthz'),
+    { REALTIME_TURN_TOKEN_ID: '', REALTIME_TURN_TOKEN_SECRET: '' }
+  );
+  const healthBody = await health.json();
+  if (healthBody.status !== 'ok' || healthBody.mediaTransport !== 'webrtc' || healthBody.turnConfigured !== false) {
+    throw new Error('Worker health endpoint did not report the STUN-only configuration safely');
+  }
+  const configuredHealth = await (await import('../cloudflare/worker.js')).default.fetch(
+    new Request('https://meizzo-signaling.test/healthz'),
+    { REALTIME_TURN_TOKEN_ID: 'configured-key', REALTIME_TURN_TOKEN_SECRET: 'configured-secret' }
+  );
+  if ((await configuredHealth.json()).turnConfigured !== true) {
+    throw new Error('Worker health endpoint did not detect configured TURN credentials');
+  }
+
   let stored = {
     offers: {}, attempts: {}, ipAttempts: {}, pending: {},
     devices: {
