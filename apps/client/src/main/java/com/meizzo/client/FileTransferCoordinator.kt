@@ -254,11 +254,16 @@ class FileTransferCoordinator(
                 val offset = message.optLong("offset", 0L)
                 if (transferId == outgoingTransferId) {
                     if (offset != outgoingBytes && !restoreOutgoingCheckpoint(transferId, offset)) {
+                        closeOutgoing()
+                        clearOutgoingCheckpoint()
                         send(JSONObject().put("type", "file_reject").put("transferId", transferId)); return
                     }
                     waitingForAck = false; sendNextChunk()
                 } else if (restoreOutgoingCheckpoint(transferId, offset)) {
                     waitingForAck = false; sendNextChunk()
+                } else {
+                    clearOutgoingCheckpoint()
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                 }
             }
             "file_reject" -> {
@@ -537,7 +542,12 @@ class FileTransferCoordinator(
             send(JSONObject().put("type", "file_accept").put("transferId", transferId).put("offset", offset))
             onStatus("Resuming " + pendingName + " · " + (offset / MEBIBYTE) + " MiB verified")
             true
-        } catch (_: Exception) { onStatus("Saved transfer could not resume · choose the destination again"); clearIncomingCheckpoint(); false }
+        } catch (_: Exception) {
+            onStatus("Saved transfer could not resume · choose the destination again")
+            clearIncomingCheckpoint()
+            try { context.contentResolver.delete(uri, null, null) } catch (_: Exception) { }
+            false
+        }
     }
 
     private fun clearOutgoingCheckpoint() {
