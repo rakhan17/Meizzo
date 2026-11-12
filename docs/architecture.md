@@ -67,14 +67,13 @@ capture. Screen sharing runs through a foreground service declared with the
 permission. The user must manually enable MEIZZO's AccessibilityService before
 remote gestures and lock-screen actions can run.
 
-The Client starts a foreground service to raise process importance
-while its Activity-owned signaling connection is active and to host remote
-alarm playback. The WebSocket is still owned by the Client Activity; the
-service does not independently restore or reconnect it after the Activity is
-destroyed. Socket-close and network-change callbacks trigger bounded reconnect
-while the Activity remains alive. This is not equivalent to a service-owned
-connection that survives Activity destruction. Android may still stop the
-process because of force-stop, battery policy, OEM process management, revoked
+The Client foreground service owns the WSS socket, heartbeat, network callback,
+and bounded reconnect backoff independently of the Activity. The Activity
+binds to the service for authenticated message handling and detaches its listener
+when destroyed. Incoming signaling messages are queued (bounded to 100) while
+no Activity is attached and replayed when it returns. The service continues
+running after the Activity is removed from the task; Android may still stop it
+because of force-stop, battery policy, OEM process management, revoked
 permissions, or network availability.
 
 ### Local credential storage
@@ -159,8 +158,15 @@ metadata offer; the receiver chooses a destination; content is sent in 12 KiB
 Base64-encoded chunks with one acknowledgement per chunk and a final SHA-256
 comparison. The current maximum file size is 50 MiB.
 
-Transfer resume, parallel chunking, large-file optimization, and signed
-integrity manifests are not implemented yet.
+Each peer persists the last acknowledged byte offset and transfer identifier.
+The sender persists its SAF source URI and resumes by reopening the source,
+rehashing the acknowledged prefix, and seeking to the receiver's reported
+offset. The receiver persists its SAF destination URI and checkpoint, verifies
+and reconstructs the acknowledged prefix, then appends subsequent chunks.
+Unacknowledged chunks are retransmitted after a new approved files session.
+Resume depends on Android's persistable document grants and providers that
+support append/write modes. Parallel chunking and large-file optimization are
+not implemented.
 
 ## 7. Security boundaries and limitations
 
@@ -168,7 +174,7 @@ integrity manifests are not implemented yet.
 - WebRTC uses DTLS-SRTP for media and DTLS-protected DataChannels for file
   content.
 - The Worker validates approved session membership before relaying signaling.
-- STUN is configured; TURN relay is not deployed.
+- STUN is configured; TURN relay is optional and requires the existing Worker secrets.
 - Media and file transfer have not received an independent security audit.
 - Android permissions and Accessibility access remain controlled by the user.
 - The local Node.js harness is development-only.
