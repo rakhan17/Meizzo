@@ -1732,13 +1732,14 @@ class MainActivity : Activity() {
             }
             fileSaveRequestCode -> {
                 val sessionId = incomingFileSessionId
-                if (resultCode == RESULT_OK && data?.data != null && sessionId != null) {
+                val destination = data?.data
+                if (resultCode == RESULT_OK && destination != null && sessionId != null) {
                     try {
                         val persistableFlags = (data?.flags ?: 0) and (android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                         if (persistableFlags != 0) {
                             try { contentResolver.takePersistableUriPermission(destination, persistableFlags) } catch (_: SecurityException) { }
                         }
-                        fileTransferCoordinators[sessionId]?.acceptIncoming(data.data!!)
+                        fileTransferCoordinators[sessionId]?.acceptIncoming(destination)
                     } catch (error: Exception) {
                         fileTransferCoordinators[sessionId]?.rejectIncoming()
                         setConnection("Could not save file · ${error.message ?: "storage error"}", false)
