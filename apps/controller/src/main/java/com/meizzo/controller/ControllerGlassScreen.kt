@@ -10,10 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -30,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -116,9 +116,8 @@ fun ControllerGlassScreen(
                                     textStyle = TextStyle(foreground, 28.sp, FontWeight.Medium, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     visualTransformation = VisualTransformation { input ->
-                                        val visible = input.text.padEnd(6, '0')
                                         TransformedText(
-                                            AnnotatedString(visible),
+                                            AnnotatedString(input.text.padEnd(6, '0')),
                                             object : OffsetMapping {
                                                 override fun originalToTransformed(offset: Int): Int = offset.coerceIn(0, 6)
                                                 override fun transformedToOriginal(offset: Int): Int = offset.coerceIn(0, input.text.length)
@@ -126,9 +125,7 @@ fun ControllerGlassScreen(
                                         )
                                     },
                                     decorationBox = { inner ->
-                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                            inner()
-                                        }
+                                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { inner() }
                                     },
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                                 )
@@ -136,11 +133,15 @@ fun ControllerGlassScreen(
                                     onClick = { onPair(pairingCode) },
                                     backdrop = backdrop,
                                     modifier = Modifier.fillMaxWidth(),
-                                    tint = Color(0xFF007AFF)
+                                    tint = Color(0xFF0A84FF)
                                 ) {
-                                    BasicText("Connect device", style = TextStyle(Color.Wh                        1 -> {
+                                    BasicText("Connect device", style = TextStyle(Color.White, 15.sp, FontWeight.SemiBold))
+                                }
+                            }
+                        }
+                        1 -> {
                             val selectedDevice = devices.firstOrNull { it.id == selectedDeviceId }
-                            if (selectedDeviceId == null || selectedDevice == null) {
+                            if (selectedDevice == null) {
                                 BrandHeader(foreground)
                                 BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                                 BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
@@ -151,106 +152,124 @@ fun ControllerGlassScreen(
                                     }
                                 }
                                 devices.forEach { device ->
-                                    Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).clickable { selectedDeviceId = device.id }.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(
+                                        Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp)
+                                            .clickable { selectedDeviceId = device.id }.padding(18.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 BasicText(device.name, style = TextStyle(foreground, 19.sp, FontWeight.SemiBold))
-                                                BasicText((if (device.online) "Online" else "Offline") + " · " + device.platform, style = TextStyle(secondary, 12.sp, FontWeight.Medium))
+                                                BasicText(
+                                                    (if (device.online) "Online" else "Offline") + " · " + device.platform,
+                                                    style = TextStyle(secondary, 12.sp, FontWeight.Medium)
+                                                )
                                             }
                                             BasicText("›", style = TextStyle(secondary, 28.sp, FontWeight.Light))
                                         }
-                                        if (device.id == devices.firstOrNull()?.id) AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                                        if (device.id == devices.firstOrNull()?.id) {
+                                            AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                                        }
                                         BasicText(device.battery + " battery · " + device.network, style = TextStyle(secondary, 13.sp))
+                                        BasicText("Tap to view device controls", style = TextStyle(secondary.copy(alpha = 0.8f), 11.sp))
                                     }
                                 }
                             } else {
-                                LiquidButton(onClick = { selectedDeviceId = null }, backdrop = backdrop, modifier = Modifier.width(116.dp).height(40.dp), surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)) {
-                                    BasicText("‹ Devices", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                                LiquidButton(
+                                    onClick = { selectedDeviceId = null },
+                                    backdrop = backdrop,
+                                    modifier = Modifier.width(116.dp).height(40.dp),
+                                    surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
+                                ) {
+                                    BasicText("‹  Devices", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
                                 }
                                 BrandHeader(foreground)
                                 BasicText(selectedDevice.name, style = TextStyle(foreground, 30.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
-                                BasicText((if (selectedDevice.online) "Online" else "Offline") + " · " + selectedDevice.platform, style = TextStyle(secondary, 13.sp, FontWeight.Medium))
+                                BasicText(
+                                    (if (selectedDevice.online) "Online" else "Offline") + " · " + selectedDevice.platform,
+                                    style = TextStyle(secondary, 13.sp, FontWeight.Medium)
+                                )
                                 Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    BasicText(selectedDevice.battery + " battery · " + selectedDevice.network, style = TextStyle(secondary, 13.sp))
+                                    BasicText(selectedDevice.battery + " battery", style = TextStyle(foreground, 15.sp, FontWeight.Medium))
+                                    BasicText(selectedDevice.network, style = TextStyle(secondary, 13.sp))
                                 }
                                 GlassActionButton("Rename device", backdrop, darkMode, Modifier.fillMaxWidth()) {
                                     onDeviceAction(selectedDevice.id, "rename")
                                 }
-                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        GlassActionButton(
-                                            if (selectedDevice.mediaKind == "screen") "Open screen" else "Screen",
-                                            backdrop, darkMode, Modifier.weight(1f),
-                                            selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "screen")
-                                        ) { onDeviceAction(selectedDevice.id, "screen") }
-                                        GlassActionButton(
-                                            if (selectedDevice.mediaKind == "camera") "Open camera" else "Camera",
-                                            backdrop, darkMode, Modifier.weight(1f),
-                                            selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "camera")
-                                        ) { onDeviceAction(selectedDevice.id, "camera") }
-                                        GlassActionButton(
-                                            if (selectedDevice.mediaKind == "files") "Open files" else "Files",
-                                            backdrop, darkMode, Modifier.weight(1f),
-                                            selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "files")
-                                        ) { onDeviceAction(selectedDevice.id, "files") }
-                                    }
+                                BasicText("REMOTE SESSIONS", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.5.sp))
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     GlassActionButton(
-                                        if (selectedDevice.interactionActive) "End interaction access" else if (selectedDevice.interactionPending) "Waiting for approval" else "Request interaction access",
-                                        backdrop,
-                                        darkMode,
-                                        Modifier.fillMaxWidth(),
-                                        selectedDevice.online && !selectedDevice.interactionPending
-                                    ) { onDeviceAction(selectedDevice.id, "interaction") }
-                                    if (selectedDevice.interactionActive) {
-                                        BasicText("REMOTE CONTROLS", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.5.sp))
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Back", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "back") }
-                                            GlassActionButton("Home", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "home") }
-                                            GlassActionButton("Recents", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "recents") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Volume −", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_down") }
-                                            GlassActionButton("Mute", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_mute") }
-                                            GlassActionButton("Volume +", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_up") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Torch on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "flashlight_on") }
-                                            GlassActionButton("Torch off", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "flashlight_off") }
-                                            GlassActionButton(if (selectedDevice.alarmActive) "Alarm off" else "Alarm on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "alarm_on") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Browse files", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "browse_files") }
-                                            GlassActionButton("Read clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "clipboard_read") }
-                                            GlassActionButton("Write clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "clipboard_write") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Emergency", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "emergency") }
-                                            GlassActionButton("Send text", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "text") }
-                                            GlassActionButton("My clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "controller_clipboard") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Notifications", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "notifications") }
-                                            GlassActionButton("Quick settings", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "quick_settings") }
-                                            GlassActionButton("Power menu", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "power_dialog") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Camera flip", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "camera_flip") }
-                                            GlassActionButton("Lock screen", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "lock_screen") }
-                                            if (selectedDevice.hasLocation) {
-                                                GlassActionButton("Find device", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "location") }
-                                            }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Backspace", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_backspace") }
-                                            GlassActionButton("Enter", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_enter") }
-                                            GlassActionButton("Tab", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_tab") }
-                                            GlassActionButton("Esc", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_escape") }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            GlassActionButton("Tap", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "tap") }
-                                            GlassActionButton("Swipe", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "swipe") }
-                                            GlassActionButton("New line", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "new_line") }
+                                        if (selectedDevice.mediaKind == "screen") "Open screen" else "Screen",
+                                        backdrop, darkMode, Modifier.weight(1f),
+                                        selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "screen")
+                                    ) { onDeviceAction(selectedDevice.id, "screen") }
+                                    GlassActionButton(
+                                        if (selectedDevice.mediaKind == "camera") "Open camera" else "Camera",
+                                        backdrop, darkMode, Modifier.weight(1f),
+                                        selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "camera")
+                                    ) { onDeviceAction(selectedDevice.id, "camera") }
+                                    GlassActionButton(
+                                        if (selectedDevice.mediaKind == "files") "Open files" else "Files",
+                                        backdrop, darkMode, Modifier.weight(1f),
+                                        selectedDevice.online && (!selectedDevice.mediaActive || selectedDevice.mediaKind == "files")
+                                    ) { onDeviceAction(selectedDevice.id, "files") }
+                                }
+                                GlassActionButton(
+                                    if (selectedDevice.interactionActive) "End interaction access" else if (selectedDevice.interactionPending) "Waiting for approval" else "Request interaction access",
+                                    backdrop, darkMode, Modifier.fillMaxWidth(),
+                                    selectedDevice.online && !selectedDevice.interactionPending
+                                ) { onDeviceAction(selectedDevice.id, "interaction") }
+                                if (selectedDevice.interactionActive) {
+                                    BasicText("REMOTE CONTROLS", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.5.sp))
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Back", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "back") }
+                                        GlassActionButton("Home", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "home") }
+                                        GlassActionButton("Recents", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "recents") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Volume −", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_down") }
+                                        GlassActionButton("Mute", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_mute") }
+                                        GlassActionButton("Volume +", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "volume_up") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Torch on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "flashlight_on") }
+                                        GlassActionButton("Torch off", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "flashlight_off") }
+                                        GlassActionButton(if (selectedDevice.alarmActive) "Alarm off" else "Alarm on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "alarm_on") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Browse files", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "browse_files") }
+                                        GlassActionButton("Read clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "clipboard_read") }
+                                        GlassActionButton("Write clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "clipboard_write") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Emergency", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "emergency") }
+                                        GlassActionButton("Send text", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "text") }
+                                        GlassActionButton("My clipboard", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "controller_clipboard") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Notifications", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "notifications") }
+                                        GlassActionButton("Quick settings", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "quick_settings") }
+                                        GlassActionButton("Power menu", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "power_dialog") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Camera flip", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "camera_flip") }
+                                        GlassActionButton("Lock screen", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "lock_screen") }
+                                        if (selectedDevice.hasLocation) {
+                                            GlassActionButton("Find device", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "location") }
                                         }
                                     }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Backspace", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_backspace") }
+                                        GlassActionButton("Enter", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_enter") }
+                                        GlassActionButton("Tab", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_tab") }
+                                        GlassActionButton("Esc", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "key_escape") }
+                                    }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        GlassActionButton("Tap", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "tap") }
+                                        GlassActionButton("Swipe", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "swipe") }
+                                        GlassActionButton("New line", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "new_line") }
+                                    }
+                                }
                             }
                         }
                         else -> {
