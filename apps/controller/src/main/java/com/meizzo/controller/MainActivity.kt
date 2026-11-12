@@ -1,6 +1,6 @@
 package com.meizzo.controller
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
@@ -35,7 +35,7 @@ import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private val preferences by lazy { getPreferences(MODE_PRIVATE) }
     private val secureStore by lazy { SecureStore(this) }
     private val controllerId by lazy {
