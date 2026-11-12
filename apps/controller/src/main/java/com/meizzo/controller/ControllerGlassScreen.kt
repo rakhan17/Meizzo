@@ -46,6 +46,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.shapes.RoundedRectangle
 import com.meizzo.glass.LiquidGlassBackdrop
+import com.meizzo.glass.GlassDialogOverlay
 import kotlin.math.roundToInt
 
 @Composable
@@ -59,7 +60,10 @@ fun ControllerGlassScreen(
     onDarkModeChanged: (Boolean) -> Unit,
     alertSettings: AutoAlertManager.Settings,
     onSaveAutoAlertSettings: (AutoAlertManager.Settings) -> Unit,
-    onCheckForUpdates: () -> Unit
+    onCheckForUpdates: () -> Unit,
+    dialog: ControllerGlassDialogRequest?,
+    onDialogConfirm: () -> Unit,
+    onDialogDismiss: () -> Unit
 ) {
     var pairingCode by rememberSaveable { mutableStateOf("") }
     var batteryThreshold by rememberSaveable(alertSettings.batteryPercent) { mutableIntStateOf(alertSettings.batteryPercent) }
@@ -211,9 +215,31 @@ fun ControllerGlassScreen(
                     }
                 }
             }
+            if (dialog != null) {
+                GlassDialogOverlay(
+                    backdrop = backdrop,
+                    dark = darkMode,
+                    title = dialog.title,
+                    message = dialog.message,
+                    confirmLabel = dialog.confirmLabel,
+                    dismissLabel = dialog.dismissLabel,
+                    onConfirm = onDialogConfirm,
+                    onDismiss = onDialogDismiss
+                )
+            }
         }
     }
 }
+
+data class ControllerGlassDialogRequest(
+    val id: String,
+    val title: String,
+    val message: String,
+    val confirmLabel: String,
+    val dismissLabel: String,
+    val onConfirm: () -> Unit,
+    val onDismiss: () -> Unit
+)
 
 private fun Modifier.glassPanel(backdrop: Backdrop, dark: Boolean, radius: Dp): Modifier =
     drawBackdrop(

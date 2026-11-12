@@ -76,6 +76,7 @@ class MainActivity : Activity() {
     private var activeTab by mutableIntStateOf(0)
     private var darkMode by mutableStateOf(true)
     private var autoAlertSettings by mutableStateOf(AutoAlertManager.Settings(15, 42f, 5, true))
+    private var glassDialog by mutableStateOf<ControllerGlassDialogRequest?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -194,7 +195,10 @@ class MainActivity : Activity() {
                         connectionLabel.text = "● Auto-Alert settings saved"
                         connectionLabel.setTextColor(Color.rgb(120, 210, 170))
                     },
-                    onCheckForUpdates = { checkForUpdate() }
+                    onCheckForUpdates = { checkForUpdate() },
+                    dialog = glassDialog,
+                    onDialogConfirm = { glassDialog?.onConfirm?.invoke() },
+                    onDialogDismiss = { glassDialog?.onDismiss?.invoke() }
                 )
             }
         })
@@ -207,6 +211,34 @@ class MainActivity : Activity() {
         }
     }
 
+
+    private fun showGlassPrompt(
+        title: String,
+        message: String,
+        dismissLabel: String = "Cancel",
+        confirmLabel: String = "Continue",
+        onDismiss: () -> Unit = {},
+        onConfirm: () -> Unit
+    ) {
+        runOnUiThread {
+            val id = UUID.randomUUID().toString()
+            glassDialog = ControllerGlassDialogRequest(
+                id = id,
+                title = title,
+                message = message,
+                confirmLabel = confirmLabel,
+                dismissLabel = dismissLabel,
+                onConfirm = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onConfirm()
+                },
+                onDismiss = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onDismiss()
+                }
+            )
+        }
+    }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
@@ -247,23 +279,25 @@ class MainActivity : Activity() {
         super.onResume()
         val pending = pendingUpdateApk ?: return
         if (updateManager.canInstallPackages()) {
-            AlertDialog.Builder(this)
-                .setTitle("Update ready to install")
-                .setMessage("MEIZZO has permission to start the Android installer. Confirm installation to continue.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Install") { _, _ ->
+            showGlassPrompt(
+                title = "Update ready to install",
+                message = "MEIZZO has permission to start the Android installer. Confirm installation to continue.",
+                dismissLabel = "Later",
+                confirmLabel = "Install",
+                onConfirm = {
                     pendingUpdateApk = null
                     updateManager.install(pending)
                 }
-                .show()
+            )
         } else {
             setConnection("Install permission is required to continue.", false)
-            AlertDialog.Builder(this)
-                .setTitle("Allow app updates")
-                .setMessage("Enable 'Allow from this source' for MEIZZO in Android settings, then return here.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Open settings") { _, _ -> updateManager.requestInstallPermission() }
-                .show()
+            showGlassPrompt(
+                title = "Allow app updates",
+                message = "Enable 'Allow from this source' for MEIZZO in Android settings, then return here.",
+                dismissLabel = "Later",
+                confirmLabel = "Open settings",
+                onConfirm = { updateManager.requestInstallPermission() }
+            )
         }
     }
 
@@ -429,7 +463,14 @@ class MainActivity : Activity() {
     private fun requestPairing() {
         val code = codeInput.text.toString()
         if (!Regex("\\d{6}").matches(code)) {
-            connectionLabel.text = "● Enter exactly six digits"; return
+            showGlassPrompt(
+                title = "Invalid pairing code",
+                message = "Enter the six-digit code shown on the MEIZZO Client.",
+                dismissLabel = "Got it",
+                confirmLabel = "Okay",
+                onConfirm = {}
+            )
+            return
         }
         socket?.send(JSONObject().apply {
             put("type", "controller.request_pairing"); put("controllerId", controllerId); put("pairingCode", code)
@@ -453,7 +494,13 @@ class MainActivity : Activity() {
                 activeTab = 1
             }
             renderDevices()
-        } else runOnUiThread { connectionLabel.text = "● Pairing ${message.optString("status")}: ${message.optString("reason")}" }
+        } else showGlassPrompt(
+            title = "Pairing unsuccessful",
+            message = message.optString("reason").ifBlank { "Pairing could not be completed. Check the code and try again." },
+            dismissLabel = "Close",
+            confirmLabel = "Try again",
+            onConfirm = { activeTab = 0 }
+        )
     }
 
     private fun updateDevice(message: JSONObject) {
