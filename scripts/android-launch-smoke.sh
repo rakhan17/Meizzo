@@ -9,8 +9,12 @@ assert_running() {
   sleep 12
   if ! adb shell pidof "$package" >/dev/null 2>&1 || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q "$package"; then
     echo "::error::${package} MainActivity did not remain resumed after launch"
-    adb shell dumpsys activity activities || true
-    adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E || true
+    echo "Process ID:"
+    adb shell pidof "$package" || true
+    echo "Matching activity records:"
+    adb shell dumpsys activity activities | grep -C 4 -E "$package|topResumedActivity|mResumedActivity" || true
+    echo "Relevant process and crash logs:"
+    adb logcat -d -v time | grep -E "$package|AndroidRuntime|FATAL EXCEPTION|Fatal signal|ActivityTaskManager" | tail -n 300 || true
     return 1
   fi
   adb shell am force-stop "$package"
