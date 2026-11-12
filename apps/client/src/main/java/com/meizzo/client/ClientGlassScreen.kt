@@ -2,15 +2,20 @@ package com.meizzo.client
 
 import android.widget.TextView
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -48,10 +53,21 @@ fun ClientGlassScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                androidx.compose.foundation.text.BasicText(
-                    "MEIZZO",
-                    style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 4.sp)
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.meizzo_logo),
+                        contentDescription = "MEIZZO logo",
+                        modifier = Modifier.size(44.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    androidx.compose.foundation.text.BasicText(
+                        "MEIZZO",
+                        style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 4.sp)
+                    )
+                }
                 androidx.compose.foundation.text.BasicText(
                     "Your device.\nYour permission.",
                     style = TextStyle(foreground, 30.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif, lineHeight = 36.sp)
