@@ -52,6 +52,7 @@ nav:
       - Architecture: architecture.md
       - API reference: api-reference.md
       - Backend deployment: backend-deployment.md
+      - Cloudflare TURN setup: cloudflare-turn-setup.md
       - Testing: testing.md
       - Security and privacy: security-and-privacy.md
       - V3 development: v3/README.md
