@@ -33,6 +33,7 @@ physical-device or full end-to-end functionality.
 - [Security and privacy](security-and-privacy.md)
 - [Testing and acceptance matrix](testing.md)
 - [Release notes](release-notes.md)
+- [Detailed update log](updates.md)
 - [V2 architecture audit](v2/architecture-audit.md)
 - [V2 security model](v2/security-model.md)
 

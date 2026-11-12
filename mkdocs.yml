@@ -54,9 +54,12 @@ nav:
       - Backend deployment: backend-deployment.md
       - Testing: testing.md
       - Security and privacy: security-and-privacy.md
+      - V3 development: v3/README.md
+      - Upstream references and licenses: v3/UPSTREAM_AND_LICENSES.md
   - Project:
       - Implementation status: implementation-status.md
       - Release notes: release-notes.md
+      - Detailed update log: updates.md
       - License status: license.md
       - Contributing: contributing.md
       - Security policy: security-policy.md
