@@ -3,7 +3,7 @@
 MEIZZO is a consent-first device assistance platform with separate Android
 Client and Controller applications, a protocol-v2 signaling control plane,
 device presence and telemetry, and an authorization-only session lifecycle.
-The current public Android channel is beta. iOS remains under development.
+Android Stable `v2.5.0` remains available; Android v3 is distributed separately as the `v3.0.0-beta.1` prerelease. iOS remains under development.
 
 This documentation distinguishes implemented behavior from planned
 capabilities. A successful build or Simulator launch is not evidence of
@@ -33,6 +33,7 @@ physical-device or full end-to-end functionality.
 - [Security and privacy](security-and-privacy.md)
 - [Testing and acceptance matrix](testing.md)
 - [Release notes](release-notes.md)
+- [Changelog](https://github.com/rakhan17/Meizzo/blob/main/CHANGELOG.md)
 - [Detailed update log](updates.md)
 - [V2 architecture audit](v2/architecture-audit.md)
 - [V2 security model](v2/security-model.md)
