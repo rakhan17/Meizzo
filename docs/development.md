@@ -25,10 +25,11 @@ cannot resolve `dl.google.com`, and it has no Android SDK. The remote CI workflo
 Run `gh run download <run-id> --repo rakhan17/Meizzo` to download verified
 Client and Controller APK artifacts from a successful run.
 
-Debug builds default to `ws://10.0.2.2:8080`. Physical devices need a
-reachable LAN address during development, or a deployed WSS endpoint for
-release builds. Override the debug endpoint with
-`-Pmeizzo.debugSignalingUrl=ws://<host>:8080`.
+Debug and release builds default to the existing MEIZZO WSS endpoint:
+`wss://meizzo-signaling.rakhanatanox.workers.dev`. For a local signaling
+harness, override the debug endpoint with
+`-Pmeizzo.debugSignalingUrl=ws://<host>:8080` using a host reachable from the
+test device or emulator.
 
 ## Three-device test
 
@@ -60,9 +61,12 @@ deployment must use a stable process, resource limits, access logging that
 excludes message bodies, and a WSS URL passed to both Android modules through
 `-Pmeizzo.releaseSignalingUrl=...`.
 
-TURN credentials and WebRTC configuration are not required by the current
-pairing milestone. They must be added before camera or screen media sessions
-are enabled.
+Screen and camera prototypes use WebRTC with the configured ICE servers.
+The existing Worker can provide short-lived Cloudflare Realtime TURN
+credentials when its TURN secrets are configured. Without a working TURN
+relay, direct media connections may fail behind restrictive NATs, carrier
+grade NAT, or firewalls. TURN is a connectivity enhancement, not a prerequisite
+for pairing or local-network smoke tests.
 
 ## Releases
 
