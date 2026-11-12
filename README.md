@@ -75,7 +75,7 @@ clearly marked as prerelease software.
 | **MEIZZO Client** | Install on the device receiving assistance | [Download Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
 | **MEIZZO Controller** | Install on the operator device | [Download Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
 
-The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. The release page also includes `MEIZZO-UPDATE.json` and `SHA256SUMS.txt`. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
+The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. The release page also includes [MEIZZO-UPDATE.json](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA256SUMS.txt](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt). Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -144,7 +144,7 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 ### Still in development / not release-ready
 
 - Production TURN secret configuration and reliable media connectivity across restrictive NATs.
-- Internal app/system audio capture, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
+- Internal app/system audio capture, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, production-grade resume interoperability across document providers, and large-file optimization.
 - Physical-device acceptance testing across Android vendors and networks.
 - iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
@@ -168,7 +168,9 @@ negotiate WebRTC using WSS for offer/answer/ICE signaling; media and file bytes
 travel over WebRTC, not through the Worker. STUN is configured. The Worker can
 issue short-lived Cloudflare TURN credentials when its secrets are configured;
 TURN availability and restrictive-network traversal still require deployment
-and real-network validation. The Android presentation layer is a shared
+and real-network validation. The GitHub Worker workflow currently validates
+successfully but skips deployment until `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID` are added as repository Actions secrets. The Android presentation layer is a shared
 Compose module (`apps/glass-ui`) built on AndroidLiquidGlass 2.0.1 Backdrop
 effects and official upstream sample components.
 
@@ -341,7 +343,9 @@ The Android stable release remains `v2.5.0` with its original Client and Control
 
 Relevant workflow runs:
 
-- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43152105440)
+- [Signed v3 beta release build and publication](https://github.com/rakhan17/Meizzo/actions/runs/43152105482)
+- [Cloudflare Worker validation and gated deployment](https://github.com/rakhan17/Meizzo/actions/runs/43153365784) (validation passed; deployment skipped because repository Cloudflare secrets are not configured)
+- [Android Client + Controller CI](https://github.com/rakhan17/Meizzo/actions/runs/43152105440)
 - [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43152105313)
 - [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43152634507)
 - [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
