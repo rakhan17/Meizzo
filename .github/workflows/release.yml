@@ -167,8 +167,9 @@ jobs:
             adb shell pm grant com.meizzo.controller android.permission.POST_NOTIFICATIONS || true
             adb shell am start -W -n com.meizzo.client/.MainActivity
             sleep 10
-            if ! adb shell pidof com.meizzo.client >/dev/null; then
-              echo "::error::MEIZZO Client exited during signed release launch test"
+            if ! adb shell pidof com.meizzo.client >/dev/null || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q 'com.meizzo.client/.MainActivity'; then
+              echo "::error::MEIZZO Client MainActivity did not remain resumed"
+              adb shell dumpsys activity activities
               adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E
               exit 1
             fi
