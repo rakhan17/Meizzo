@@ -141,7 +141,6 @@ fun ControllerGlassScreen(
                                     BasicText("Connect device", style = TextStyle(Color.Wh                        1 -> {
                             val selectedDevice = devices.firstOrNull { it.id == selectedDeviceId }
                             if (selectedDeviceId == null || selectedDevice == null) {
-                                selectedDeviceId = null
                                 BrandHeader(foreground)
                                 BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                                 BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
@@ -172,7 +171,6 @@ fun ControllerGlassScreen(
                                 BasicText(selectedDevice.name, style = TextStyle(foreground, 30.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                                 BasicText((if (selectedDevice.online) "Online" else "Offline") + " · " + selectedDevice.platform, style = TextStyle(secondary, 13.sp, FontWeight.Medium))
                                 Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (selectedDevice.id == devices.firstOrNull()?.id) AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
                                     BasicText(selectedDevice.battery + " battery · " + selectedDevice.network, style = TextStyle(secondary, 13.sp))
                                 }
                                 GlassActionButton("Rename device", backdrop, darkMode, Modifier.fillMaxWidth()) {
