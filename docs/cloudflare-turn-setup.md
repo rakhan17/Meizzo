@@ -22,6 +22,14 @@ participants of an approved media session.
 6. Save and deploy the existing Worker. Do not create another Worker, another
    Workers Builds project, or a VPS.
 
+For repeatable deployments, the repository includes a guarded GitHub Actions
+workflow. Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as encrypted
+GitHub Actions secrets (or secrets in the `production` environment), then open
+**Actions → MEIZZO Cloudflare Worker → Run workflow** and set `deploy` to
+`true`. The workflow validates the bundle first, deploys the existing Worker
+from `wrangler.toml`, then checks `/healthz`. A normal push or pull request only
+runs the dry-run validation and never deploys production.
+
 The Worker uses the secrets server-side to request credentials with a
 24-hour TTL. The long-lived API token and TURN key never go into either APK,
 the repository, or the Worker health response.
