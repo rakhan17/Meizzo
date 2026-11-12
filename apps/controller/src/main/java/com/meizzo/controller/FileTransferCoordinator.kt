@@ -252,7 +252,8 @@ class FileTransferCoordinator(
                 val encoded = message.optString("data")
                 val transferId = message.optString("transferId")
                 if (transferId.isBlank() || transferId != incomingTransferId ||
-                    sequence < 0 || encoded.isBlank() || incomingOutput == null
+                    sequence < 0 || encoded.isBlank() || encoded.length > MAX_ENCODED_CHUNK_SIZE ||
+                    incomingOutput == null
                 ) return
                 if (sequence == incomingExpectedSequence - 1) {
                     send(JSONObject().put("type", "file_ack").put("transferId", transferId).put("sequence", sequence))
@@ -268,15 +269,18 @@ class FileTransferCoordinator(
                 }
                 try {
                     val bytes = Base64.decode(encoded, Base64.NO_WRAP)
-                    incomingBytes += bytes.size
-                    if (incomingBytes > MAX_FILE_SIZE) {
+                    if (bytes.isEmpty() || bytes.size > CHUNK_SIZE ||
+                        incomingBytes + bytes.size > MAX_FILE_SIZE ||
+                        (pendingSize >= 0L && incomingBytes + bytes.size > pendingSize)
+                    ) {
                         send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                         discardIncoming()
                         pendingName = ""
                         pendingSize = 0L
-                        onStatus("Incoming file exceeded the 50 MiB transfer limit")
+                        onStatus("Incoming file chunk exceeded its declared size or transfer limits")
                         return
                     }
+                    incomingBytes += bytes.size
                     incomingDigest?.update(bytes)
                     incomingOutput?.write(bytes)
                     incomingExpectedSequence += 1
@@ -462,6 +466,7 @@ class FileTransferCoordinator(
 
     companion object {
         private const val CHUNK_SIZE = 12 * 1024
+        private const val MAX_ENCODED_CHUNK_SIZE = ((CHUNK_SIZE + 2) / 3) * 4
         private const val MAX_FILE_SIZE = 50L * 1024L * 1024L
         private const val MEBIBYTE = 1024L * 1024L
         private const val PROGRESS_INTERVAL_BYTES = MEBIBYTE
