@@ -62,6 +62,32 @@ jobs:
       - name: Install Android 17 preview SDK required by Backdrop 2.0.1
         run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'wss://meizzo-signaling.rakhanatanox.workers.dev' }}" :apps:${{ matrix.module }}:assembleDebug
+      - name: Android 16 launch smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            if [ "${{ matrix.module }}" = "client" ]; then
+              apk="apps/client/build/outputs/apk/debug/client-debug.apk"
+              package="com.meizzo.client"
+            else
+              apk="apps/controller/build/outputs/apk/debug/controller-debug.apk"
+              package="com.meizzo.controller"
+            fi
+            adb install -r "$apk"
+            adb shell pm grant "$package" android.permission.POST_NOTIFICATIONS || true
+            adb shell am start -W -n "$package/.MainActivity"
+            sleep 12
+            if ! adb shell pidof "$package" >/dev/null; then
+              echo "::error::${package} process exited during launch smoke test"
+              adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E
+              exit 1
+            fi
+            adb shell am force-stop "$package"
       - run: |
           mkdir -p dist
           if [ "${{ matrix.module }}" = "client" ]; then
