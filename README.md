@@ -24,7 +24,7 @@ session-scoped authorization.
 
 </div>
 
- > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** the v3 development line targets `v3.0.0-beta.1`; its Android debug builds are available from CI for evaluation, while the signed GitHub prerelease is pending release publication. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
+ > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** `v3.0.0-beta.1` is now published as a signed GitHub prerelease with separate Client and Controller APKs. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
 
 ## What is MEIZZO?
 
@@ -75,7 +75,7 @@ clearly marked as prerelease software.
 | **MEIZZO Client** | Install on the device receiving assistance | [Download Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
 | **MEIZZO Controller** | Install on the operator device | [Download Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
 
-The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. If GitHub has not finished publishing the release assets, use the [beta release page](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1) and wait for both APKs and `MEIZZO-UPDATE.json` to appear. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
+The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. The release page also includes `MEIZZO-UPDATE.json` and `SHA256SUMS.txt`. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -337,13 +337,13 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta release adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The beta candidate passed Android Client and Controller debug builds, RustDesk source/license checks, signaling contract tests, and documentation validation. The signed release workflow separately rebuilds and verifies both release APKs, package/version metadata, signing certificates, checksums, and the update manifest. The iOS Simulator workflow also passed, but this UI task does not add iOS feature parity. Debug CI artifacts are not signed release APKs and do not replace physical-device, multi-network, or security acceptance.
+The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta release adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The signed release workflow rebuilt both APKs and verified package IDs, version metadata, signing certificates, checksums, and the update manifest. Android debug CI, signaling tests, RustDesk source/license checks, and documentation validation also passed. The iOS Simulator workflow is separate and does not add iOS feature parity. CI success does not replace physical-device, multi-network, or security acceptance.
 
 Relevant workflow runs:
 
-- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43144166641)
-- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627)
-- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568)
+- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43152105440)
+- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43152105313)
+- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43152634507)
 - [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 - [All historical and future releases](https://github.com/rakhan17/Meizzo/releases)
 
