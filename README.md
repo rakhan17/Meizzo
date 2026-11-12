@@ -24,7 +24,7 @@ session-scoped authorization.
 
 </div>
 
- > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** `v3.0.0-beta.1` is now published as a signed GitHub prerelease with separate Client and Controller APKs. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
+ > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** the published `v3.0.0-beta.1` package is a superseded candidate built from the wrong source branch. The corrected v3 beta is still being validated and is not yet available for download. iOS remains a separate development/Simulator track.
 
 ## What is MEIZZO?
 
@@ -68,14 +68,17 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**V3 BETA** · `v3.0.0-beta.1` · Published prerelease with signed Client/Controller APKs, update manifest, and SHA-256 checksums.</sub>
+<sub>**V3 BETA** · Corrected beta build in validation · Not yet available.</sub>
 
-| App | Purpose | Build |
+The previously published [`v3.0.0-beta.1` release](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1) is **superseded**: it was built from `main`, not the current `develop/v3` source, and does not contain the current v3 app implementation.
+
+| App | Legacy package | Status |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client beta APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20BETA%20APK-555555?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
-| **MEIZZO Controller** | Install on the operator device | [![Download Controller beta APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20BETA%20APK-555555?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
+| **MEIZZO Client** | [![Legacy Client beta APK](https://img.shields.io/badge/LEGACY-CLIENT%20BETA%20APK-777777?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) | Superseded, not recommended |
+| **MEIZZO Controller** | [![Legacy Controller beta APK](https://img.shields.io/badge/LEGACY-CONTROLLER%20BETA%20APK-777777?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) | Superseded, not recommended |
 
-The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [MEIZZO Beta Changelog](BETA-CHANGELOG.md) before installing. The release page also includes [MEIZZO-UPDATE.json](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA256SUMS.txt](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt). Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
+The corrected beta download buttons will be published here only after both signed APKs pass Android 16 launch smoke tests. Follow the [Beta Changelog](BETA-CHANGELOG.md) for the exact validation status. Do not use beta.1 to test the current v3 Liquid Glass experience.
+
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
