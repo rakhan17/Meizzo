@@ -448,16 +448,15 @@ class MainActivity : Activity() {
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     if (socket !== webSocket) return
-                    socket = null
-                    if (heartbeatSocket === webSocket) heartbeatSocket = null
                     runOnUiThread {
                         pendingSessionDialogs.values.forEach { it.dismiss() }
                         pendingSessionDialogs.clear()
                         stopActiveOutputs()
                         status.text = connectionFailureMessage(t)
                     }
-                    scheduleReconnect()
                 }
+    }
+
     private fun connectionFailureMessage(error: Throwable): String {
         val detail = error.message.orEmpty().lowercase()
         return when {
