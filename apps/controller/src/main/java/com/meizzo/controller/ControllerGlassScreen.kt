@@ -44,7 +44,6 @@ import com.kyant.backdrop.catalog.components.LiquidToggle
 import com.kyant.backdrop.catalog.components.LiquidSlider
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.shapes.RoundedRectangle
@@ -417,7 +416,6 @@ private fun Modifier.glassPanel(backdrop: Backdrop, dark: Boolean, radius: Dp): 
         effects = {
             vibrancy()
             blur(14.dp.toPx())
-            lens(18.dp.toPx(), 28.dp.toPx())
         },
         highlight = { Highlight.Plain },
         onDrawSurface = {
