@@ -583,6 +583,7 @@ class MainActivity : ComponentActivity() {
                 network = telemetry.optString("network").ifBlank { "Network unavailable" },
                 hasLocation = telemetry.optJSONObject("lastKnownLocation") != null,
                 mediaActive = pendingMediaRequests.contains(id) || activeMediaSessions.values.contains(id),
+                mediaKind = activeMediaSessions.entries.firstOrNull { it.value == id }?.key?.let { activeMediaKinds[it] },
                 interactionActive = approvedInteractionSessions.containsKey(id),
                 interactionPending = pendingInteractionSessions.containsKey(id)
             )
