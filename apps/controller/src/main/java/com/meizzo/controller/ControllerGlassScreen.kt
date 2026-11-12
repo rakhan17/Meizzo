@@ -147,12 +147,21 @@ fun ControllerGlassScreen(
                                                 style = TextStyle(if (device.online) Color(0xFF30C887) else secondary, 12.sp, FontWeight.Medium)
                                             )
                                         }
-                                        LiquidButton(
-                                            onClick = { onDeviceAction(device.id, "details") },
-                                            backdrop = backdrop,
-                                            surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
-                                        ) {
-                                            BasicText("Details", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
+                                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            LiquidButton(
+                                                onClick = { onDeviceAction(device.id, "details") },
+                                                backdrop = backdrop,
+                                                surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
+                                            ) {
+                                                BasicText("Details", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
+                                            }
+                                            LiquidButton(
+                                                onClick = { onDeviceAction(device.id, "rename") },
+                                                backdrop = backdrop,
+                                                surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
+                                            ) {
+                                                BasicText("Rename", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
+                                            }
                                         }
                                     }
                                     BasicText(
@@ -329,7 +338,10 @@ fun ControllerGlassScreen(
                     confirmLabel = dialog.confirmLabel,
                     dismissLabel = dialog.dismissLabel,
                     onConfirm = onDialogConfirm,
-                    onDismiss = onDialogDismiss
+                    onDismiss = onDialogDismiss,
+                    inputValue = dialog.inputValue,
+                    inputHint = dialog.inputHint,
+                    onInputChange = dialog.onInputChanged
                 )
             }
         }
@@ -343,7 +355,10 @@ data class ControllerGlassDialogRequest(
     val confirmLabel: String,
     val dismissLabel: String,
     val onConfirm: () -> Unit,
-    val onDismiss: () -> Unit
+    val onDismiss: () -> Unit,
+    val inputValue: String? = null,
+    val inputHint: String = "",
+    val onInputChanged: (String) -> Unit = {}
 )
 
 data class ControllerDeviceUi(

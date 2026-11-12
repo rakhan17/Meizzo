@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -32,6 +33,7 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
@@ -90,7 +92,10 @@ fun GlassDialogOverlay(
     confirmLabel: String,
     dismissLabel: String,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    inputValue: String? = null,
+    inputHint: String = "",
+    onInputChange: (String) -> Unit = {}
 ) {
     val text = if (dark) Color.White else Ink
     val secondary = if (dark) Color(0xFFB6B6C0) else MutedInk
@@ -101,20 +106,43 @@ fun GlassDialogOverlay(
         Column(
             Modifier.fillMaxWidth().drawBackdrop(
                 backdrop = backdrop,
-                shape = { RoundedRectangle(30.dp) },
+                shape = { RoundedRectangle(36.dp) },
                 effects = {
+                    colorControls(
+                        brightness = if (dark) 0f else 0.2f,
+                        saturation = 1.5f
+                    )
                     vibrancy()
-                    blur(18.dp.toPx())
-                    lens(22.dp.toPx(), 34.dp.toPx(), depthEffect = true)
+                    blur(if (dark) 8.dp.toPx() else 16.dp.toPx())
+                    lens(24.dp.toPx(), 48.dp.toPx(), depthEffect = true)
                 },
                 highlight = { Highlight.Plain },
                 shadow = { Shadow(radius = 28.dp, color = Color.Black.copy(alpha = 0.22f)) },
-                onDrawSurface = { drawRect(if (dark) Color(0xCC202027) else Color(0xCCFFFFFF)) }
+                onDrawSurface = { drawRect(if (dark) Color(0xFF121212).copy(alpha = 0.40f) else Color(0xFFFAFAFA).copy(alpha = 0.60f)) }
             ).padding(horizontal = 24.dp, vertical = 26.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             BasicText(title, style = TextStyle(text, 22.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
             BasicText(message, style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
+            if (inputValue != null) {
+                BasicTextField(
+                    value = inputValue,
+                    onValueChange = onInputChange,
+                    textStyle = TextStyle(text, 15.sp, fontFamily = FontFamily.SansSerif),
+                    modifier = Modifier.fillMaxWidth().background(
+                        if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
+                        RoundedRectangle(16.dp)
+                    ).padding(horizontal = 14.dp, vertical = 12.dp),
+                    decorationBox = { inner ->
+                        Box {
+                            if (inputValue.isBlank()) {
+                                BasicText(inputHint, style = TextStyle(secondary.copy(alpha = 0.65f), 14.sp))
+                            }
+                            inner()
+                        }
+                    }
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 LiquidButton(
