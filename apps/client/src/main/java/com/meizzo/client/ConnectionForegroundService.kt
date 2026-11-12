@@ -9,6 +9,9 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.hardware.camera2.CameraManager
+import android.media.AudioManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -113,7 +116,7 @@ class ConnectionForegroundService : Service() {
                 if (socket !== webSocket) return
                 val listener = clientListener
                 if (listener != null) listener.onMessage(webSocket, text)
-                else if (!handleDetachedAlarmCommand(webSocket, text)) {
+                else if (!handleDetachedCommand(webSocket, text)) {
                     if (queuedMessages.size >= MAX_QUEUED_MESSAGES) queuedMessages.removeFirst()
                     queuedMessages.addLast(text)
                 }
