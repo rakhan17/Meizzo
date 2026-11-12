@@ -25,6 +25,7 @@ class FileTransferCoordinator(
     private val onIncomingOffer: (String, Long, String) -> Unit,
     private val onStatus: (String) -> Unit
 ) {
+    private val resumePrefs by lazy { context.getSharedPreferences("meizzo_file_transfer_resume", Context.MODE_PRIVATE) }
     private var incomingOutput: OutputStream? = null
     private var incomingUri: Uri? = null
     private var outgoingInput: InputStream? = null
@@ -73,16 +74,13 @@ class FileTransferCoordinator(
                 retryHandler.post {
                     if (closed) return@post
                     when (channel.state()) {
-                        DataChannel.State.OPEN -> onStatus("Secure file channel ready")
+                        DataChannel.State.OPEN -> { onStatus("Secure file channel ready"); resumeOutgoingOfferIfPresent() }
                         DataChannel.State.CLOSING, DataChannel.State.CLOSED -> {
                             closed = true
                             retryHandler.removeCallbacksAndMessages(null)
                             cancelChunkRetry()
-                            closeOutgoing()
+                            pauseActiveTransfer()
                             outgoingQueue.clear()
-                            discardIncoming()
-                            pendingName = ""
-                            pendingSize = 0L
                             try { channel.unregisterObserver() } catch (_: Exception) { }
                             onStatus("File channel closed · transfer stopped")
                         }
@@ -136,13 +134,14 @@ class FileTransferCoordinator(
         lastOutgoingProgressBytes = 0L
         outgoingDigest = MessageDigest.getInstance("SHA-256")
         outgoingTransferId = UUID.randomUUID().toString()
+        val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
+        resumePrefs.edit().putString("outgoing_id", outgoingTransferId).putString("outgoing_uri", uri.toString())
+            .putString("outgoing_name", metadata.first).putLong("outgoing_size", metadata.second)
+            .putString("outgoing_mime", mimeType).putLong("outgoing_offset", 0L).commit()
         waitingForAck = true
         send(JSONObject().apply {
-            put("type", "file_offer")
-            put("transferId", outgoingTransferId)
-            put("name", metadata.first)
-            put("size", metadata.second)
-            put("mimeType", context.contentResolver.getType(uri) ?: "application/octet-stream")
+            put("type", "file_offer"); put("transferId", outgoingTransferId)
+            put("name", metadata.first); put("size", metadata.second); put("mimeType", mimeType); put("offset", 0L)
         })
         onStatus("Waiting for the receiver to accept ${metadata.first}")
     }
@@ -157,7 +156,9 @@ class FileTransferCoordinator(
         incomingExpectedSequence = 0
         incomingDigest = MessageDigest.getInstance("SHA-256")
         val transferId = incomingTransferId ?: throw IllegalStateException("Incoming file offer has no transfer identifier")
-        send(JSONObject().put("type", "file_accept").put("transferId", transferId))
+        resumePrefs.edit().putString("incoming_id", transferId).putString("incoming_uri", uri.toString())
+            .putLong("incoming_offset", 0L).putString("incoming_name", pendingName).putLong("incoming_size", pendingSize).commit()
+        send(JSONObject().put("type", "file_accept").put("transferId", transferId).put("offset", 0L))
         onStatus("Receiving $pendingName")
     }
 
@@ -165,6 +166,7 @@ class FileTransferCoordinator(
         send(JSONObject().put("type", "file_reject").put("transferId", incomingTransferId))
         pendingName = ""
         pendingSize = 0L
+        clearIncomingCheckpoint()
         discardIncoming()
     }
 
@@ -177,7 +179,9 @@ class FileTransferCoordinator(
         val transferId = outgoingTransferId ?: incomingTransferId
         send(JSONObject().put("type", "file_reject").put("transferId", transferId))
         closeOutgoing()
+        clearOutgoingCheckpoint()
         outgoingQueue.clear()
+        clearIncomingCheckpoint()
         discardIncoming()
         pendingName = ""
         pendingSize = 0L
@@ -187,9 +191,8 @@ class FileTransferCoordinator(
     fun close() {
         if (closed) return
         closed = true
-        closeOutgoing()
+        pauseActiveTransfer()
         outgoingQueue.clear()
-        discardIncoming()
         retryHandler.removeCallbacksAndMessages(null)
         try { channel.unregisterObserver() } catch (_: Exception) { }
     }
@@ -221,12 +224,19 @@ class FileTransferCoordinator(
                     onStatus("Rejected invalid or oversized file offer")
                     return
                 }
+                if (restoreIncomingCheckpoint(transferId)) return
                 onIncomingOffer(pendingName, pendingSize, mime)
             }
             "file_accept" -> {
-                if (message.optString("transferId") == outgoingTransferId) {
-                    waitingForAck = false
-                    sendNextChunk()
+                val transferId = message.optString("transferId")
+                val offset = message.optLong("offset", 0L)
+                if (transferId == outgoingTransferId) {
+                    if (offset > 0L && offset != outgoingBytes && !restoreOutgoingCheckpoint(transferId, offset)) {
+                        send(JSONObject().put("type", "file_reject").put("transferId", transferId)); return
+                    }
+                    waitingForAck = false; sendNextChunk()
+                } else if (restoreOutgoingCheckpoint(transferId, offset)) {
+                    waitingForAck = false; sendNextChunk()
                 }
             }
             "file_reject" -> {
@@ -235,10 +245,12 @@ class FileTransferCoordinator(
                     transferId.isNotBlank() && transferId == outgoingTransferId -> {
                         cancelChunkRetry()
                         closeOutgoing()
+                        clearOutgoingCheckpoint()
                         outgoingQueue.clear()
                         onStatus("The other device declined or could not complete the file")
                     }
                     transferId.isNotBlank() && transferId == incomingTransferId -> {
+                        clearIncomingCheckpoint()
                         discardIncoming()
                         pendingName = ""
                         pendingSize = 0L
@@ -290,7 +302,9 @@ class FileTransferCoordinator(
                     incomingBytes += bytes.size
                     incomingDigest?.update(bytes)
                     incomingOutput?.write(bytes)
+                    incomingOutput?.flush()
                     incomingExpectedSequence += 1
+                    resumePrefs.edit().putLong("incoming_offset", incomingBytes).commit()
                     if (incomingBytes - lastIncomingProgressBytes >= PROGRESS_INTERVAL_BYTES) {
                         lastIncomingProgressBytes = incomingBytes
                         onStatus("Receiving file · ${incomingBytes / MEBIBYTE} MiB received")
@@ -312,6 +326,7 @@ class FileTransferCoordinator(
                     pendingChunkMessage = null
                     chunkRetryCount = 0
                     outgoingSequence++
+                    resumePrefs.edit().putLong("outgoing_offset", outgoingBytes).commit()
                     waitingForAck = false
                     sendNextChunk()
                 }
@@ -333,6 +348,7 @@ class FileTransferCoordinator(
                     actualHash.equals(expectedHash, ignoreCase = true)
                 if (hashMatches) {
                     lastCompletedIncomingTransferId = transferId
+                    clearIncomingCheckpoint()
                     closeIncoming()
                 } else {
                     discardIncoming()
@@ -351,6 +367,7 @@ class FileTransferCoordinator(
                 if (message.optString("transferId") != outgoingTransferId) return
                 cancelChunkRetry()
                 closeOutgoing()
+                clearOutgoingCheckpoint()
                 if (outgoingQueue.isNotEmpty()) {
                     try {
                         startNextFile()
@@ -416,6 +433,79 @@ class FileTransferCoordinator(
         }
     }
 
+    private fun resumeOutgoingOfferIfPresent() {
+        val id = resumePrefs.getString("outgoing_id", null) ?: return
+        if (outgoingTransferId == id || outgoingInput != null) return
+        send(JSONObject().apply {
+            put("type", "file_offer"); put("transferId", id)
+            put("name", resumePrefs.getString("outgoing_name", "shared-file"))
+            put("size", resumePrefs.getLong("outgoing_size", -1L))
+            put("mimeType", resumePrefs.getString("outgoing_mime", "application/octet-stream"))
+            put("offset", resumePrefs.getLong("outgoing_offset", 0L)); put("resume", true)
+        })
+        onStatus("Reconnecting file transfer · waiting for receiver checkpoint")
+    }
+
+    private fun restoreOutgoingCheckpoint(transferId: String, requestedOffset: Long): Boolean {
+        if (transferId.isBlank() || requestedOffset < 0L || requestedOffset > MAX_FILE_SIZE) return false
+        if (resumePrefs.getString("outgoing_id", null) != transferId) return false
+        val rawUri = resumePrefs.getString("outgoing_uri", null) ?: return false
+        val input = try { context.contentResolver.openInputStream(Uri.parse(rawUri)) } catch (_: Exception) { null } ?: return false
+        return try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            var skipped = 0L
+            val buffer = ByteArray(CHUNK_SIZE)
+            while (skipped < requestedOffset) {
+                val count = input.read(buffer, 0, minOf(buffer.size.toLong(), requestedOffset - skipped).toInt())
+                if (count <= 0) throw IllegalStateException("Source file is shorter than its saved resume offset")
+                digest.update(buffer, 0, count); skipped += count
+            }
+            try { outgoingInput?.close() } catch (_: Exception) { }
+            outgoingInput = input; outgoingDigest = digest; outgoingTransferId = transferId
+            outgoingBytes = requestedOffset; outgoingSequence = (requestedOffset / CHUNK_SIZE).toInt()
+            lastOutgoingProgressBytes = requestedOffset; waitingForAck = false
+            onStatus("Resuming file transfer · " + (requestedOffset / MEBIBYTE) + " MiB verified")
+            true
+        } catch (_: Exception) { try { input.close() } catch (_: Exception) { }; false }
+    }
+
+    private fun restoreIncomingCheckpoint(transferId: String): Boolean {
+        if (resumePrefs.getString("incoming_id", null) != transferId) return false
+        val rawUri = resumePrefs.getString("incoming_uri", null) ?: return false
+        val uri = Uri.parse(rawUri); val offset = resumePrefs.getLong("incoming_offset", 0L)
+        if (offset < 0L || offset > MAX_FILE_SIZE) return false
+        return try {
+            val input = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Saved destination is unreadable")
+            val digest = MessageDigest.getInstance("SHA-256"); var restored = 0L; val buffer = ByteArray(CHUNK_SIZE)
+            input.use { stream ->
+                while (restored < offset) {
+                    val count = stream.read(buffer, 0, minOf(buffer.size.toLong(), offset - restored).toInt())
+                    if (count <= 0) throw IllegalStateException("Saved destination is shorter than its checkpoint")
+                    digest.update(buffer, 0, count); restored += count
+                }
+            }
+            if (restored != offset) throw IllegalStateException("Saved destination checkpoint is invalid")
+            incomingOutput = context.contentResolver.openOutputStream(uri, "wa") ?: throw IllegalStateException("Saved destination cannot be reopened for append")
+            incomingUri = uri; incomingBytes = offset; incomingExpectedSequence = (offset / CHUNK_SIZE).toInt()
+            incomingDigest = digest; incomingTransferId = transferId; lastIncomingProgressBytes = offset
+            send(JSONObject().put("type", "file_accept").put("transferId", transferId).put("offset", offset))
+            onStatus("Resuming " + pendingName + " · " + (offset / MEBIBYTE) + " MiB verified")
+            true
+        } catch (_: Exception) { onStatus("Saved transfer could not resume · choose the destination again"); clearIncomingCheckpoint(); false }
+    }
+
+    private fun clearOutgoingCheckpoint() {
+        resumePrefs.edit().remove("outgoing_id").remove("outgoing_uri").remove("outgoing_name").remove("outgoing_size").remove("outgoing_mime").remove("outgoing_offset").commit()
+    }
+    private fun clearIncomingCheckpoint() {
+        resumePrefs.edit().remove("incoming_id").remove("incoming_uri").remove("incoming_offset").remove("incoming_name").remove("incoming_size").commit()
+    }
+    private fun pauseActiveTransfer() {
+        cancelChunkRetry(); try { outgoingInput?.close() } catch (_: Exception) { }
+        outgoingInput = null; outgoingDigest = null; waitingForAck = false
+        try { incomingOutput?.flush(); incomingOutput?.close() } catch (_: Exception) { }
+        incomingOutput = null; incomingDigest = null; incomingUri = null
+    }
     private fun queryMetadata(uri: Uri): Pair<String, Long> {
         var name = uri.lastPathSegment?.substringAfterLast('/') ?: "shared-file"
         var size = -1L
