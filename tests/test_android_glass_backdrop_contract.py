@@ -20,7 +20,8 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
         self.assertEqual(source.count(".layerBackdrop(backdrop)"), 1)
         self.assertLess(root_box, source_layer)
         self.assertLess(source_layer, glass_content)
-        self.assertIn("\\n        )\\n        content(backdrop)", source)
+        self.assertIn("Box(Modifier.fillMaxSize()) {", source)
+        self.assertIn("content(backdrop)", source)
         self.assertIn("Record only the background as the backdrop source", source)
         self.assertIn("Glass surfaces must", source)
 
