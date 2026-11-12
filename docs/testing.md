@@ -71,7 +71,9 @@ Controller and at least two Clients.
 14. Confirm Controller status changes only after a Client command result arrives.
 15. Test revoke and confirm access is removed.
 16. Test notification, background, battery optimization, reboot, and network
-    interruption behavior.
+    interruption behavior. Remove the Client Activity from Recents and verify
+    the service-owned WSS connection remains active; reopen the Activity and
+    confirm queued signaling events are replayed.
 17. Test updater checksum/package/signature checks using a valid release.
 
 Record exact results. Never record tokens, passwords, pairing codes, or private
@@ -96,6 +98,10 @@ acceptance.
 5. **File transfer:** send files in both directions, verify SHA-256 completion,
    test unknown-size document providers, reject files over 50 MiB, cancel
    destination selection, and confirm partial files are removed after failure.
+   Interrupt a files session after several acknowledged chunks, establish a new
+   approved files session, and verify both peers resume from the last acknowledged
+   offset without duplicated or missing bytes. Repeat after force-closing one app
+   and confirm resume is offered only when its persisted SAF grant remains valid.
 6. **Network traversal:** test same Wi-Fi, different Wi-Fi networks, mobile
    data, restrictive NAT, and Wi-Fi/mobile handover. Confirm TURN is used when
    direct ICE fails.
