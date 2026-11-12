@@ -5,9 +5,10 @@ Android modules are `apps/client` and `apps/controller`, with package IDs
 
 ## Endpoint configuration
 
-Debug builds default to `ws://10.0.2.2:8080`. That address is not guaranteed
-to work in BlueStacks Air; override it with the Mac LAN address when
-necessary:
+Debug and release builds default to the existing MEIZZO WSS endpoint:
+`wss://meizzo-signaling.rakhanatanox.workers.dev`. For local signaling
+experiments, override the debug endpoint with a reachable Mac LAN address
+or local harness URL:
 
 ```bash
 ./gradlew -Pmeizzo.debugSignalingUrl=ws://192.168.1.20:8080 \
