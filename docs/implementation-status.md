@@ -14,7 +14,7 @@ build does not prove runtime behavior on every Android vendor or network.
 - Client: focused single-page pairing-code experience.
 - Theme: light/dark appearance with matching Android system-bar icon contrast.
 - App-owned confirmation, warning, and text-entry dialogs use the shared Liquid Glass surface. OS-owned permission and document-picker UI remains native.
-- CI validates both Android debug variants; this does not replace physical-device UX/accessibility testing.
+- CI validates both Android debug variants; the release workflow separately builds signed beta APKs. Neither replaces physical-device UX/accessibility testing.
 
 - Separate Android applications:
   - Client: `com.meizzo.client`
@@ -86,12 +86,12 @@ types, participant-bound signaling, and Client-initiated session termination.
 
 ## Automated verification
 
-The v3 CI workflow builds Android Client and Controller independently and runs
+The v3 beta release `v3.0.0-beta.1` is published separately from stable `v2.5.0`. The v3 CI workflow builds Android Client and Controller independently and runs
 signaling regression tests for pairing, multi-device isolation, revocation,
 session lifecycle, reconnect cleanup, media signaling, and Client-initiated
 media-session termination.
 
-Latest UI candidate evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136156), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136174). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
+Latest beta candidate evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166568). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
 Automated success is build and protocol evidence only. It is not a substitute
 for real Android device testing, network traversal testing, or a security audit.
 
