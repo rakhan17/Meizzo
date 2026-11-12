@@ -10,36 +10,16 @@ This is the user-facing changelog for published beta and stable releases. New be
 
 ---
 
-## v3.0.0-beta.1 · Android Liquid Glass and remote-assistance beta
+## v3.0.0-beta.1 · Superseded candidate
 
-> **Superseded candidate:** this tag was built from `main`, not `develop/v3`, and therefore does not contain the current v3 Android application source. See [the dedicated beta changelog](BETA-CHANGELOG.md) for the correction and next release validation gates.
+<sub>12 November 2026 · Beta prerelease · Superseded due to source mismatch</sub>
 
-<sub>12 November 2026 · Beta prerelease</sub>
+- The tag was created from `main`, not `develop/v3`.
+- Its signed Client and Controller APKs do not contain the current v3 Android implementation.
+- Do not treat this release as the current v3 beta or as evidence that the current v3 app has passed launch testing.
+- A corrected beta release will be recorded here only after both signed APKs pass Android 16 launch smoke tests.
 
-### New in this beta
-
-- Integrates AndroidLiquidGlass / Backdrop **2.0.1** into the shared Android Compose UI module.
-- Rebuilds the Android Controller navigation around three tabs: **Link**, **Devices**, and **Settings**.
-- Automatically opens Devices after a pairing request is approved.
-- Gives Android Client a focused single-page six-digit pairing-code experience.
-- Adds shared Liquid Glass surfaces, buttons, bottom tabs, toggles, sliders, scroll effects, and app-owned dialogs.
-- Adds light/dark appearance settings and matching Android system-bar icon contrast.
-- Documents the Android remote-assistance prototype set: approved screen/camera sessions, optional two-way microphone audio, remote interaction/navigation, manual clipboard, remote file browsing, and bidirectional WebRTC file transfer.
-
-### Important boundaries
-
-- Sensitive pairing and session capabilities still require explicit approval on the Client.
-- Android system permission prompts, document pickers, and Package Installer screens remain native Android UI.
-- Remote media and file transfer remain prototypes requiring physical-device and cross-network acceptance.
-- TURN relay availability depends on the existing Cloudflare Worker configuration; STUN-only paths may fail behind restrictive NATs.
-- RustDesk upstream source is pinned and license-checked, but the RustDesk engine/server is not integrated into the MEIZZO runtime.
-- iOS remains a separate development/Simulator track and does not have Android feature parity.
-
-### Downloads
-
-- [MEIZZO Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk)
-- [MEIZZO Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk)
-- [Release page, update manifest, and SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the correction notice, current development status, and release gates.
 
 ---
 
