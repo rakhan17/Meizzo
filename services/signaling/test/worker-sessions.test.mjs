@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 const sourceUrl = pathToFileURL(new URL('../cloudflare/worker.js', import.meta.url).pathname);
 const source = await readFile(sourceUrl, 'utf8');
 const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
-const { MeizzoSignaling } = await import(moduleUrl);
+const { MeizzoSignaling, default: Worker } = await import(moduleUrl);
 
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url, options = {}) => {
@@ -42,7 +42,7 @@ class FakeSocket {
 }
 
 async function run() {
-  const health = await (await import('../cloudflare/worker.js')).default.fetch(
+  const health = await Worker.fetch(
     new Request('https://meizzo-signaling.test/healthz'),
     { REALTIME_TURN_TOKEN_ID: '', REALTIME_TURN_TOKEN_SECRET: '' }
   );
@@ -50,7 +50,7 @@ async function run() {
   if (healthBody.status !== 'ok' || healthBody.mediaTransport !== 'webrtc' || healthBody.turnConfigured !== false) {
     throw new Error('Worker health endpoint did not report the STUN-only configuration safely');
   }
-  const configuredHealth = await (await import('../cloudflare/worker.js')).default.fetch(
+  const configuredHealth = await Worker.fetch(
     new Request('https://meizzo-signaling.test/healthz'),
     { REALTIME_TURN_TOKEN_ID: 'configured-key', REALTIME_TURN_TOKEN_SECRET: 'configured-secret' }
   );
