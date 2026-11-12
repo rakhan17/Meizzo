@@ -24,7 +24,7 @@ session-scoped authorization.
 
 </div>
 
- > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** `v3.0.0-beta.1` is now published as a signed GitHub prerelease with separate Client and Controller APKs. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
+ > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** Android `v3.0.0-beta.2` is the latest published prerelease with separate Client and Controller APK downloads. Beta builds are experimental and require manual device and network acceptance testing. iOS remains a separate development/Simulator track.
 
 ## Latest development update
 
@@ -87,20 +87,18 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**V3 BETA** · `v3.0.0-beta.2` · Corrected candidate in validation · Not yet published.</sub>
+<sub>**V3 BETA CHANNEL** · `v3.0.0-beta.2` · Published and available.</sub>
 
-The current `develop/v3` source is configured for **`3.0.0-beta.2`** in both Android modules. This is the intended corrected beta version, not a published release yet. The earlier [`v3.0.0-beta.1` release](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1) is **superseded** because it was built from `main` rather than the current v3 source.
+The latest v3 beta is **`v3.0.0-beta.2`**, built from the current `develop/v3` source. Both Android APKs are published as a GitHub prerelease. The earlier `v3.0.0-beta.1` package is superseded; use the buttons below for the current build.
 
 | App | Purpose | Download |
-|:--|:--|--:|
-| **MEIZZO Client** | Device receiving assistance | ![Client beta build in validation](https://img.shields.io/badge/CLIENT-BUILD%20IN%20VALIDATION-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Device managing connected Clients | ![Controller beta build in validation](https://img.shields.io/badge/CONTROLLER-BUILD%20IN%20VALIDATION-777777?style=for-the-badge&logo=android&logoColor=white) |
+|:--|:--|:--|
+| **MEIZZO Client** | Device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.2/MEIZZO-Client-v3.0.0-beta.2.apk) |
+| **MEIZZO Controller** | Device managing connected Clients | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.2/MEIZZO-Controller-v3.0.0-beta.2.apk) |
 
-Download buttons will appear in the right-hand column after both corrected APKs are built, signed, and validated. Until then, use the [debug APKs supplied for manual testing](https://github.com/rakhan17/Meizzo/actions/runs/43161664069) only; they are not public release downloads.
+[![View beta channel release](https://img.shields.io/badge/VIEW-BETA%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.2)
 
-**Legacy beta.1 downloads (superseded, not recommended):** [Client APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) · [Controller APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk). Do not use these to test the current v3 implementation.
-
-Follow the [Beta Changelog](BETA-CHANGELOG.md) for validation progress.
+Follow the [Beta Changelog](BETA-CHANGELOG.md) for changes in this prerelease.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -364,7 +362,7 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The corrected v3 candidate is configured as `3.0.0-beta.2` in the current `develop/v3` Android modules, but it has not yet been published. The previously published `v3.0.0-beta.1` package is superseded because its tag was built from the legacy `main` source. Current CI has validated Android Client/Controller builds and Android 16 launch smoke tests, signaling and regression checks, and iOS Simulator smoke tests. Pairing, approval, and real remote-control behavior still require manual two-device acceptance. CI success does not replace physical-device, multi-network, or security acceptance.
+The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The latest published v3 prerelease is `v3.0.0-beta.2`, built from the current `develop/v3` source and distributed with separate signed Client and Controller APKs. Current CI has validated Android Client/Controller builds and Android 16 launch smoke tests, signaling and regression checks, and iOS Simulator smoke tests. Pairing, approval, and real remote-control behavior still require manual two-device acceptance. CI success does not replace physical-device, multi-network, or security acceptance.
 
 Relevant workflow runs:
 
@@ -465,7 +463,7 @@ not grant rights to the MEIZZO name or branding beyond customary reference.
 
 <div align="center">
 
-**MEIZZO** · Android Stable 2.5.0 · Android v3 Beta 3.0.0-beta.2 (in validation) · iOS under development
+**MEIZZO** · Android Stable 2.5.0 · Android v3 Beta 3.0.0-beta.2 · iOS under development
 
 [Stable release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0) ·
 [Beta changelog](BETA-CHANGELOG.md) ·
