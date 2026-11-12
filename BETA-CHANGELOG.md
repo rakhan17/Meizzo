@@ -20,10 +20,11 @@ This page tracks the Android v3 beta independently from the stable v2.5.0 channe
 ### Latest validation findings · 12 November 2026
 
 - Both Android apps compile successfully in the current debug CI pipeline.
-- Android 16 emulator launch smoke testing found that the Client activity returns to Home and its process disappears shortly after launch; an earlier Controller launch check also failed. The captured logs did not yet establish a Java exception or native crash cause.
-- Lens effects have been removed from the Client, Controller, and shared dialog surfaces as a compatibility experiment. This change is not yet confirmed as the root-cause fix.
-- The revised smoke test now records Android process exit history and filters the full log buffer for Java/native crash traces.
-- The revised build is being re-tested. Neither app is considered launch-validated until both emulator smoke tests pass.
+- Android 16 recorded a native signal-11 crash in `libhwui.so`, with a recursive `RenderNode::prepareTreeImpl` / `SkiaDisplayList::prepareListAndChildren` backtrace.
+- Root cause: the outer `Box` was marked as the `LayerBackdrop` source while its descendants also sampled that same backdrop. This formed a render feedback loop. The Backdrop maintainer documents this exact pattern as a cause of RenderThread `SIGSEGV` ([official tutorial](https://kyant.gitbook.io/backdrop/tutorials/glass-bottom-sheet)).
+- Fix: the gradient/background is now recorded in a dedicated sibling `Box`; glass surfaces render as siblings outside the recorded layer. Blur and vibrancy remain enabled. Lens effects were removed separately as a conservative compatibility choice, not as the root-cause fix.
+- Both Client and Controller passed Android 16 emulator launch smoke tests on commit `941a00d`.
+- The latest CI run also includes visible in-app logo branding and a source-contract regression test for the backdrop layering rule; that run is still pending.
 
 ## Next corrected v3 beta
 
