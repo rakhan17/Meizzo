@@ -55,6 +55,8 @@ class MainActivity : ComponentActivity() {
     private val approvedInteractionSessions = mutableMapOf<String, String>()
     private val pendingInteractionSessions = mutableMapOf<String, String>()
     private val pendingCommandClients = mutableSetOf<String>()
+    private val pendingCommandTypes = mutableMapOf<String, String>()
+    private val alarmActiveClients = mutableSetOf<String>()
     private val remoteFileBrowseStacks = mutableMapOf<String, MutableList<String>>()
     private val pendingMediaRequests = mutableSetOf<String>()
     private val activeMediaSessions = mutableMapOf<String, String>()
