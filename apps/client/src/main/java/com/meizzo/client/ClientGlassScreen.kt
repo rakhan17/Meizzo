@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.catalog.components.LiquidButton
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -33,6 +34,7 @@ fun ClientGlassScreen(
     pairingCode: String,
     statusView: TextView,
     darkMode: Boolean,
+    onCheckForUpdates: () -> Unit,
     dialog: ClientGlassDialogRequest?,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit
@@ -82,6 +84,17 @@ fun ClientGlassScreen(
                         style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.7.sp)
                     )
                     AndroidView(factory = { statusView }, modifier = Modifier.fillMaxWidth())
+                }
+                LiquidButton(
+                    onClick = onCheckForUpdates,
+                    backdrop = backdrop,
+                    modifier = Modifier.fillMaxWidth(),
+                    surfaceColor = if (darkMode) Color(0x332D2D36) else Color(0x77FFFFFF)
+                ) {
+                    androidx.compose.foundation.text.BasicText(
+                        "Check for updates",
+                        style = TextStyle(foreground, 14.sp, FontWeight.Medium)
+                    )
                 }
                 androidx.compose.foundation.text.BasicText(
                     "PRIVATE BY DESIGN  ·  YOU CONTROL ACCESS",
