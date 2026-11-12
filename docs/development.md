@@ -12,8 +12,7 @@ npm test
 PORT=8080 npm start
 ```
 
-Android builds use the Gradle wrapper, JDK 17, Android SDK 35, and build tools
-35.0.0:
+Android builds use the Gradle wrapper, JDK 17, Android SDK Platform 37 and Build Tools 37.0.0 for the Backdrop 2.0.1 integration (the release signer also installs Build Tools 35.0.0 for APK inspection):
 
 ```bash
 ./gradlew :apps:client:assembleDebug
@@ -22,8 +21,7 @@ Android builds use the Gradle wrapper, JDK 17, Android SDK 35, and build tools
 
 The Android plugin/dependency versions are intentionally not replaced to work
 around missing local connectivity. This environment can reach Maven Central but
-cannot resolve `dl.google.com`, and it has no Android SDK. The remote CI workflow
-uses the same Gradle wrapper, JDK 17, Android SDK 35, and build tools 35.0.0.
+cannot resolve `dl.google.com`, and it has no Android SDK. The remote CI workflow installs the Android 35 and 37 SDK/build-tool packages required by the app and release validation.
 Run `gh run download <run-id> --repo rakhan17/Meizzo` to download verified
 Client and Controller APK artifacts from a successful run.
 
@@ -68,8 +66,7 @@ are enabled.
 
 ## Releases
 
-Push a semver tag such as `v0.1.0-beta.4` to run the Android release workflow
-and the iOS simulator release publishing job. Android release CI requires the
+Create a `release/v3.x.y-beta.N` branch from a commit already merged into `develop/v3` to run the signed Android beta release workflow. The workflow publishes a prerelease and its APK/manifest/checksum assets. Tag pushes continue to run the Android release workflow and the iOS Simulator artifact publisher. Android release CI requires the
 stable keystore and endpoint secrets documented in
 [release notes](release-notes.md); it no longer generates a throwaway signing
 key, because that would make future in-app updates impossible.
