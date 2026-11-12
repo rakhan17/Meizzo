@@ -165,29 +165,8 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: |
-            adb install -r "dist/MEIZZO-Client-${MEIZZO_RELEASE_TAG}.apk"
-            adb install -r "dist/MEIZZO-Controller-${MEIZZO_RELEASE_TAG}.apk"
-            adb shell pm grant com.meizzo.client android.permission.POST_NOTIFICATIONS || true
-            adb shell pm grant com.meizzo.controller android.permission.POST_NOTIFICATIONS || true
-            adb shell am start -W -n com.meizzo.client/.MainActivity
-            sleep 10
-            if ! adb shell pidof com.meizzo.client >/dev/null || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q 'com.meizzo.client'; then
-              echo "::error::MEIZZO Client MainActivity did not remain resumed"
-              adb shell dumpsys activity activities
-              adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E
-              exit 1
-            fi
-            adb shell am force-stop com.meizzo.client
-            adb shell am start -W -n com.meizzo.controller/.MainActivity
-            sleep 10
-            if ! adb shell pidof com.meizzo.controller >/dev/null || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q 'com.meizzo.controller'; then
-              echo "::error::MEIZZO Controller MainActivity did not remain resumed"
-              adb shell dumpsys activity activities
-              adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E
-              exit 1
-            fi
-            adb shell am force-stop com.meizzo.controller
+          script: bash scripts/android-launch-smoke.sh release
+
       - uses: softprops/action-gh-release@v2
         if: github.event_name == 'push' || inputs.publish_release == true
         with:
