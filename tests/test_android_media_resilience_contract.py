@@ -64,6 +64,7 @@ class MediaResilienceContract(unittest.TestCase):
             "socket = null",
             "scheduleReconnect()",
             "if (isFinishing || reconnectScheduled) return",
+            "stopService(Intent(this, ConnectionForegroundService::class.java))",
         ):
             self.assertIn(marker, source)
 
