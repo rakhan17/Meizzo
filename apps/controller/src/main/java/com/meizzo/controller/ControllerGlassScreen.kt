@@ -2,7 +2,6 @@ package com.meizzo.controller
 
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -29,8 +30,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -57,21 +56,10 @@ import kotlin.math.roundToInt
 
 @Composable
 private fun BrandHeader(foreground: Color) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(
-            painter = painterResource(R.drawable.meizzo_logo),
-            contentDescription = "MEIZZO logo",
-            modifier = Modifier.size(44.dp),
-            contentScale = ContentScale.Fit
-        )
-        BasicText(
-            "MEIZZO",
-            style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp)
-        )
-    }
+    BasicText(
+        "MEIZZO",
+        style = TextStyle(foreground, 24.sp, FontWeight.Bold, letterSpacing = 4.sp, fontFamily = FontFamily.SansSerif)
+    )
 }
 
 @Composable
@@ -124,8 +112,23 @@ fun ControllerGlassScreen(
                                     textStyle = TextStyle(foreground, 28.sp, FontWeight.Medium, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     decorationBox = { inner ->
-                                        Box {
-                                            if (pairingCode.isEmpty()) BasicText("000000", style = TextStyle(secondary.copy(alpha = 0.45f), 28.sp, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace))
+                                        Box(
+                                            Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (pairingCode.isEmpty()) {
+                                                BasicText(
+                                                    "000000",
+                                                    style = TextStyle(
+                                                        secondary.copy(alpha = 0.45f),
+                                                        28.sp,
+                                                        FontWeight.Medium,
+                                                        letterSpacing = 8.sp,
+                                                        fontFamily = FontFamily.Monospace,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                )
+                                            }
                                             inner()
                                         }
                                     },
@@ -145,13 +148,6 @@ fun ControllerGlassScreen(
                             BrandHeader(foreground)
                             BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                             BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
-                            Column(
-                                Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                BasicText("CONNECTION", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.6.sp))
-                                AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
-                            }
                             if (devices.isEmpty()) {
                                 Column(
                                     Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(22.dp),
@@ -178,6 +174,7 @@ fun ControllerGlassScreen(
                                             LiquidButton(
                                                 onClick = { onDeviceAction(device.id, "details") },
                                                 backdrop = backdrop,
+                                                modifier = Modifier.width(88.dp).height(34.dp),
                                                 surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
                                             ) {
                                                 BasicText("Details", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
@@ -185,6 +182,7 @@ fun ControllerGlassScreen(
                                             LiquidButton(
                                                 onClick = { onDeviceAction(device.id, "rename") },
                                                 backdrop = backdrop,
+                                                modifier = Modifier.width(88.dp).height(34.dp),
                                                 surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
                                             ) {
                                                 BasicText("Rename", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
