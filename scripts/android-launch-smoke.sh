@@ -13,8 +13,8 @@ assert_running() {
     adb shell pidof "$package" || true
     echo "Matching activity records:"
     adb shell dumpsys activity activities | grep -C 4 -E "$package|topResumedActivity|mResumedActivity" || true
-    echo "Relevant process and crash logs:"
-    adb logcat -d -v time | grep -E "$package|AndroidRuntime|FATAL EXCEPTION|Fatal signal|ActivityTaskManager" | tail -n 300 || true
+    echo "Full recent logcat (last 500 lines):"
+    adb logcat -d -v time | tail -n 500 || true
     return 1
   fi
   adb shell am force-stop "$package"
