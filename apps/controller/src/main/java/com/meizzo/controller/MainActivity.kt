@@ -396,10 +396,16 @@ class MainActivity : ComponentActivity() {
                             val id = message.optString("clientId")
                             val error = message.optString("error")
                             val wasCommandPending = pendingCommandClients.remove(id)
+                            val completedCommand = pendingCommandTypes.remove(id)
                             if (error.isNotBlank() && error != "null") {
                                 setConnection("Device command failed · $error", false)
                             } else if (message.optJSONObject("result") != null) {
                                 val commandResult = message.getJSONObject("result")
+                                if (completedCommand == "alarm" && commandResult.has("enabled")) {
+                                    if (commandResult.optBoolean("enabled")) alarmActiveClients.add(id)
+                                    else alarmActiveClients.remove(id)
+                                    renderDevices()
+                                }
                                 if (commandResult.has("clipboardText")) {
                                     val clipboardText = commandResult.optString("clipboardText")
                                     runOnUiThread {
@@ -1758,6 +1764,7 @@ class MainActivity : ComponentActivity() {
             return
         }
         pendingCommandClients.add(clientId)
+        pendingCommandTypes[clientId] = command
         val sent = webSocket.send(JSONObject().apply {
             put("type", "controller.command")
             put("clientId", clientId)
