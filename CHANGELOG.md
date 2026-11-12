@@ -2,7 +2,8 @@
 
 This is the user-facing changelog for published beta and stable releases. New beta features are recorded here when a release is published, not merely when a branch or CI build exists.
 
-- **Latest beta:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+- **Beta changelog and correction notice:** [BETA-CHANGELOG.md](BETA-CHANGELOG.md)
+- **Last published beta candidate:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), superseded due to a source-branch mismatch
 - **Stable channel:** [v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 - **Detailed release history:** [UPDATES.md](UPDATES.md) · [Documentation update log](docs/updates.md)
 - **All builds:** [GitHub Releases](https://github.com/rakhan17/Meizzo/releases)
@@ -10,6 +11,8 @@ This is the user-facing changelog for published beta and stable releases. New be
 ---
 
 ## v3.0.0-beta.1 · Android Liquid Glass and remote-assistance beta
+
+> **Superseded candidate:** this tag was built from `main`, not `develop/v3`, and therefore does not contain the current v3 Android application source. See [the dedicated beta changelog](BETA-CHANGELOG.md) for the correction and next release validation gates.
 
 <sub>12 November 2026 · Beta prerelease</sub>
 
