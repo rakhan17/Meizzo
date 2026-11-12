@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ComponentName
+import android.content.ServiceConnection
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.net.ConnectivityManager
@@ -15,6 +17,7 @@ import android.os.Bundle
 import android.content.pm.PackageManager
 import android.os.StatFs
 import android.os.SystemClock
+import android.os.IBinder
 import android.graphics.Color
 import android.graphics.Typeface
 import android.view.Gravity
@@ -49,32 +52,19 @@ class MainActivity : Activity() {
     }
     private val pairingCode by lazy { "%06d".format(SecureRandom().nextInt(1_000_000)) }
     private lateinit var status: TextView
-    private var socket: WebSocket? = null
-    private var heartbeatSocket: WebSocket? = null
-    private var torchEnabled = false
-    private val reconnectHandler = Handler(Looper.getMainLooper())
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: android.net.Network) {
-            reconnectHandler.post {
-                if (!isFinishing && socket == null && !reconnectScheduled) {
-                    reconnectAttempt = 0
-                    connect()
-                }
-            }
+    private var connectionService: ConnectionForegroundService? = null
+    private val socket: WebSocket? get() = connectionService?.currentSocket()
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            connectionService = (binder as? ConnectionForegroundService.LocalBinder)?.service()
+            connect()
         }
-
-        override fun onLost(network: android.net.Network) {
-            reconnectHandler.post {
-                val active = socket ?: return@post
-                socket = null
-                heartbeatSocket = null
-                active.cancel()
-                scheduleReconnect()
-            }
+        override fun onServiceDisconnected(name: ComponentName?) {
+            connectionService = null
         }
     }
-    private var reconnectAttempt = 0
-    private var reconnectScheduled = false
+    private var serviceBound = false
+    private var torchEnabled = false
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
@@ -231,10 +221,11 @@ class MainActivity : Activity() {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         startConnectionForegroundService()
-        val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-            try { connectivity.registerDefaultNetworkCallback(networkCallback) } catch (_: Exception) { }
-        }
+        serviceBound = bindService(
+            Intent(this, ConnectionForegroundService::class.java),
+            serviceConnection,
+            Context.BIND_AUTO_CREATE
+        )
         connect()
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -333,17 +324,16 @@ class MainActivity : Activity() {
     }
 
     private fun connect() {
-        if (isFinishing || socket != null) return
-        reconnectScheduled = false
-        socket = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
-            .newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
+        if (isFinishing) return
+        connectionService?.attachSocketListener(BuildConfig.SIGNALING_URL, createSocketListener())
+    }
+
+    private fun createSocketListener(): WebSocketListener = object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     if (socket !== webSocket) {
                         webSocket.cancel()
                         return
                     }
-                    reconnectAttempt = 0
-                    reconnectScheduled = false
                     // Re-authenticate before refreshing an offer for an already-paired Client.
                     secureStore.get("auth_token")?.let { authenticate(webSocket, it) }
                     registerPairingOffer(webSocket)
@@ -354,7 +344,6 @@ class MainActivity : Activity() {
                     val message = JSONObject(text)
                     when (message.optString("type")) {
                         "auth.connected" -> {
-                            startHeartbeat(webSocket)
                             runOnUiThread { status.text = "Online · waiting for Controller" }
                         }
                         "client.pairing_request" -> runOnUiThread {
@@ -452,12 +441,9 @@ class MainActivity : Activity() {
 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                     if (socket !== webSocket) return
-                    socket = null
-                    if (heartbeatSocket === webSocket) heartbeatSocket = null
                     runOnUiThread {
                         if (!isFinishing) status.text = "Connection closed · reconnecting"
                     }
-                    scheduleReconnect()
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -472,9 +458,6 @@ class MainActivity : Activity() {
                     }
                     scheduleReconnect()
                 }
-            })
-    }
-
     private fun connectionFailureMessage(error: Throwable): String {
         val detail = error.message.orEmpty().lowercase()
         return when {
@@ -488,34 +471,6 @@ class MainActivity : Activity() {
                 "TLS validation failed · check the WSS certificate"
             else -> "Backend connection failed · retrying"
         }
-    }
-
-    private fun startHeartbeat(webSocket: WebSocket) {
-        if (heartbeatSocket === webSocket) return
-        heartbeatSocket = webSocket
-        Thread {
-            while (socket === webSocket && heartbeatSocket === webSocket) {
-                try {
-                    Thread.sleep(15_000)
-                } catch (_: InterruptedException) {
-                    return@Thread
-                }
-                if (socket === webSocket && heartbeatSocket === webSocket) {
-                    webSocket.send(JSONObject().apply {
-                        put("type", "heartbeat")
-                        put("telemetry", deviceMetrics())
-                    }.toString())
-                }
-            }
-        }.start()
-    }
-
-    private fun scheduleReconnect() {
-        if (isFinishing || reconnectScheduled) return
-        reconnectScheduled = true
-        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
-        val delay = (1L shl reconnectAttempt) * 1000L
-        reconnectHandler.postDelayed({ connect() }, delay)
     }
 
     private fun registerPairingOffer(webSocket: WebSocket) {
@@ -1743,23 +1698,10 @@ class MainActivity : Activity() {
         stopMediaPublisher()
         unregisterReceiver(alarmResultReceiver)
         pendingAlarmCommands.clear()
-        reconnectHandler.removeCallbacksAndMessages(null)
-        val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-            try { connectivity.unregisterNetworkCallback(networkCallback) } catch (_: Exception) { }
-        }
-        socket?.close(1000, "Client activity destroyed")
-        socket = null
-        heartbeatSocket = null
-        if (!isChangingConfigurations) {
-            try {
-                startService(
-                    Intent(this, ConnectionForegroundService::class.java)
-                        .setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)
-                )
-            } catch (_: IllegalStateException) {
-                // The OS may already have stopped the foreground service.
-            }
+        connectionService?.detachSocketListener()
+        if (serviceBound) {
+            try { unbindService(serviceConnection) } catch (_: Exception) { }
+            serviceBound = false
         }
         super.onDestroy()
     }
