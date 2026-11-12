@@ -28,7 +28,7 @@ The tag resolves to commit `d8dc247` on the legacy `main` history. It does **not
 - The signaling regression contracts and Node tests pass on the latest CI run; this does not replace device/runtime acceptance.
 - The next release must be built from a commit reachable from `develop/v3`, signed with the established release key, and pass launch smoke tests for both apps before assets are published.
 
-See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the correction notice and exact release gates.
+See [BETA-CHANGELOG.md](../BETA-CHANGELOG.md) for the correction notice and exact release gates.
 
 ---
 
