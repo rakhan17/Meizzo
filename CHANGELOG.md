@@ -1,25 +1,45 @@
 # MEIZZO Changelog
 
-This is the user-facing changelog for published beta and stable releases. New beta features are recorded here when a release is published, not merely when a branch or CI build exists.
+This is the user-facing release and development changelog. Published releases are kept separate from CI-validated development builds.
 
-- **Beta changelog and correction notice:** [BETA-CHANGELOG.md](BETA-CHANGELOG.md)
-- **Last published beta candidate:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), superseded due to a source-branch mismatch
-- **Stable channel:** [v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
-- **Detailed release history:** [UPDATES.md](UPDATES.md) · [Documentation update log](docs/updates.md)
-- **All builds:** [GitHub Releases](https://github.com/rakhan17/Meizzo/releases)
+- **Current development:** [develop/v3](https://github.com/rakhan17/Meizzo/tree/develop/v3).
+- **Latest validation details:** [BETA-CHANGELOG.md](BETA-CHANGELOG.md) · [Full update ledger](UPDATES.md).
+- **Stable channel:** [v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0), unchanged.
+- **Superseded beta candidate:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1). Its tag points to legacy main, not the current v3 development source.
+- **All published releases:** [GitHub Releases](https://github.com/rakhan17/Meizzo/releases).
+
+---
+
+## Latest development update · 12 November 2026
+
+### Fixed
+- Fixed the Android 16 native startup crash caused by a recursive RenderNode feedback loop: the background is recorded in a dedicated sibling layer, while glass surfaces that sample the backdrop render outside that layer.
+- Added a regression-contract test to guard the backdrop layering rule.
+- Added the MEIZZO logo to the Android Client and Controller in-app headers.
+
+### Validation
+- Android Client and Controller debug builds passed.
+- Android 16 emulator launch smoke tests passed for both Android apps.
+- Signaling tests, Node checks/tests, Android command/media/glass-backdrop regression contracts, and pinned RustDesk source/license checks passed.
+- iOS Client and Controller Simulator builds and smoke tests passed.
+- Evidence: [Android CI run 43162464047](https://github.com/rakhan17/Meizzo/actions/runs/43162464047) · [iOS CI run 43162464097](https://github.com/rakhan17/Meizzo/actions/runs/43162464097).
+
+### Still pending before a corrected beta
+- Manual two-device acceptance of six-digit pairing, Client approval, session establishment, and actual remote-control behavior.
+- Build and validate the corrected signed Client and Controller APKs from develop/v3 before publishing a new beta tag.
+- These CI results are engineering validation only. They do not make the superseded beta.1 package current, and they do not change Stable v2.5.0.
 
 ---
 
 ## v3.0.0-beta.1 · Superseded candidate
 
-<sub>12 November 2026 · Beta prerelease · Superseded due to source mismatch</sub>
+<sub>12 November 2026 · Published prerelease · Superseded due to source mismatch</sub>
 
-- The tag was created from `main`, not `develop/v3`.
+- The tag was created from legacy main rather than develop/v3.
 - Its signed Client and Controller APKs do not contain the current v3 Android implementation.
-- Do not treat this release as the current v3 beta or as evidence that the current v3 app has passed launch testing.
-- A corrected beta release will be recorded here only after both signed APKs pass Android 16 launch smoke tests.
+- Do not use beta.1 as the reference build for the current v3 interface.
 
-See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the correction notice, current development status, and release gates.
+See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the full correction notice and validation record.
 
 ---
 
@@ -36,14 +56,9 @@ Downloads: [Client APK](https://github.com/rakhan17/Meizzo/releases/download/v2.
 
 ---
 
-## Historical beta releases
-
-See [UPDATES.md](UPDATES.md#historical-beta-releases) for v0.1.0-beta.1 through v0.1.0-beta.5 and their original release links.
-
 ## Release-channel policy
-
-- `vX.Y.Z` is a stable release.
-- `vX.Y.Z-beta.N` is a prerelease and must never replace the latest stable release.
-- Every public Android release must include separately signed Client and Controller APKs, `MEIZZO-UPDATE.json`, and `SHA256SUMS.txt`.
+- Stable tags use vX.Y.Z.
+- Beta tags use vX.Y.Z-beta.N and must never replace the latest stable release.
+- Every public Android release must include separately signed Client and Controller APKs, MEIZZO-UPDATE.json, and SHA256SUMS.txt.
 - A successful debug CI build is not a published release.
-- New beta features are added to this changelog only after the GitHub prerelease and its assets are verified.
+- Corrected beta downloads are published only after signed APK validation and manual acceptance gates.
