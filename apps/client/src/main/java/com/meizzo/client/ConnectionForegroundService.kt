@@ -39,6 +39,7 @@ class ConnectionForegroundService : Service() {
         OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
     }
     private var socket: WebSocket? = null
+    private var socketOpenResponse: Response? = null
     private var socketUrl: String? = null
     private var clientListener: WebSocketListener? = null
     private var reconnectAttempt = 0
@@ -56,6 +57,7 @@ class ConnectionForegroundService : Service() {
             socketHandler.post {
                 socket?.cancel()
                 socket = null
+                socketOpenResponse = null
                 heartbeatSocket = null
                 scheduleSocketReconnect()
             }
@@ -70,6 +72,9 @@ class ConnectionForegroundService : Service() {
     fun attachSocketListener(url: String, listener: WebSocketListener) {
         clientListener = listener
         socketUrl = url
+        val activeSocket = socket
+        val openResponse = socketOpenResponse
+        if (activeSocket != null && openResponse != null) listener.onOpen(activeSocket, openResponse)
         while (queuedMessages.isNotEmpty()) {
             val message = queuedMessages.removeFirst()
             socket?.let { listener.onMessage(it, message) }
@@ -92,6 +97,7 @@ class ConnectionForegroundService : Service() {
                 if (socket !== webSocket) { webSocket.cancel(); return }
                 reconnectAttempt = 0
                 reconnectScheduled = false
+                socketOpenResponse = response
                 clientListener?.onOpen(webSocket, response)
                 startSocketHeartbeat(webSocket)
             }
@@ -108,6 +114,7 @@ class ConnectionForegroundService : Service() {
                 if (socket !== webSocket) return
                 clientListener?.onClosed(webSocket, code, reason)
                 socket = null
+                socketOpenResponse = null
                 heartbeatSocket = null
                 scheduleSocketReconnect()
             }
@@ -166,6 +173,7 @@ class ConnectionForegroundService : Service() {
             socketHandler.removeCallbacksAndMessages(null)
             socket?.close(1000, "Connection stopped")
             socket = null
+            socketOpenResponse = null
             heartbeatSocket = null
             queuedMessages.clear()
             if (alarmActive) {
@@ -226,6 +234,7 @@ class ConnectionForegroundService : Service() {
         socketHandler.removeCallbacksAndMessages(null)
         socket?.close(1000, "Connection service destroyed")
         socket = null
+        socketOpenResponse = null
         heartbeatSocket = null
         try { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) } catch (_: Exception) { }
         stopAlarm()
