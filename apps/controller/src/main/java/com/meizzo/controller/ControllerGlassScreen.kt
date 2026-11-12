@@ -2,6 +2,7 @@ package com.meizzo.controller
 
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -27,6 +29,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +54,25 @@ import com.kyant.shapes.RoundedRectangle
 import com.meizzo.glass.LiquidGlassBackdrop
 import com.meizzo.glass.GlassDialogOverlay
 import kotlin.math.roundToInt
+
+@Composable
+private fun BrandHeader(foreground: Color) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(R.drawable.meizzo_logo),
+            contentDescription = "MEIZZO logo",
+            modifier = Modifier.size(44.dp),
+            contentScale = ContentScale.Fit
+        )
+        BasicText(
+            "MEIZZO",
+            style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp)
+        )
+    }
+}
 
 @Composable
 fun ControllerGlassScreen(
@@ -86,7 +109,7 @@ fun ControllerGlassScreen(
                 ) {
                     when (selectedTab()) {
                         0 -> {
-                            BasicText("MEIZZO", style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp))
+                            BrandHeader(foreground)
                             BasicText("Connect a device", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                             BasicText("Enter the six-digit code shown on your Client.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
                             Column(
@@ -119,7 +142,7 @@ fun ControllerGlassScreen(
                             }
                         }
                         1 -> {
-                            BasicText("MEIZZO", style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp))
+                            BrandHeader(foreground)
                             BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                             BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
                             Column(
@@ -245,7 +268,7 @@ fun ControllerGlassScreen(
                             }
                         }
                         else -> {
-                            BasicText("MEIZZO", style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp))
+                            BrandHeader(foreground)
                             BasicText("Settings", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                             Column(
                                 Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(18.dp),
