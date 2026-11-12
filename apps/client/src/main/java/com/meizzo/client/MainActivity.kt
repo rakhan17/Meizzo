@@ -216,7 +216,7 @@ class MainActivity : ComponentActivity() {
             setPadding(0, dp(28), 0, dp(8))
         })
         (status.parent as? ViewGroup)?.removeView(status)
-        darkMode = preferences.getBoolean("dark_mode", true)
+        darkMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         window.statusBarColor = if (darkMode) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
         window.navigationBarColor = window.statusBarColor
         setContentView(ComposeView(this).apply {
