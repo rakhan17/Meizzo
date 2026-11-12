@@ -441,11 +441,11 @@ class RtcMediaController(
         localAudioSource = null
         localAudioSender = null
         localAudioEnabled = false
+        detachRenderer()
+        remoteVideoTrack = null
         peer?.close()
         peer?.dispose()
         peer = null
-        detachRenderer()
-        remoteVideoTrack = null
         factory.dispose()
         egl.release()
     }
