@@ -310,7 +310,7 @@ class FileTransferCoordinator(
                     incomingOutput?.write(bytes)
                     incomingOutput?.flush()
                     incomingExpectedSequence += 1
-                    resumePrefs.edit().putLong("incoming_offset", incomingBytes).commit()
+                    resumePrefs.edit().putLong("incoming_offset", incomingBytes).apply()
                     if (incomingBytes - lastIncomingProgressBytes >= PROGRESS_INTERVAL_BYTES) {
                         lastIncomingProgressBytes = incomingBytes
                         onStatus("Receiving file · ${incomingBytes / MEBIBYTE} MiB received")
@@ -333,7 +333,7 @@ class FileTransferCoordinator(
                     pendingChunkMessage = null
                     chunkRetryCount = 0
                     outgoingSequence++
-                    resumePrefs.edit().putLong("outgoing_offset", outgoingBytes).commit()
+                    resumePrefs.edit().putLong("outgoing_offset", outgoingBytes).apply()
                     waitingForAck = false
                     sendNextChunk()
                 }
@@ -457,6 +457,8 @@ class FileTransferCoordinator(
     private fun restoreOutgoingCheckpoint(transferId: String, requestedOffset: Long): Boolean {
         if (transferId.isBlank() || requestedOffset < 0L || requestedOffset > MAX_FILE_SIZE) return false
         if (resumePrefs.getString("outgoing_id", null) != transferId) return false
+        val declaredSize = resumePrefs.getLong("outgoing_size", -1L)
+        if (declaredSize >= 0L && requestedOffset > declaredSize) return false
         val rawUri = resumePrefs.getString("outgoing_uri", null) ?: return false
         val input = try { context.contentResolver.openInputStream(Uri.parse(rawUri)) } catch (_: Exception) { null } ?: return false
         return try {
@@ -481,7 +483,7 @@ class FileTransferCoordinator(
         if (resumePrefs.getString("incoming_id", null) != transferId) return false
         val rawUri = resumePrefs.getString("incoming_uri", null) ?: return false
         val uri = Uri.parse(rawUri); val offset = resumePrefs.getLong("incoming_offset", 0L)
-        if (offset < 0L || offset > MAX_FILE_SIZE) return false
+        if (offset < 0L || offset > MAX_FILE_SIZE || (pendingSize >= 0L && offset > pendingSize)) return false
         return try {
             val input = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Saved destination is unreadable")
             val digest = MessageDigest.getInstance("SHA-256"); var restored = 0L; val buffer = ByteArray(CHUNK_SIZE)
