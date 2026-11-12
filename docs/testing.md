@@ -72,8 +72,9 @@ Controller and at least two Clients.
 15. Test revoke and confirm access is removed.
 16. Test notification, background, battery optimization, reboot, and network
     interruption behavior. Remove the Client Activity from Recents and verify
-    the service-owned WSS connection remains active; reopen the Activity and
-    confirm queued signaling events are replayed.
+    the service-owned WSS connection remains active; issue a remote alarm command
+    and confirm the service handles it without the Activity. Reopen the Activity
+    and confirm queued signaling events are replayed.
 17. Test updater checksum/package/signature checks using a valid release.
 
 Record exact results. Never record tokens, passwords, pairing codes, or private
