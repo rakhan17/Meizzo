@@ -47,12 +47,10 @@ class FileTransferCoordinator(
             val pending = pendingChunkMessage ?: return
             if (!waitingForAck) return
             if (chunkRetryCount >= MAX_CHUNK_RETRIES) {
-                val transferId = outgoingTransferId
                 pendingChunkMessage = null
                 closeOutgoing()
-                send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                 outgoingQueue.clear()
-                onStatus("File transfer stopped · chunk acknowledgement timed out")
+                onStatus("File transfer paused · waiting for the peer session to resume")
                 return
             }
             chunkRetryCount += 1
@@ -211,6 +209,7 @@ class FileTransferCoordinator(
                     onStatus("Rejected file offer with an invalid transfer identifier")
                     return
                 }
+                if (transferId == incomingTransferId && pendingName.isNotBlank()) return
                 if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     onStatus("Another file transfer is already active")
@@ -285,6 +284,7 @@ class FileTransferCoordinator(
                 }
                 if (sequence != incomingExpectedSequence) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    clearIncomingCheckpoint()
                     discardIncoming()
                     pendingName = ""
                     pendingSize = 0L
