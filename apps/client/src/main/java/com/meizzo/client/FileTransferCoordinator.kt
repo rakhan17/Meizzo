@@ -234,7 +234,7 @@ class FileTransferCoordinator(
                 val transferId = message.optString("transferId")
                 val offset = message.optLong("offset", 0L)
                 if (transferId == outgoingTransferId) {
-                    if (offset > 0L && offset != outgoingBytes && !restoreOutgoingCheckpoint(transferId, offset)) {
+                    if (offset != outgoingBytes && !restoreOutgoingCheckpoint(transferId, offset)) {
                         send(JSONObject().put("type", "file_reject").put("transferId", transferId)); return
                     }
                     waitingForAck = false; sendNextChunk()
