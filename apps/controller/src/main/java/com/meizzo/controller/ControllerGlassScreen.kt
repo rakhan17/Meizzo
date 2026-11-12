@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,7 +98,8 @@ fun ControllerGlassScreen(
                                     value = pairingCode,
                                     onValueChange = { pairingCode = it.filter(Char::isDigit).take(6) },
                                     singleLine = true,
-                                    textStyle = TextStyle(foreground, 28.sp, FontWeight.Medium, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace),
+                                    textStyle = TextStyle(foreground, 28.sp, FontWeight.Medium, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace, textAlign = TextAlign.Center),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     decorationBox = { inner ->
                                         Box {
                                             if (pairingCode.isEmpty()) BasicText("000000", style = TextStyle(secondary.copy(alpha = 0.45f), 28.sp, letterSpacing = 8.sp, fontFamily = FontFamily.Monospace))

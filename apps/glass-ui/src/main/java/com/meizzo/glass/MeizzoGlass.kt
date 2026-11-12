@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -100,7 +101,7 @@ fun GlassDialogOverlay(
     val text = if (dark) Color.White else Ink
     val secondary = if (dark) Color(0xFFB6B6C0) else MutedInk
     Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (dark) 0.48f else 0.24f)).padding(24.dp),
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (dark) 0.48f else 0.24f)).padding(24.dp).imePadding(),
         contentAlignment = Alignment.Center
     ) {
         Column(
