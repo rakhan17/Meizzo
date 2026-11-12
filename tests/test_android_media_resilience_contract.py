@@ -53,31 +53,49 @@ class MediaResilienceContract(unittest.TestCase):
         self.assertIn("KeyEvent.ACTION_UP", source)
 
 
-    def test_client_reconnects_after_socket_close_and_network_changes(self):
-        source = (ROOT / "apps/client/src/main/java/com/meizzo/client/MainActivity.kt").read_text()
-        for marker in (
-            "ConnectivityManager.NetworkCallback()",
-            "registerDefaultNetworkCallback(networkCallback)",
-            "unregisterNetworkCallback(networkCallback)",
-            "override fun onClosed(webSocket: WebSocket, code: Int, reason: String)",
-            "if (socket !== webSocket) return",
-            "socket = null",
-            "scheduleReconnect()",
-            "if (isFinishing || reconnectScheduled) return",
-
-        ):
-            self.assertIn(marker, source)
-
-
-    def test_client_service_stops_connection_state_without_killing_active_alarm(self):
+    def test_client_websocket_lifecycle_is_owned_by_foreground_service(self):
         service = (ROOT / "apps/client/src/main/java/com/meizzo/client/ConnectionForegroundService.kt").read_text()
         activity = (ROOT / "apps/client/src/main/java/com/meizzo/client/MainActivity.kt").read_text()
-        self.assertIn("ACTION_CONNECTION_STOP", service)
-        self.assertIn("if (alarmActive)", service)
-        self.assertIn("notify(NOTIFICATION_ID, buildNotification())", service)
-        self.assertIn("stopForeground(STOP_FOREGROUND_REMOVE)", service)
-        self.assertIn("if (!isChangingConfigurations)", activity)
-        self.assertIn("setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)", activity)
+        for marker in (
+            "private var socket: WebSocket? = null",
+            "fun attachSocketListener",
+            "fun detachSocketListener",
+            "private fun connectSocket()",
+            "scheduleSocketReconnect()",
+            "registerDefaultNetworkCallback(networkCallback)",
+            "startSocketHeartbeat(webSocket)",
+            "MAX_QUEUED_MESSAGES",
+        ):
+            self.assertIn(marker, service)
+        self.assertIn("ConnectionForegroundService.LocalBinder", activity)
+        self.assertIn("connectionService?.attachSocketListener", activity)
+        self.assertIn("connectionService?.detachSocketListener()", activity)
+        self.assertNotIn("socket?.close(1000, \"Client activity destroyed\")", activity)
+
+    def test_file_transfer_persists_and_resumes_acknowledged_offsets(self):
+        for role in ("client", "controller"):
+            source = (ROOT / f"apps/{role}/src/main/java/com/meizzo/{role}/FileTransferCoordinator.kt").read_text()
+            for marker in (
+                'getSharedPreferences("meizzo_file_transfer_resume"',
+                '"outgoing_offset"',
+                '"incoming_offset"',
+                "resumeOutgoingOfferIfPresent()",
+                "restoreOutgoingCheckpoint(transferId, offset)",
+                "restoreIncomingCheckpoint(transferId)",
+                'put("offset", offset)',
+                'openOutputStream(uri, "wa")',
+                "pauseActiveTransfer()",
+                "MessageDigest.getInstance(\"SHA-256\")",
+            ):
+                self.assertIn(marker, source)
+
+    def test_document_permissions_are_persisted_for_transfer_resume(self):
+        client = (ROOT / "apps/client/src/main/java/com/meizzo/client/MainActivity.kt").read_text()
+        controller = (ROOT / "apps/controller/src/main/java/com/meizzo/controller/MainActivity.kt").read_text()
+        self.assertIn("takePersistableUriPermission(selectedUri, persistableFlags)", client)
+        self.assertIn("takePersistableUriPermission(uri, persistableFlags)", controller)
+        self.assertIn("takePersistableUriPermission(destination, persistableFlags)", client)
+        self.assertIn("takePersistableUriPermission(destination, persistableFlags)", controller)
 
     def test_file_transfer_rejects_oversized_and_overdeclared_chunks(self):
         for role in ("client", "controller"):
