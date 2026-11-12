@@ -35,7 +35,6 @@ import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
-import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
@@ -115,7 +114,6 @@ fun GlassDialogOverlay(
                     )
                     vibrancy()
                     blur(if (dark) 8.dp.toPx() else 16.dp.toPx())
-                    lens(24.dp.toPx(), 48.dp.toPx(), depthEffect = true)
                 },
                 highlight = { Highlight.Plain },
                 shadow = { Shadow(radius = 28.dp, color = Color.Black.copy(alpha = 0.22f)) },
