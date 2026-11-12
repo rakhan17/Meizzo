@@ -44,6 +44,8 @@ jobs:
         run: python3 ../../tests/test_android_alarm_contract.py -v
       - name: Test Android media resilience contract
         run: python3 ../../tests/test_android_media_resilience_contract.py -v
+      - name: Test Android glass backdrop regression contract
+        run: python3 ../../tests/test_android_glass_backdrop_contract.py -v
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: services/signaling/package-lock.json }
       - run: npm ci
