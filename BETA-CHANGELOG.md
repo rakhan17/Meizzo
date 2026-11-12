@@ -20,9 +20,9 @@ This page tracks the Android v3 beta independently from the stable v2.5.0 channe
 ### Latest validation findings · 12 November 2026
 
 - Both Android apps compile successfully in the current debug CI pipeline.
-- Android 16 emulator launch smoke testing exposed a native `SIGSEGV` on the Client `RenderThread`; an earlier Controller launch check also failed.
-- The crash is consistent with an unstable Backdrop lens shader path. Lens effects have been removed from the Client, Controller, and shared dialog surfaces as a compatibility fix candidate.
-- The revised smoke test now retains full logcat output so any remaining native backtrace is available for diagnosis.
+- Android 16 emulator launch smoke testing found that the Client activity returns to Home and its process disappears shortly after launch; an earlier Controller launch check also failed. The captured logs did not yet establish a Java exception or native crash cause.
+- Lens effects have been removed from the Client, Controller, and shared dialog surfaces as a compatibility experiment. This change is not yet confirmed as the root-cause fix.
+- The revised smoke test now records Android process exit history and filters the full log buffer for Java/native crash traces.
 - The revised build is being re-tested. Neither app is considered launch-validated until both emulator smoke tests pass.
 
 ## Next corrected v3 beta
