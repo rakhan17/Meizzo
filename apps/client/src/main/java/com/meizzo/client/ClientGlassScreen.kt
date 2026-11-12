@@ -36,6 +36,8 @@ fun ClientGlassScreen(
     statusView: TextView,
     darkMode: Boolean,
     onCheckForUpdates: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     dialog: ClientGlassDialogRequest?,
     onDialogConfirm: () -> Unit,
     onDialogDismiss: () -> Unit
@@ -81,6 +83,45 @@ fun ClientGlassScreen(
                         style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.7.sp)
                     )
                     AndroidView(factory = { statusView }, modifier = Modifier.fillMaxWidth())
+                }
+                Column(
+                    Modifier.fillMaxWidth().clientGlassPanel(backdrop, darkMode, 24.dp).padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    androidx.compose.foundation.text.BasicText(
+                        "Remote interaction",
+                        style = TextStyle(foreground, 17.sp, FontWeight.SemiBold)
+                    )
+                    androidx.compose.foundation.text.BasicText(
+                        "Enable MEIZZO in Android Accessibility settings to use remote navigation and touch controls. This is an explicit Android system permission.",
+                        style = TextStyle(secondary, 13.sp, lineHeight = 19.sp)
+                    )
+                    LiquidButton(
+                        onClick = onOpenAccessibilitySettings,
+                        backdrop = backdrop,
+                        modifier = Modifier.fillMaxWidth(),
+                        tint = Color(0xFF007AFF)
+                    ) {
+                        androidx.compose.foundation.text.BasicText(
+                            "Open Accessibility settings",
+                            style = TextStyle(Color.White, 14.sp, FontWeight.SemiBold)
+                        )
+                    }
+                    androidx.compose.foundation.text.BasicText(
+                        "If Android blocks the switch for this sideloaded app, open App info, tap ⋮, choose Allow restricted settings, then return here.",
+                        style = TextStyle(secondary, 12.sp, lineHeight = 18.sp)
+                    )
+                    LiquidButton(
+                        onClick = onOpenAppSettings,
+                        backdrop = backdrop,
+                        modifier = Modifier.fillMaxWidth(),
+                        surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
+                    ) {
+                        androidx.compose.foundation.text.BasicText(
+                            "Open MEIZZO App info",
+                            style = TextStyle(foreground, 14.sp, FontWeight.Medium)
+                        )
+                    }
                 }
                 LiquidButton(
                     onClick = onCheckForUpdates,
