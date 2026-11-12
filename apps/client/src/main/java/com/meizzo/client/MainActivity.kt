@@ -73,7 +73,8 @@ class MainActivity : Activity() {
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
     private var darkMode by mutableStateOf(true)
-    private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
+    private val pendingSessionDialogs = mutableMapOf<String, ClientGlassDialogRequest>()
+    private var glassDialog by mutableStateOf<ClientGlassDialogRequest?>(null)
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
     private var pendingRemoteFileBrowse: Pair<WebSocket, JSONObject>? = null
     private val pendingAlarmCommands = ConcurrentHashMap<String, WebSocket>()
@@ -224,7 +225,18 @@ class MainActivity : Activity() {
                 ClientGlassScreen(
                     pairingCode = pairingCode,
                     statusView = status,
-                    darkMode = darkMode
+                    darkMode = darkMode,
+                    dialog = glassDialog,
+                    onDialogConfirm = {
+                        val request = glassDialog
+                        glassDialog = null
+                        request?.onConfirm?.invoke()
+                    },
+                    onDialogDismiss = {
+                        val request = glassDialog
+                        glassDialog = null
+                        request?.onDismiss?.invoke()
+                    }
                 )
             }
         })
@@ -361,13 +373,15 @@ class MainActivity : Activity() {
                             runOnUiThread { status.text = "Online · waiting for Controller" }
                         }
                         "client.pairing_request" -> runOnUiThread {
-                            AlertDialog.Builder(this@MainActivity)
-                                .setTitle("Approve Controller?")
-                                .setMessage("A Controller wants to manage this device.")
-                                .setNegativeButton("Reject") { _, _ -> decide(webSocket, message, false) }
-                                .setPositiveButton("Approve") { _, _ -> decide(webSocket, message, true) }
-                                .setOnCancelListener { decide(webSocket, message, false) }
-                                .show()
+                            glassDialog = ClientGlassDialogRequest(
+                                id = "pairing:${message.optString("requestId")}",
+                                title = "Approve Controller?",
+                                message = "A Controller wants to manage this device. Only approve if you initiated this pairing.",
+                                confirmLabel = "Approve",
+                                dismissLabel = "Reject",
+                                onConfirm = { decide(webSocket, message, true) },
+                                onDismiss = { decide(webSocket, message, false) }
+                            )
                         }
                         "client.session_status" -> {
                             val sessionId = message.optString("sessionId")
@@ -376,24 +390,25 @@ class MainActivity : Activity() {
                             when (state) {
                                 "pending" -> runOnUiThread {
                                     if (sessionId.isBlank() || pendingSessionDialogs.containsKey(sessionId)) return@runOnUiThread
-                                    val dialog = AlertDialog.Builder(this@MainActivity)
-                                        .setTitle("Allow $sessionType session?")
-                                        .setMessage("A paired Controller is requesting permission to start a $sessionType session. Nothing starts until you approve.")
-                                        .setNegativeButton("Deny") { _, _ ->
+                                    val dialog = ClientGlassDialogRequest(
+                                        id = "session:$sessionId",
+                                        title = "Allow $sessionType session?",
+                                        message = "A paired Controller is requesting permission to start a $sessionType session. Nothing starts until you approve.",
+                                        confirmLabel = "Allow",
+                                        dismissLabel = "Deny",
+                                        onConfirm = {
                                             pendingSessionDialogs.remove(sessionId)
-                                            decideSession(webSocket, sessionId, false)
-                                        }
-                                        .setPositiveButton("Allow") { _, _ ->
-                                            pendingSessionDialogs.remove(sessionId)
+                                            if (glassDialog?.id == "session:$sessionId") glassDialog = null
                                             decideSession(webSocket, sessionId, true)
-                                        }
-                                        .setOnCancelListener {
+                                        },
+                                        onDismiss = {
                                             pendingSessionDialogs.remove(sessionId)
+                                            if (glassDialog?.id == "session:$sessionId") glassDialog = null
                                             decideSession(webSocket, sessionId, false)
                                         }
-                                        .create()
+                                    )
                                     pendingSessionDialogs[sessionId] = dialog
-                                    dialog.show()
+                                    glassDialog = dialog
                                 }
                                 "approved" -> runOnUiThread {
                                     status.text = "$sessionType session approved"
@@ -403,7 +418,8 @@ class MainActivity : Activity() {
                                     }
                                 }
                                 "rejected", "failed", "ended" -> runOnUiThread {
-                                    pendingSessionDialogs.remove(sessionId)?.dismiss()
+                                    pendingSessionDialogs.remove(sessionId)
+                                    if (glassDialog?.id == "session:$sessionId") glassDialog = null
                                     iceServersBySession.remove(sessionId)
                                     if (sessionId == activeMediaSessionId || sessionId == pendingMediaSessionId) {
                                         stopActiveOutputs()
@@ -463,8 +479,8 @@ class MainActivity : Activity() {
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     if (socket !== webSocket) return
                     runOnUiThread {
-                        pendingSessionDialogs.values.forEach { it.dismiss() }
                         pendingSessionDialogs.clear()
+                        glassDialog = null
                         stopActiveOutputs()
                         status.text = connectionFailureMessage(t)
                     }

@@ -26,12 +26,16 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.shapes.RoundedRectangle
 import com.meizzo.glass.LiquidGlassBackdrop
+import com.meizzo.glass.GlassDialogOverlay
 
 @Composable
 fun ClientGlassScreen(
     pairingCode: String,
     statusView: TextView,
-    darkMode: Boolean
+    darkMode: Boolean,
+    dialog: ClientGlassDialogRequest?,
+    onDialogConfirm: () -> Unit,
+    onDialogDismiss: () -> Unit
 ) {
     val foreground = if (darkMode) Color.White else Color(0xFF17171C)
     val secondary = if (darkMode) Color(0xFFB5B5C0) else Color(0xFF74747E)
@@ -84,9 +88,31 @@ fun ClientGlassScreen(
                     style = TextStyle(secondary, 10.sp, FontWeight.Medium, letterSpacing = 1.1.sp)
                 )
             }
+            if (dialog != null) {
+                GlassDialogOverlay(
+                    backdrop = backdrop,
+                    dark = darkMode,
+                    title = dialog.title,
+                    message = dialog.message,
+                    confirmLabel = dialog.confirmLabel,
+                    dismissLabel = dialog.dismissLabel,
+                    onConfirm = onDialogConfirm,
+                    onDismiss = onDialogDismiss
+                )
+            }
         }
     }
 }
+
+data class ClientGlassDialogRequest(
+    val id: String,
+    val title: String,
+    val message: String,
+    val confirmLabel: String,
+    val dismissLabel: String,
+    val onConfirm: () -> Unit,
+    val onDismiss: () -> Unit
+)
 
 private fun Modifier.clientGlassPanel(backdrop: Backdrop, dark: Boolean, radius: Dp): Modifier =
     drawBackdrop(
