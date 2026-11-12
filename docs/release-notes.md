@@ -1,27 +1,28 @@
 # Release notes
 
-See [CHANGELOG.md](https://github.com/rakhan17/Meizzo/blob/main/CHANGELOG.md)
-for the verified tag history.
+The full chronological release history, including feature-level beta notes and build evidence, is maintained in [the MEIZZO update log](updates.md).
 
-## Release process
+## Current channels
 
-1. Update app `versionName` and increment Android `versionCode`.
-2. Run backend tests and both Android builds.
-3. Run iOS Simulator builds and launch smoke tests on macOS.
-4. Confirm the release endpoint uses WSS and the stable Android signing key.
-5. Push a semver tag such as `v2.5.0` for stable or `v2.6.0-beta.1` for beta.
-6. Review generated APK package IDs, signatures, checksums, and iOS
-   Simulator artifact types before publishing.
+| Channel | Version | Status |
+|---|---|---|
+| Android Stable | `v2.5.0` | Published. Existing APKs and signing identity remain unchanged. |
+| Android v3 Beta | `v3.0.0-beta.1` | Current development candidate. CI debug builds passed; signed public release is pending. |
+| iOS | Development | Simulator CI only; physical-device distribution is not available. |
 
-The Android release workflow requires:
-`MEIZZO_ANDROID_KEYSTORE_BASE64`, `MEIZZO_ANDROID_KEYSTORE_PASSWORD`,
-`MEIZZO_ANDROID_KEY_ALIAS`, `MEIZZO_ANDROID_KEY_PASSWORD`, and
-`MEIZZO_SIGNALING_URL`. The iOS device workflow has separate Apple secrets;
-it is manual and does not publish an unsigned IPA.
+## Signed Android release gates
 
-The published beta.3 APKs were signed by the historical release workflow's
-temporary key. Until the owner configures the matching long-lived keystore (or
-publishes a deliberate migration path), the updater correctly rejects future
-APKs whose certificate differs; it must not bypass that safety check.
+1. Use the correct release branch and a valid v3 prerelease tag.
+2. Verify release-version derivation and incremented Android version code.
+3. Build Client and Controller release variants against the production WSS endpoint.
+4. Sign both APKs with the established long-lived Android keystore.
+5. Verify package IDs, version metadata, signing certificates, file sizes, and SHA-256 hashes.
+6. Generate `MEIZZO-UPDATE.json` and `SHA256SUMS.txt`.
+7. Publish the GitHub prerelease with both APKs and metadata.
+8. Verify the published assets and updater compatibility before updating direct README download links.
 
-No new release is created for documentation or updater changes in this task.
+The workflow requires `MEIZZO_ANDROID_KEYSTORE_BASE64`, `MEIZZO_ANDROID_KEYSTORE_PASSWORD`, `MEIZZO_ANDROID_KEY_ALIAS`, and `MEIZZO_ANDROID_KEY_PASSWORD` as GitHub secrets. Do not paste these values into chat, commits, or logs.
+
+## Important release distinction
+
+CI debug APK artifacts are useful for installation and smoke testing, but they are not signed public-release packages. A green debug build does not mean that a signed GitHub Release has been published. Stable `v2.5.0` must not be overwritten or relabeled as a v3 beta.

@@ -1,16 +1,28 @@
 # Changelog
 
-## v2.5.0
+The detailed chronological project ledger is maintained in [UPDATES.md](UPDATES.md) and [docs/updates.md](docs/updates.md). It distinguishes published releases from CI-only development candidates.
 
-- Promoted the tested MEIZZO v2.5 foundation to the stable channel.
-- Improved Client presence handling: a WebSocket close no longer immediately marks a device offline; the existing heartbeat timeout remains authoritative.
-- Added foreground connection service support, Client session improvements, Controller alert management, and Cloudflare signaling updates.
-- Preserved separate Android Client and Controller applications.
+## v3.0.0-beta.1 · development candidate
 
-## Earlier releases
+- Integrates AndroidLiquidGlass / Backdrop 2.0.1 into the shared Android Compose UI module.
+- Adds Controller Link / Devices / Settings tabs and automatic navigation to Devices after successful pairing.
+- Adds a focused one-screen Client pairing experience, Liquid Glass controls/dialogs, theme switching, and updated beta documentation.
+- Existing v3 Android remote-assistance prototypes are documented with consent, platform, and testing boundaries.
+- Android debug CI builds passed; signed public prerelease publication remains pending.
 
-Historical beta releases remain available in GitHub Releases. Their original tags and assets are preserved.
+## v2.5.0 · stable
+
+- Preserves the published stable Android Client and Controller APKs.
+- Improves foreground Client presence, heartbeat-based offline detection, Controller Auto-Alerts, emergency messages, and opt-in last-known location.
+- Stable assets and signing identity remain unchanged by v3 beta development.
+
+## Historical beta releases
+
+See [the full beta history](docs/updates.md#historical-beta-releases) for v0.1.0-beta.1 through v0.1.0-beta.5, including feature summaries and direct release links.
 
 ## Versioning
 
-MEIZZO uses `vX.Y.Z` for stable releases and `vX.Y.Z-beta.N` for beta releases. For example, `v2.5.0` is stable and the next preview line can use `v2.6.0-beta.1`. Android `versionCode` must increase for installable updates; `versionName` matches the release tag. Releases must preserve the stable Android signing key and must not publish unsigned or incorrectly signed APKs.
+- Stable: `vX.Y.Z`. The current stable baseline is `v2.5.0`.
+- v3 prerelease: `v3.0.0-beta.N`.
+- Android release `versionCode` must increase monotonically. `versionName` must match the release tag.
+- Public APKs must use the established long-lived signing identity. Never bypass the updater's signing-certificate verification.

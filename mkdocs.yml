@@ -59,6 +59,7 @@ nav:
   - Project:
       - Implementation status: implementation-status.md
       - Release notes: release-notes.md
+      - Detailed update log: updates.md
       - License status: license.md
       - Contributing: contributing.md
       - Security policy: security-policy.md
