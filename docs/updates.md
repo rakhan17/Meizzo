@@ -3,7 +3,8 @@
 > This is the detailed project update ledger. It records published releases separately from development candidates so that a CI build is never mistaken for a downloadable, signed release.
 >
 > **Stable channel:** `v2.5.0` (published, unchanged).  
-> **Current beta line:** `v3.0.0-beta.1` (published signed prerelease; Client and Controller APKs, update manifest, and checksums are available).
+> **Published beta candidate:** `v3.0.0-beta.1` (superseded; built from `main`, not `develop/v3`).  
+> **Corrected beta:** in development on `develop/v3`; no corrected download is published yet.
 
 - [Latest beta release](#v300-beta1--liquid-glass-ui-beta)
 - [Stable release](#v250--stable)
@@ -13,77 +14,21 @@
 
 ---
 
-## v3.0.0-beta.1 · Liquid Glass UI beta
+## v3.0.0-beta.1 · Superseded candidate
 
-<sub>12 November 2026 · Beta prerelease · Published after release validation</sub>
+<sub>12 November 2026 · Published prerelease · Superseded due to source mismatch</sub>
 
-This is the current v3 beta release from the `develop/v3` development line, including the Android UI work merged through [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
+The tag resolves to commit `d8dc247` on the legacy `main` history. It does **not** contain the current v3 Android application source from `develop/v3`. The signed APKs, update manifest, and checksums remain available on the [historical release page](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), but these packages are not the corrected v3 test build.
 
-### Android Controller
+### Correction and current development state
 
-- Replaces the single-page entry layout with exactly three bottom tabs:
-  - **Link:** dedicated pairing-code entry surface.
-  - **Devices:** paired-device management and remote-operation entry points.
-  - **Settings:** appearance and Auto-Alert configuration.
-- On successful pairing, navigation switches automatically from Link to Devices.
-- Device cards show device name, online/offline state, platform, and available management actions.
-- Device actions and management surfaces use the shared Compose Liquid Glass components.
-- Settings supports light and dark appearance, with system status/navigation bar icon contrast updated to match.
-- Auto-Alert controls use the upstream Liquid Glass toggle and slider component examples.
+- The current v3 Android implementation is maintained on [`develop/v3`](https://github.com/rakhan17/Meizzo/tree/develop/v3), with [PR #9](https://github.com/rakhan17/Meizzo/pull/9) still under review.
+- The corrected beta.2 candidate has not been published.
+- Both Client and Controller compile, but the Android 16 launch smoke test has not yet passed consistently. A failed Controller launch check is being diagnosed.
+- The signaling regression contracts and Node tests pass on the latest CI run; this does not replace device/runtime acceptance.
+- The next release must be built from a commit reachable from `develop/v3`, signed with the established release key, and pass launch smoke tests for both apps before assets are published.
 
-### Android Client
-
-- Focuses the app on one page containing the temporary six-digit pairing code and connection state.
-- Keeps pairing approval and every sensitive capability approval on the Client.
-- App-owned warnings, confirmations, and input prompts use the shared Liquid Glass dialog surface.
-
-### Shared Liquid Glass system
-
-- Integrates **AndroidLiquidGlass 2.0.1**, the latest upstream release verified for this implementation.
-- Uses the upstream Backdrop effect primitives and official sample component implementations for LiquidBottomTabs, LiquidButton, LiquidToggle, and LiquidSlider. The shared integration is in `apps/glass-ui`.
-- Uses upstream backdrop surfaces for scrollable content rather than drawing a home-made glass imitation.
-- Provides shared app-owned glass dialogs, including text-entry prompts and keyboard-aware dialog layout.
-- Keeps the upstream Apache-2.0 license and third-party notices with the copied/adapted sample source.
-- The design is iOS-inspired, but remains a native Android Compose application. It does not bundle Apple's proprietary SF Pro font or replace Android-owned system permission/document pickers.
-
-### Existing v3 capabilities carried into this beta release
-
-- Six-digit expiring pairing offers, explicit Client pairing approval, role-specific credentials, multi-device relationships, presence, telemetry, and revocation.
-- Session request/approval/rejection and participant-bound signaling for screen, camera, interaction, and files sessions.
-- Android MediaProjection screen-sharing prototype and Camera2 camera-streaming prototype over WebRTC.
-- Optional two-way microphone audio tracks, subject to RECORD_AUDIO permission and user action on each side.
-- Approved remote tap, swipe, long-press, trackpad scrolling, text insertion, selected keyboard commands, navigation, notification shade, Quick Settings, power menu, and lock actions through AccessibilityService.
-- Remote media volume and alarm commands.
-- Manually approved text clipboard read/write.
-- Client-granted Storage Access Framework folder browsing and supported folder/file management actions.
-- Bidirectional single/multi-file WebRTC DataChannel transfer with acknowledged chunks, bounded retries, SHA-256 verification, progress, cancellation, a 50 MiB per-file ceiling, and checkpoint/resume support where SAF providers preserve required access and append behavior.
-- Android foreground connection services, reconnect handling, and Android Keystore-backed local credential encryption.
-
-### Build and verification evidence
-
-The Liquid Glass implementation was first validated at candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9`. The beta release workflow [completed successfully](https://github.com/rakhan17/Meizzo/actions/runs/43152105482), rebuilding both apps as signed release APKs and validating package IDs, version metadata, signing certificates, SHA-256 hashes, and the updater manifest.
-
-- [Signed beta release workflow](https://github.com/rakhan17/Meizzo/actions/runs/43152105482): Client and Controller release APK signing, package/version/signing checks, checksums, manifest generation, and GitHub prerelease publication passed.
-- [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
-- [MEIZZO iOS](https://github.com/rakhan17/Meizzo/actions/runs/43144166627): iOS Simulator workflow passed. This is not evidence of iOS Liquid Glass parity or physical-device distribution.
-- [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568): Markdown link validation and strict MkDocs build passed.
-
-Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakhan17/Meizzo/actions/runs/43144166641):
-
-- `meizzo-client-debug`
-- `meizzo-controller-debug`
-
-The debug artifacts above are build evidence only. Public beta downloads are the separately signed APK assets attached to the [v3.0.0-beta.1 prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), together with the [update manifest](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt).
-
-The [Cloudflare Worker workflow](https://github.com/rakhan17/Meizzo/actions/runs/43153365784) passed Wrangler validation. Its production deploy step was skipped because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not configured in repository Actions secrets; the Worker code is therefore not claimed as newly deployed by this run.
-
-### Not included / not claimed
-
-- The RustDesk engine, Flutter bridge, or hbbs/hbbr server is not integrated into the MEIZZO runtime. The upstream source is pinned and license-checked only.
-- No TURN deployment or universal NAT traversal guarantee is claimed. The current Android builds use the existing MEIZZO signaling endpoint and STUN; TURN relay depends on the existing Worker secrets being configured.
-- Android-owned permission pickers, system document pickers, and OS installation confirmation remain native Android UI.
-- No iOS screen hosting, camera hosting, file transfer, or remote input parity is claimed.
-- No independent security audit or formal security certification is claimed.
+See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the correction notice and exact release gates.
 
 ---
 
