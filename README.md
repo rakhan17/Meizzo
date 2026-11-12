@@ -19,7 +19,7 @@ Controller apps, authenticated signaling, device presence, telemetry, and
 session-scoped authorization.
 
 [Downloads](#downloads) · [Documentation](#documentation) · [Architecture](#architecture) ·
-[Changelog](CHANGELOG.md) · [Beta updates](UPDATES.md) · [Security](#security-and-assurance) ·
+[Changelog](CHANGELOG.md) · [Beta changelog](BETA-CHANGELOG.md) · [Beta updates](UPDATES.md) · [Security](#security-and-assurance) ·
 [Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
@@ -72,10 +72,10 @@ clearly marked as prerelease software.
 
 | App | Purpose | Build |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [Download Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
-| **MEIZZO Controller** | Install on the operator device | [Download Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
+| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client beta APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20BETA%20APK-555555?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
+| **MEIZZO Controller** | Install on the operator device | [![Download Controller beta APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20BETA%20APK-555555?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
 
-The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. The release page also includes [MEIZZO-UPDATE.json](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA256SUMS.txt](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt). Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
+The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [MEIZZO Beta Changelog](BETA-CHANGELOG.md) before installing. The release page also includes [MEIZZO-UPDATE.json](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA256SUMS.txt](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt). Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
