@@ -67,10 +67,15 @@ capture. Screen sharing runs through a foreground service declared with the
 permission. The user must manually enable MEIZZO's AccessibilityService before
 remote gestures and lock-screen actions can run.
 
-The apps use foreground connection services to maintain signaling while
-Android permits background execution. This does not override force-stop,
-battery optimization, OEM autostart policy, revoked permissions, or network
-availability.
+The Client starts a foreground service to raise process importance
+while its Activity-owned signaling connection is active and to host remote
+alarm playback. The WebSocket is still owned by the Client Activity; the
+service does not independently restore or reconnect it after the Activity is
+destroyed. Socket-close and network-change callbacks trigger bounded reconnect
+while the Activity remains alive. This is not equivalent to a service-owned
+connection that survives Activity destruction. Android may still stop the
+process because of force-stop, battery policy, OEM process management, revoked
+permissions, or network availability.
 
 ### Local credential storage
 
