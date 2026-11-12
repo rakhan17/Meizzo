@@ -25,7 +25,7 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
         self.assertIn("Record only the background as the backdrop source", source)
         self.assertIn("Glass surfaces must", source)
 
-    def test_android_client_and_controller_render_the_brand_logo(self):
+    def test_android_client_and_controller_render_wordmark_without_logo(self):
         client = (
             ROOT
             / "apps/client/src/main/java/com/meizzo/client/ClientGlassScreen.kt"
@@ -35,8 +35,10 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
             / "apps/controller/src/main/java/com/meizzo/controller/ControllerGlassScreen.kt"
         ).read_text()
 
-        self.assertIn("painterResource(R.drawable.meizzo_logo)", client)
-        self.assertIn("painterResource(R.drawable.meizzo_logo)", controller)
+        self.assertIn('"MEIZZO"', client)
+        self.assertIn('"MEIZZO"', controller)
+        self.assertNotIn("painterResource(R.drawable.meizzo_logo)", client)
+        self.assertNotIn("painterResource(R.drawable.meizzo_logo)", controller)
 
 
 if __name__ == "__main__":
