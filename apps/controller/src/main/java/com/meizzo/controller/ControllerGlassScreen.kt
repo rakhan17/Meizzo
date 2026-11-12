@@ -19,6 +19,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,6 +38,7 @@ import com.kyant.backdrop.catalog.components.LiquidBottomTab
 import com.kyant.backdrop.catalog.components.LiquidBottomTabs
 import com.kyant.backdrop.catalog.components.LiquidButton
 import com.kyant.backdrop.catalog.components.LiquidToggle
+import com.kyant.backdrop.catalog.components.LiquidSlider
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
@@ -43,6 +46,7 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.shapes.RoundedRectangle
 import com.meizzo.glass.LiquidGlassBackdrop
+import kotlin.math.roundToInt
 
 @Composable
 fun ControllerGlassScreen(
@@ -53,10 +57,15 @@ fun ControllerGlassScreen(
     connectionView: TextView,
     managementView: LinearLayout,
     onDarkModeChanged: (Boolean) -> Unit,
-    onAutoAlertSettings: () -> Unit,
+    alertSettings: AutoAlertManager.Settings,
+    onSaveAutoAlertSettings: (AutoAlertManager.Settings) -> Unit,
     onCheckForUpdates: () -> Unit
 ) {
     var pairingCode by rememberSaveable { mutableStateOf("") }
+    var batteryThreshold by rememberSaveable(alertSettings.batteryPercent) { mutableIntStateOf(alertSettings.batteryPercent) }
+    var temperatureThreshold by rememberSaveable(alertSettings.temperatureC) { mutableFloatStateOf(alertSettings.temperatureC) }
+    var offlineMinutes by rememberSaveable(alertSettings.offlineMinutes) { mutableIntStateOf(alertSettings.offlineMinutes) }
+    var chargerUnplugged by rememberSaveable(alertSettings.chargerUnplugged) { mutableStateOf(alertSettings.chargerUnplugged) }
     val foreground = if (darkMode) Color.White else Color(0xFF17171C)
     val secondary = if (darkMode) Color(0xFFB5B5C0) else Color(0xFF74747E)
 
@@ -128,21 +137,60 @@ fun ControllerGlassScreen(
                                     LiquidToggle(selected = { darkMode }, onSelect = onDarkModeChanged, backdrop = backdrop)
                                 }
                             }
+                            BasicText("AUTO-ALERT THRESHOLDS", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.7.sp))
+                            BasicText("Low battery · $batteryThreshold%", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                            LiquidSlider(
+                                value = { batteryThreshold.toFloat() },
+                                onValueChange = { batteryThreshold = it.roundToInt().coerceIn(1, 100) },
+                                valueRange = 1f..100f,
+                                visibilityThreshold = 1f,
+                                backdrop = backdrop,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            BasicText("High temperature · ${"%.1f".format(temperatureThreshold)}°C", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                            LiquidSlider(
+                                value = { temperatureThreshold },
+                                onValueChange = { temperatureThreshold = it.coerceIn(25f, 80f) },
+                                valueRange = 25f..80f,
+                                visibilityThreshold = 0.5f,
+                                backdrop = backdrop,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            BasicText("Offline alert · $offlineMinutes minutes", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                            LiquidSlider(
+                                value = { offlineMinutes.toFloat() },
+                                onValueChange = { offlineMinutes = it.roundToInt().coerceIn(1, 1440) },
+                                valueRange = 1f..1440f,
+                                visibilityThreshold = 1f,
+                                backdrop = backdrop,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    BasicText("Charger disconnected", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                                    BasicText("Alert when external power is removed", style = TextStyle(secondary, 12.sp))
+                                }
+                                LiquidToggle(selected = { chargerUnplugged }, onSelect = { chargerUnplugged = it }, backdrop = backdrop)
+                            }
                             LiquidButton(
-                                onClick = onAutoAlertSettings,
+                                onClick = {
+                                    onSaveAutoAlertSettings(
+                                        AutoAlertManager.Settings(batteryThreshold, temperatureThreshold, offlineMinutes, chargerUnplugged)
+                                    )
+                                },
                                 backdrop = backdrop,
                                 modifier = Modifier.fillMaxWidth(),
-                                surfaceColor = if (darkMode) Color(0x332D2D36) else Color(0x77FFFFFF)
+                                tint = Color(0xFF0A84FF)
                             ) {
-                                BasicText("Auto-Alert settings", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                                BasicText("Save alert settings", style = TextStyle(Color.White, 14.sp, FontWeight.SemiBold))
                             }
                             LiquidButton(
                                 onClick = onCheckForUpdates,
                                 backdrop = backdrop,
                                 modifier = Modifier.fillMaxWidth(),
-                                tint = Color(0xFF0A84FF)
+                                surfaceColor = if (darkMode) Color(0x332D2D36) else Color(0x77FFFFFF)
                             ) {
-                                BasicText("Check for updates", style = TextStyle(Color.White, 14.sp, FontWeight.SemiBold))
+                                BasicText("Check for updates", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
                             }
                             BasicText("MEIZZO Controller · Secure device management", style = TextStyle(secondary, 12.sp))
                         }
