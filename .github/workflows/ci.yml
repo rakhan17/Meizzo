@@ -44,6 +44,8 @@ jobs:
         run: python3 ../../tests/test_android_alarm_contract.py -v
       - name: Test Android media resilience contract
         run: python3 ../../tests/test_android_media_resilience_contract.py -v
+      - name: Test Android glass backdrop and branding contracts
+        run: python3 ../../tests/test_android_glass_backdrop_contract.py -v
       - name: Test Android glass backdrop regression contract
         run: python3 ../../tests/test_android_glass_backdrop_contract.py -v
       - uses: actions/setup-node@v4
