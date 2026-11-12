@@ -1,7 +1,6 @@
 package com.meizzo.client
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -266,14 +265,12 @@ class MainActivity : Activity() {
             status.text = "Find My location disabled"
             return
         }
-        AlertDialog.Builder(this)
-            .setTitle("Enable Find My location?")
-            .setMessage(
-                "When enabled, MEIZZO includes Android's last-known location in device telemetry visible to your paired Controllers. " +
-                    "It does not continuously request GPS updates. Coordinates can be approximate or stale, and Android may not have a cached location."
-            )
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Continue") { _, _ ->
+        showGlassPrompt(
+            title = "Enable Find My location?",
+            message = "When enabled, MEIZZO includes Android's last-known location in device telemetry visible to your paired Controllers. It does not continuously request GPS updates. Coordinates can be approximate or stale, and Android may not have a cached location.",
+            dismissLabel = "Cancel",
+            confirmLabel = "Continue",
+            onConfirm = {
                 requestPermissions(
                     arrayOf(
                         android.Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -282,12 +279,40 @@ class MainActivity : Activity() {
                     4104
                 )
             }
-            .show()
+        )
     }
 
     private fun startConnectionForegroundService() {
         val intent = android.content.Intent(this, ConnectionForegroundService::class.java)
         startForegroundService(intent)
+    }
+
+    private fun showGlassPrompt(
+        title: String,
+        message: String,
+        dismissLabel: String = "Cancel",
+        confirmLabel: String = "Continue",
+        onDismiss: () -> Unit = {},
+        onConfirm: () -> Unit
+    ) {
+        runOnUiThread {
+            val id = UUID.randomUUID().toString()
+            glassDialog = ClientGlassDialogRequest(
+                id = id,
+                title = title,
+                message = message,
+                confirmLabel = confirmLabel,
+                dismissLabel = dismissLabel,
+                onConfirm = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onConfirm()
+                },
+                onDismiss = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onDismiss()
+                }
+            )
+        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -329,23 +354,25 @@ class MainActivity : Activity() {
         super.onResume()
         val pending = pendingUpdateApk ?: return
         if (updateManager.canInstallPackages()) {
-            AlertDialog.Builder(this)
-                .setTitle("Update ready to install")
-                .setMessage("MEIZZO has permission to start the Android installer. Confirm installation to continue.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Install") { _, _ ->
+            showGlassPrompt(
+                title = "Update ready to install",
+                message = "MEIZZO has permission to start the Android installer. Confirm installation to continue.",
+                dismissLabel = "Later",
+                confirmLabel = "Install",
+                onConfirm = {
                     pendingUpdateApk = null
                     updateManager.install(pending)
                 }
-                .show()
+            )
         } else {
             status.text = "Install permission is required to continue."
-            AlertDialog.Builder(this)
-                .setTitle("Allow app updates")
-                .setMessage("Enable 'Allow from this source' for MEIZZO in Android settings, then return here.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Open settings") { _, _ -> updateManager.requestInstallPermission() }
-                .show()
+            showGlassPrompt(
+                title = "Allow app updates",
+                message = "Enable 'Allow from this source' for MEIZZO in Android settings, then return here.",
+                dismissLabel = "Later",
+                confirmLabel = "Open settings",
+                onConfirm = { updateManager.requestInstallPermission() }
+            )
         }
     }
 
@@ -564,11 +591,13 @@ class MainActivity : Activity() {
                             runOnUiThread {
                                 pendingIncomingFileName = name
                                 pendingIncomingFileMime = mime
-                                AlertDialog.Builder(this)
-                                    .setTitle("Receive file?")
-                                    .setMessage("$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to this device?")
-                                    .setNegativeButton("Decline") { _, _ -> fileTransferCoordinator?.rejectIncoming() }
-                                    .setPositiveButton("Choose destination") { _, _ ->
+                                showGlassPrompt(
+                                    title = "Receive file?",
+                                    message = "$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to this device?",
+                                    dismissLabel = "Decline",
+                                    confirmLabel = "Choose destination",
+                                    onDismiss = { fileTransferCoordinator?.rejectIncoming() },
+                                    onConfirm = {
                                         startActivityForResult(
                                             android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
                                                 addCategory(android.content.Intent.CATEGORY_OPENABLE)
@@ -578,7 +607,7 @@ class MainActivity : Activity() {
                                             fileSaveRequestCode
                                         )
                                     }
-                                    .show()
+                                )
                             }
                         },
                         { message -> runOnUiThread { status.text = message } }
@@ -609,13 +638,13 @@ class MainActivity : Activity() {
     }
 
     private fun startMediaPublisher(sessionId: String, kind: String, projectionData: android.content.Intent?) {
-        AlertDialog.Builder(this)
-            .setTitle("Share microphone audio?")
-            .setMessage("MEIZZO can include live microphone audio in this approved screen or camera session. This is microphone capture, not system-app audio. Choose video only if you do not want to share microphone sound.")
-            .setNegativeButton("Video only") { _, _ ->
-                startMediaPublisherInternal(sessionId, kind, projectionData, false)
-            }
-            .setPositiveButton("Allow audio") { _, _ ->
+        showGlassPrompt(
+            title = "Share microphone audio?",
+            message = "MEIZZO can include live microphone audio in this approved screen or camera session. This is microphone capture, not system-app audio. Choose video only if you do not want to share microphone sound.",
+            dismissLabel = "Video only",
+            confirmLabel = "Allow audio",
+            onDismiss = { startMediaPublisherInternal(sessionId, kind, projectionData, false) },
+            onConfirm = {
                 if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     startMediaPublisherInternal(sessionId, kind, projectionData, true)
                 } else {
@@ -625,10 +654,7 @@ class MainActivity : Activity() {
                     requestPermissions(arrayOf(android.Manifest.permission.RECORD_AUDIO), mediaAudioPermissionRequestCode)
                 }
             }
-            .setOnCancelListener {
-                startMediaPublisherInternal(sessionId, kind, projectionData, false)
-            }
-            .show()
+        )
     }
 
     private fun startMediaPublisherInternal(
@@ -1023,24 +1049,22 @@ class MainActivity : Activity() {
                     return@runOnUiThread
                 }
                 pendingTorchCommand = webSocket to message
-                AlertDialog.Builder(this)
-                    .setTitle("Allow flashlight control?")
-                    .setMessage("MEIZZO needs Android's camera permission to operate the flashlight. This permission is used for the torch only, not to capture photos or video.")
-                    .setNegativeButton("Not now") { _, _ ->
+                showGlassPrompt(
+                    title = "Allow flashlight control?",
+                    message = "MEIZZO needs Android's camera permission to operate the flashlight. This permission is used for the torch only, not to capture photos or video.",
+                    dismissLabel = "Not now",
+                    confirmLabel = "Continue",
+                    onDismiss = {
                         pendingTorchCommand = null
                         sendCommandFailure(webSocket, message, "Flashlight permission was not granted")
-                    }
-                    .setPositiveButton("Continue") { _, _ ->
+                    },
+                    onConfirm = {
                         requestPermissions(
                             arrayOf(android.Manifest.permission.CAMERA),
                             cameraPermissionRequestCode
                         )
                     }
-                    .setOnCancelListener {
-                        pendingTorchCommand = null
-                        sendCommandFailure(webSocket, message, "Flashlight permission request was cancelled")
-                    }
-                    .show()
+                )
             }
             return
         }
@@ -1121,13 +1145,13 @@ class MainActivity : Activity() {
                         throw IllegalStateException("This folder does not support creating subfolders")
                     }
                     runOnUiThread {
-                        AlertDialog.Builder(this)
-                            .setTitle("Allow folder creation?")
-                            .setMessage("The paired Controller wants to create this folder inside the shared directory:\n\n$newName")
-                            .setNegativeButton("Deny") { _, _ ->
-                                sendCommandFailure(webSocket, message, "Folder creation was denied on the Client")
-                            }
-                            .setPositiveButton("Create folder") { _, _ ->
+                        showGlassPrompt(
+                            title = "Allow folder creation?",
+                            message = "The paired Controller wants to create this folder inside the shared directory:\n\n$newName",
+                            dismissLabel = "Deny",
+                            confirmLabel = "Create folder",
+                            onDismiss = { sendCommandFailure(webSocket, message, "Folder creation was denied on the Client") },
+                            onConfirm = {
                                 try {
                                     android.provider.DocumentsContract.createDocument(
                                         contentResolver,
@@ -1144,10 +1168,7 @@ class MainActivity : Activity() {
                                     sendCommandFailure(webSocket, message, exception.message ?: "Unable to create the folder")
                                 }
                             }
-                            .setOnCancelListener {
-                                sendCommandFailure(webSocket, message, "Folder creation was cancelled")
-                            }
-                            .show()
+                        )
                     }
                     return
                 } catch (exception: Exception) {
@@ -1179,25 +1200,22 @@ class MainActivity : Activity() {
                         }
                     }
                     runOnUiThread {
-                        AlertDialog.Builder(this)
-                            .setTitle(if (command == "file_rename") "Allow rename?" else "Allow file deletion?")
-                            .setMessage(
-                                if (command == "file_rename") "The paired Controller wants to rename:\n\n$name\n\nto:\n$newName"
-                                else "The paired Controller wants to permanently delete this file:\n\n$name"
-                            )
-                            .setNegativeButton("Deny") { _, _ ->
-                                sendCommandFailure(webSocket, message, "Remote file operation was denied on the Client")
-                            }
-                            .setPositiveButton(if (command == "file_rename") "Rename" else "Delete") { _, _ ->
+                        showGlassPrompt(
+                            title = if (command == "file_rename") "Allow rename?" else "Allow file deletion?",
+                            message = if (command == "file_rename") "The paired Controller wants to rename:\n\n$name\n\nto:\n$newName"
+                                else "The paired Controller wants to permanently delete this file:\n\n$name",
+                            dismissLabel = "Deny",
+                            confirmLabel = if (command == "file_rename") "Rename" else "Delete",
+                            onDismiss = { sendCommandFailure(webSocket, message, "Remote file operation was denied on the Client") },
+                            onConfirm = {
                                 try {
-                                    val changed = if (command == "file_rename") {
+                                    if (command == "file_rename") {
                                         android.provider.DocumentsContract.renameDocument(contentResolver, documentUri, newName)
                                             ?: throw IllegalStateException("The storage provider could not rename this item")
                                     } else {
                                         if (!android.provider.DocumentsContract.deleteDocument(contentResolver, documentUri)) {
                                             throw IllegalStateException("The storage provider could not delete this file")
                                         }
-                                        documentUri
                                     }
                                     webSocket.send(JSONObject().apply {
                                         put("type", "client.result")
@@ -1212,10 +1230,7 @@ class MainActivity : Activity() {
                                     sendCommandFailure(webSocket, message, exception.message ?: "Remote file operation failed")
                                 }
                             }
-                            .setOnCancelListener {
-                                sendCommandFailure(webSocket, message, "Remote file operation was cancelled")
-                            }
-                            .show()
+                        )
                     }
                     return
                 } catch (exception: Exception) {
@@ -1270,13 +1285,13 @@ class MainActivity : Activity() {
                                 throw IllegalArgumentException("File exceeds the 50 MiB transfer limit")
                             }
                             runOnUiThread {
-                                AlertDialog.Builder(this)
-                                    .setTitle("Allow file transfer?")
-                                    .setMessage("The paired Controller wants to receive this file:\n\n$name\n${if (size >= 0L) "${size / 1024} KB" else "Size unknown"}\n\nThe file will be sent only after you approve.")
-                                    .setNegativeButton("Deny") { _, _ ->
-                                        sendCommandFailure(webSocket, message, "File transfer was denied on the Client")
-                                    }
-                                    .setPositiveButton("Send file") { _, _ ->
+                                showGlassPrompt(
+                                    title = "Allow file transfer?",
+                                    message = "The paired Controller wants to receive this file:\n\n$name\n${if (size >= 0L) "${size / 1024} KB" else "Size unknown"}\n\nThe file will be sent only after you approve.",
+                                    dismissLabel = "Deny",
+                                    confirmLabel = "Send file",
+                                    onDismiss = { sendCommandFailure(webSocket, message, "File transfer was denied on the Client") },
+                                    onConfirm = {
                                         try {
                                             val coordinator = fileTransferCoordinator
                                                 ?: throw IllegalStateException("Secure file-transfer channel is not ready")
@@ -1290,10 +1305,7 @@ class MainActivity : Activity() {
                                             sendCommandFailure(webSocket, message, exception.message ?: "Unable to send the selected file")
                                         }
                                     }
-                                    .setOnCancelListener {
-                                        sendCommandFailure(webSocket, message, "File transfer request was cancelled")
-                                    }
-                                    .show()
+                                )
                             }
                             return
                         } catch (exception: Exception) {
@@ -1317,15 +1329,13 @@ class MainActivity : Activity() {
                                 remoteFileTreeRequestCode
                             )
                         }
-                        val dialog = AlertDialog.Builder(this)
-                            .setTitle("Allow remote folder browsing?")
-                            .setMessage(
-                                "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. If Android grants write access, it may also request individual file rename or deletion; each operation needs separate approval. Folder deletion is disabled."
-                            )
-                            .setNegativeButton("Deny") { _, _ ->
-                                sendCommandFailure(webSocket, message, "Remote folder browsing was denied")
-                            }
-                            .setPositiveButton(if (savedTree == null) "Choose folder" else "Browse") { _, _ ->
+                        showGlassPrompt(
+                            title = "Allow remote folder browsing?",
+                            message = "The paired Controller wants to view folder and file names, types, sizes, and modification dates inside a folder you choose. If Android grants write access, it may also request individual file rename or deletion; each operation needs separate approval. Folder deletion is disabled.",
+                            dismissLabel = "Deny",
+                            confirmLabel = if (savedTree == null) "Choose folder" else "Browse",
+                            onDismiss = { sendCommandFailure(webSocket, message, "Remote folder browsing was denied") },
+                            onConfirm = {
                                 if (savedTree == null) {
                                     pickerAction()
                                 } else {
@@ -1339,13 +1349,7 @@ class MainActivity : Activity() {
                                     }
                                 }
                             }
-                            .setOnCancelListener {
-                                sendCommandFailure(webSocket, message, "Remote folder browsing was cancelled")
-                            }
-                        if (savedTree != null) {
-                            dialog.setNeutralButton("Change folder") { _, _ -> pickerAction() }
-                        }
-                        dialog.show()
+                        )
                     }
                     return
                 }
@@ -1363,13 +1367,13 @@ class MainActivity : Activity() {
                         } else {
                             "The paired Controller wants to replace this device's text clipboard with the following content:\n\n${clipboardText.take(500)}"
                         }
-                        AlertDialog.Builder(this)
-                            .setTitle(title)
-                            .setMessage(detail)
-                            .setNegativeButton("Deny") { _, _ ->
-                                sendCommandFailure(webSocket, message, "Clipboard access was denied on the Client")
-                            }
-                            .setPositiveButton("Allow") { _, _ ->
+                        showGlassPrompt(
+                            title = title,
+                            message = detail,
+                            dismissLabel = "Deny",
+                            confirmLabel = "Allow",
+                            onDismiss = { sendCommandFailure(webSocket, message, "Clipboard access was denied on the Client") },
+                            onConfirm = {
                                 try {
                                     val manager = getSystemService(android.content.ClipboardManager::class.java)
                                     if (command == "clipboard_read") {
@@ -1397,10 +1401,7 @@ class MainActivity : Activity() {
                                     sendCommandFailure(webSocket, message, exception.message ?: "Clipboard operation failed")
                                 }
                             }
-                            .setOnCancelListener {
-                                sendCommandFailure(webSocket, message, "Clipboard request was cancelled")
-                            }
-                            .show()
+                        )
                     }
                     return
                 }
@@ -1719,14 +1720,14 @@ class MainActivity : Activity() {
                         "APK size: ${formatUpdateSize(available.assetSize)}\n" +
                         "Published: ${updateManager.formatDate(available.publishedAt)}\n\n" +
                         available.notes
-                    AlertDialog.Builder(this)
-                        .setTitle("MEIZZO update · ${available.tag}")
-                        .setMessage(details)
-                        .setNegativeButton("Later") { _, _ ->
-                            setUpdateStatus("Update available · ${available.versionName}")
-                        }
-                        .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
-                        .show()
+                    showGlassPrompt(
+                        title = "MEIZZO update · ${available.tag}",
+                        message = details,
+                        dismissLabel = "Later",
+                        confirmLabel = "Download",
+                        onDismiss = { setUpdateStatus("Update available · ${available.versionName}") },
+                        onConfirm = { downloadUpdate(available) }
+                    )
                 }
             }
         }
@@ -1754,19 +1755,17 @@ class MainActivity : Activity() {
                     setUpdateStatus("Update failed · ${error.message ?: "verification error"}")
                 }.onSuccess { apk ->
                     setUpdateStatus("Update verified · awaiting installation")
-                    AlertDialog.Builder(this)
-                        .setTitle("Install ${release.versionName}?")
-                        .setMessage(
-                            "Package ID, version, file size, SHA-256, and signing certificate were verified. " +
-                                "Android will show the final installation confirmation."
-                        )
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Install") { _, _ ->
+                    showGlassPrompt(
+                        title = "Install ${release.versionName}?",
+                        message = "Package ID, version, file size, SHA-256, and signing certificate were verified. Android will show the final installation confirmation.",
+                        dismissLabel = "Cancel",
+                        confirmLabel = "Install",
+                        onConfirm = {
                             pendingUpdateApk = apk
                             updateManager.install(apk)
                             if (updateManager.canInstallPackages()) pendingUpdateApk = null
                         }
-                        .show()
+                    )
                 }
             }
         }
