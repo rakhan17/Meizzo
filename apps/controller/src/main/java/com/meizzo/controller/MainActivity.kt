@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.view.WindowInsetsControllerCompat
 import android.widget.Button
 import android.widget.FrameLayout
 import org.webrtc.SurfaceViewRenderer
@@ -170,6 +171,7 @@ class MainActivity : Activity() {
             addView(devicesLayout, LinearLayout.LayoutParams(-1, -2))
         }
         darkMode = preferences.getBoolean("dark_mode", true)
+        applySystemBarAppearance()
         autoAlertSettings = autoAlertManager.settings()
         setContentView(ComposeView(this).apply {
             setContent {
@@ -187,8 +189,7 @@ class MainActivity : Activity() {
                     onDarkModeChanged = { enabled ->
                         darkMode = enabled
                         preferences.edit().putBoolean("dark_mode", enabled).apply()
-                        window.statusBarColor = if (enabled) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
-                        window.navigationBarColor = window.statusBarColor
+                        applySystemBarAppearance()
                     },
                     alertSettings = autoAlertSettings,
                     onSaveAutoAlertSettings = { settings ->
@@ -213,6 +214,16 @@ class MainActivity : Activity() {
         }
     }
 
+
+    private fun applySystemBarAppearance() {
+        val barColor = if (darkMode) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
+        window.statusBarColor = barColor
+        window.navigationBarColor = barColor
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !darkMode
+            isAppearanceLightNavigationBars = !darkMode
+        }
+    }
 
     private fun showGlassPrompt(
         title: String,
