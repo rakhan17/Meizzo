@@ -25,6 +25,38 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
         self.assertIn("Record only the background as the backdrop source", source)
         self.assertIn("Glass surfaces must", source)
 
+    def test_pairing_code_keeps_six_fixed_digit_slots(self):
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/ControllerGlassScreen.kt"
+        ).read_text()
+
+        self.assertIn("input.text.padEnd(6, '0')", controller)
+        self.assertIn("textAlign = TextAlign.Center", controller)
+        self.assertIn("OffsetMapping", controller)
+
+    def test_device_controls_live_on_a_separate_detail_screen(self):
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/ControllerGlassScreen.kt"
+        ).read_text()
+
+        self.assertIn("var selectedDeviceId by rememberSaveable", controller)
+        self.assertIn("selectedDeviceId = device.id", controller)
+        self.assertIn("selectedDeviceId = null", controller)
+        self.assertIn("‹  Devices", controller)
+        self.assertIn("REMOTE SESSIONS", controller)
+
+    def test_client_explains_android_accessibility_restrictions(self):
+        client = (
+            ROOT
+            / "apps/client/src/main/java/com/meizzo/client/ClientGlassScreen.kt"
+        ).read_text()
+
+        self.assertIn("Open Accessibility settings", client)
+        self.assertIn("Allow restricted settings", client)
+        self.assertIn("Open MEIZZO App info", client)
+
     def test_android_client_and_controller_render_wordmark_without_logo(self):
         client = (
             ROOT
