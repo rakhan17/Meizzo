@@ -197,7 +197,7 @@ class MainActivity : ComponentActivity() {
                         autoAlertManager.updateSettings(settings)
                         autoAlertSettings = settings
                         connectionLabel.text = "● Auto-Alert settings saved"
-                        connectionLabel.setTextColor(Color.rgb(120, 210, 170))
+                        connectionLabel.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
                     },
                     updateStatus = updateStatusText,
                     onCheckForUpdates = { checkForUpdate() },
@@ -486,7 +486,7 @@ class MainActivity : ComponentActivity() {
 
     private fun setConnection(label: String, connected: Boolean) = runOnUiThread {
         connectionLabel.text = "● $label"
-        connectionLabel.setTextColor(if (connected) Color.rgb(120, 210, 170) else Color.rgb(238, 190, 100))
+        connectionLabel.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
     }
 
     private fun scheduleReconnect() {
