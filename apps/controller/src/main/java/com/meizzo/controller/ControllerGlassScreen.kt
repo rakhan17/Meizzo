@@ -175,9 +175,8 @@ fun ControllerGlassScreen(
                                     if (selectedDevice.id == devices.firstOrNull()?.id) AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
                                     BasicText(selectedDevice.battery + " battery · " + selectedDevice.network, style = TextStyle(secondary, 13.sp))
                                 }
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    GlassActionButton("Rename device", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "rename") }
-                                    GlassActionButton("Device details", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "details") }
+                                GlassActionButton("Rename device", backdrop, darkMode, Modifier.fillMaxWidth()) {
+                                    onDeviceAction(selectedDevice.id, "rename")
                                 }
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         GlassActionButton(
