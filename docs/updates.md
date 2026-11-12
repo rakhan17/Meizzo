@@ -3,7 +3,7 @@
 > This is the detailed project update ledger. It records published releases separately from development candidates so that a CI build is never mistaken for a downloadable, signed release.
 >
 > **Stable channel:** `v2.5.0` (published, unchanged).  
-> **Current beta line:** `v3.0.0-beta.1` (published signed prerelease; Client and Controller APKs, update manifest, and checksums are available).
+> **Published beta candidate:** `v3.0.0-beta.1` (superseded; built from legacy main). **Corrected v3 beta:** not yet published; current development is on develop/v3.
 
 - [Latest beta release](#v300-beta1--liquid-glass-ui-beta)
 - [Stable release](#v250--stable)
@@ -13,11 +13,23 @@
 
 ---
 
-## v3.0.0-beta.1 · Liquid Glass UI beta
+## Latest development validation · 12 November 2026
+
+<sub>Current source: develop/v3 · CI run: [Android](https://github.com/rakhan17/Meizzo/actions/runs/43162464047) · [iOS](https://github.com/rakhan17/Meizzo/actions/runs/43162464097)</sub>
+
+- **Android Client and Controller:** both debug builds and Android 16 emulator launch smoke tests passed.
+- **Signaling and regression checks:** release-version derivation, Android command/media/glass-backdrop contracts, Node checks/tests, and pinned RustDesk source/license verification passed.
+- **iOS Client and Controller:** both Simulator builds and smoke tests passed. These are simulator validations, not physical-iPhone release packages.
+- **Crash fix:** separated the recorded backdrop background into a sibling layer so glass surfaces no longer sample the same layer that records them. This removes the recursive RenderNode feedback loop behind the Android 16 libhwui.so SIGSEGV.
+- **Branding:** the MEIZZO logo is now included in the Android Client and Controller headers.
+- **Scope:** CI success verifies builds and launch smoke tests. Pairing, approval, and real remote-control behavior still require manual two-device acceptance testing. No corrected signed v3 beta or stable v3 release has been published.
+
+See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) and [UPDATES.md](UPDATES.md) for the detailed change history.
+## v3.0.0-beta.1 · Superseded published candidate
 
 <sub>12 November 2026 · Beta prerelease · Published after release validation</sub>
 
-This is the current v3 beta release from the `develop/v3` development line, including the Android UI work merged through [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
+This historical signed prerelease is superseded. Its tag was created from the legacy main source and does not represent the current v3 development build on develop/v3. It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
 
 ### Android Controller
 
