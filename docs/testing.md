@@ -23,11 +23,16 @@ connectivity or Cloudflare production deployment.
 ## Android CI
 
 Android CI builds Client and Controller as separate debug APKs and validates
-their package identifiers. The v2.5.0 stable release workflow builds signed
-release variants. The v3 branch has not published a release APK yet.
+their package identifiers. The v2.5.0 stable release remains published and unchanged. The v3 beta release workflow builds and signs separate Client and Controller release APKs, then validates package/version metadata, signing certificates, checksums, and the updater manifest.
 
 - [Current v3 Android and signaling CI](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3)
 - [Stable v2.5.0 release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
+
+## v3 beta release
+
+- [v3.0.0-beta.1 prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+- [Client APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk)
+- [Controller APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk)
 
 ## iOS CI
 
@@ -112,9 +117,7 @@ acceptance.
 
 ## Release acceptance boundary
 
-The v2.5.0 stable release is published. v3 remains a development branch until
-the remote-media acceptance matrix above passes on physical devices and
-cross-network conditions. Physical-device runtime acceptance, OEM background
+The v2.5.0 stable release remains published and unchanged. v3.0.0-beta.1 is a prerelease, not a stable promotion. The remote-media acceptance matrix above must pass on physical devices and cross-network conditions before those prototypes are described as production-ready. Physical-device runtime acceptance, OEM background
 behavior, and complete end-to-end multi-device validation must be recorded
 separately.
 
