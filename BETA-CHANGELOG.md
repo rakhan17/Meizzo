@@ -19,12 +19,14 @@ This page tracks the Android v3 beta independently from the stable v2.5.0 channe
 
 ### Latest validation findings · 12 November 2026
 
-- Both Android apps compile successfully in the current debug CI pipeline.
-- Android 16 recorded a native signal-11 crash in `libhwui.so`, with a recursive `RenderNode::prepareTreeImpl` / `SkiaDisplayList::prepareListAndChildren` backtrace.
+- The Android 16 native signal-11 crash in `libhwui.so` was traced to a recursive `RenderNode::prepareTreeImpl` / `SkiaDisplayList::prepareListAndChildren` backdrop feedback loop. The fix is now in the current development source.
 - Root cause: the outer `Box` was marked as the `LayerBackdrop` source while its descendants also sampled that same backdrop. This formed a render feedback loop. The Backdrop maintainer documents this exact pattern as a cause of RenderThread `SIGSEGV` ([official tutorial](https://kyant.gitbook.io/backdrop/tutorials/glass-bottom-sheet)).
 - Fix: the gradient/background is now recorded in a dedicated sibling `Box`; glass surfaces render as siblings outside the recorded layer. Blur and vibrancy remain enabled. Lens effects were removed separately as a conservative compatibility choice, not as the root-cause fix.
-- Both Client and Controller passed Android 16 emulator launch smoke tests on commit `941a00d`.
-- The latest CI run also includes visible in-app logo branding and a source-contract regression test for the backdrop layering rule; that run is still pending.
+- Both Client and Controller passed Android 16 emulator launch smoke tests in [CI run 43162464047](https://github.com/rakhan17/Meizzo/actions/runs/43162464047).
+- The same run passed signaling, Node, glass-backdrop regression-contract, and pinned RustDesk source/license checks.
+- Both iOS Client and Controller Simulator builds and smoke tests passed in [CI run 43162464097](https://github.com/rakhan17/Meizzo/actions/runs/43162464097).
+- The Android Client and Controller headers now display the MEIZZO logo.
+- Manual two-device acceptance testing of pairing, session approval, and remote control is still required. These CI results do not constitute a corrected signed beta release.
 
 ## Next corrected v3 beta
 
