@@ -56,7 +56,7 @@ Cloudflare Workers continue to host MEIZZO pairing and control signaling. They c
 
 ## Session and signaling foundation
 
-- Client pairing remains persistent and its WebSocket, heartbeat, network monitoring, and reconnect policy are owned by the foreground service rather than the Activity. Signaling messages received while the Activity is detached are held in a bounded in-memory queue and replayed when it reattaches. There is no Client-side Stop pairing control.
+- Client pairing remains persistent and its WebSocket, heartbeat, network monitoring, and reconnect policy are owned by the foreground service rather than the Activity. Remote alarm commands are handled by the service while detached; other signaling messages are held in a bounded in-memory queue and replayed when the Activity reattaches. There is no Client-side Stop pairing control.
 - Session requests require explicit Client approval.
 - Controller session termination and reconnect cleanup remove stale authorization state so a fresh request can be shown.
 - Cloudflare Durable Object and local Node signaling implementations support approved-session WebRTC offer/answer/ICE signaling for screen, camera, and file sessions.
