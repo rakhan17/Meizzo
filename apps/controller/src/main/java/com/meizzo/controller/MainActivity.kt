@@ -58,6 +58,7 @@ class MainActivity : ComponentActivity() {
     private val remoteFileBrowseStacks = mutableMapOf<String, MutableList<String>>()
     private val pendingMediaRequests = mutableSetOf<String>()
     private val activeMediaSessions = mutableMapOf<String, String>()
+    private val activeMediaKinds = mutableMapOf<String, String>()
     private val iceServersBySession = mutableMapOf<String, JSONArray>()
     private val mediaViewers = mutableMapOf<String, RtcMediaController>()
     private val mediaDialogs = mutableMapOf<String, AlertDialog>()
