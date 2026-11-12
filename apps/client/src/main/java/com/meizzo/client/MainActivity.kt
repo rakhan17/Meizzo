@@ -1752,10 +1752,14 @@ class MainActivity : Activity() {
         socket = null
         heartbeatSocket = null
         if (!isChangingConfigurations) {
-            startService(
-                Intent(this, ConnectionForegroundService::class.java)
-                    .setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)
-            )
+            try {
+                startService(
+                    Intent(this, ConnectionForegroundService::class.java)
+                        .setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)
+                )
+            } catch (_: IllegalStateException) {
+                // The OS may already have stopped the foreground service.
+            }
         }
         super.onDestroy()
     }
