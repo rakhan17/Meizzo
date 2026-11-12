@@ -363,7 +363,7 @@ Automated success does not replace real-device acceptance testing. See
 ### Requirements
 
 - JDK 17
-- Android SDK 35 or newer compatible SDK packages
+- Android SDK Platform 37 and Build Tools 37.0.0 for the current Backdrop 2.0.1 UI integration (CI also installs Android 35 packages)
 - Node.js 22 for signaling tests and local backend
 - Xcode and XcodeGen for iOS Simulator development
 - Python 3.12 for documentation checks
