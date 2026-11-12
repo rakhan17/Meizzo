@@ -113,7 +113,7 @@ class ConnectionForegroundService : Service() {
                 if (socket !== webSocket) return
                 val listener = clientListener
                 if (listener != null) listener.onMessage(webSocket, text)
-                else {
+                else if (!handleDetachedAlarmCommand(webSocket, text)) {
                     if (queuedMessages.size >= MAX_QUEUED_MESSAGES) queuedMessages.removeFirst()
                     queuedMessages.addLast(text)
                 }
@@ -135,6 +135,44 @@ class ConnectionForegroundService : Service() {
                 scheduleSocketReconnect()
             }
         })
+    }
+
+    private fun handleDetachedAlarmCommand(webSocket: WebSocket, raw: String): Boolean {
+        val message = try { JSONObject(raw) } catch (_: Exception) { return false }
+        if (message.optString("type") != "client.command" || message.optString("command") != "alarm") return false
+        val requestId = message.optString("requestId")
+        val enabled = message.optJSONObject("parameters")?.optBoolean("enabled", false) ?: false
+        socketHandler.post {
+            var error: String? = null
+            if (requestId.isBlank()) {
+                error = "Alarm command is missing its request identifier"
+            } else {
+                try {
+                    if (enabled) startAlarm() else stopAlarm()
+                    val serviceTypes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE or
+                            if (alarmActive) ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK else 0
+                    } else 0
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIFICATION_ID, buildNotification(), serviceTypes)
+                    } else {
+                        startForeground(NOTIFICATION_ID, buildNotification())
+                    }
+                } catch (exception: Exception) {
+                    error = exception.message ?: "Unable to control the remote alarm"
+                    stopAlarm()
+                }
+            }
+            if (socket === webSocket) {
+                webSocket.send(JSONObject().apply {
+                    put("type", "client.result")
+                    put("requestId", requestId)
+                    put("result", JSONObject().put("enabled", alarmActive))
+                    if (!error.isNullOrBlank()) put("error", error)
+                }.toString())
+            }
+        }
+        return true
     }
 
     private fun startSocketHeartbeat(webSocket: WebSocket) {
