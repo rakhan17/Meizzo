@@ -471,6 +471,7 @@ class MainActivity : ComponentActivity() {
                         approvedInteractionSessions.clear()
                         pendingInteractionSessions.clear()
                         pendingCommandClients.clear()
+                        pendingCommandTypes.clear()
                         renderDevices()
                     }
                     setConnection(connectionFailureLabel(t), false)
@@ -1773,6 +1774,7 @@ class MainActivity : ComponentActivity() {
         }.toString())
         if (!sent) {
             pendingCommandClients.remove(clientId)
+            pendingCommandTypes.remove(clientId)
             setConnection("Command could not be queued · check connection", false)
         } else {
             setConnection("Waiting for Client confirmation · $command", true)
