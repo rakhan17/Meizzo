@@ -52,5 +52,14 @@ class MediaResilienceContract(unittest.TestCase):
         self.assertIn("KeyEvent(downTime, downTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)", source)
         self.assertIn("KeyEvent.ACTION_UP", source)
 
+    def test_file_transfer_rejects_oversized_and_overdeclared_chunks(self):
+        for role in ("client", "controller"):
+            source = (ROOT / f"apps/{role}/src/main/java/com/meizzo/{role}/FileTransferCoordinator.kt").read_text()
+            self.assertIn("MAX_ENCODED_CHUNK_SIZE", source)
+            self.assertIn("bytes.size > CHUNK_SIZE", source)
+            self.assertIn("incomingBytes + bytes.size > pendingSize", source)
+            self.assertIn("MessageDigest.getInstance(\"SHA-256\")", source)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
