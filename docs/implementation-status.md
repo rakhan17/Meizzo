@@ -91,14 +91,14 @@ signaling regression tests for pairing, multi-device isolation, revocation,
 session lifecycle, reconnect cleanup, media signaling, and Client-initiated
 media-session termination.
 
-Latest beta candidate evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166568). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
+Latest v3 beta release evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166568). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
 Automated success is build and protocol evidence only. It is not a substitute
 for real Android device testing, network traversal testing, or a security audit.
 
 ## Current release tracks
 
 - Android Stable: `v2.5.0`, published on `main`.
-- Android v3 beta candidate: `v3.0.0-beta.1`, branch `develop/v3`; Client and Controller debug APKs passed CI on the Liquid Glass candidate branch. Signed public prerelease assets are pending.
+- Android v3 beta: `v3.0.0-beta.1`, published as a signed GitHub prerelease with Client and Controller APKs, `MEIZZO-UPDATE.json`, and `SHA256SUMS.txt`.
 - iOS: development/Simulator track only; no physical-device distribution or
   remote-host feature parity is claimed.
 
