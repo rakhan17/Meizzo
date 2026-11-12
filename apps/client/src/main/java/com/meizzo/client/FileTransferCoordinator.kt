@@ -112,6 +112,9 @@ class FileTransferCoordinator(
             throw IllegalStateException("File channel is not connected yet")
         }
         if (uris.isEmpty()) return
+        if (!resumePrefs.getString("outgoing_id", null).isNullOrBlank()) {
+            throw IllegalStateException("A paused outgoing transfer must resume or be cancelled before starting another")
+        }
         if (outgoingInput != null || incomingOutput != null || pendingName.isNotBlank()) {
             throw IllegalStateException("Finish or cancel the current file transfer before starting another")
         }
@@ -174,11 +177,15 @@ class FileTransferCoordinator(
 
     fun cancelTransfer() {
         if (closed) return
-        if (outgoingInput == null && incomingOutput == null && pendingName.isBlank()) {
+        val savedOutgoingId = resumePrefs.getString("outgoing_id", null)
+        val savedIncomingId = resumePrefs.getString("incoming_id", null)
+        if (outgoingInput == null && incomingOutput == null && pendingName.isBlank() &&
+            savedOutgoingId.isNullOrBlank() && savedIncomingId.isNullOrBlank()
+        ) {
             onStatus("No active file transfer to cancel")
             return
         }
-        val transferId = outgoingTransferId ?: incomingTransferId
+        val transferId = outgoingTransferId ?: incomingTransferId ?: savedOutgoingId ?: savedIncomingId
         send(JSONObject().put("type", "file_reject").put("transferId", transferId))
         closeOutgoing()
         clearOutgoingCheckpoint()
@@ -207,6 +214,12 @@ class FileTransferCoordinator(
                 if (transferId.isBlank() || transferId.length > 64) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                     onStatus("Rejected file offer with an invalid transfer identifier")
+                    return
+                }
+                val savedIncomingId = resumePrefs.getString("incoming_id", null)
+                if (!savedIncomingId.isNullOrBlank() && savedIncomingId != transferId) {
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    onStatus("A paused incoming transfer must resume or be cancelled first")
                     return
                 }
                 if (transferId == incomingTransferId && pendingName.isNotBlank()) return
