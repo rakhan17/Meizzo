@@ -586,6 +586,7 @@ class MainActivity : ComponentActivity() {
                 hasLocation = telemetry.optJSONObject("lastKnownLocation") != null,
                 mediaActive = pendingMediaRequests.contains(id) || activeMediaSessions.values.contains(id),
                 mediaKind = activeMediaSessions.entries.firstOrNull { it.value == id }?.key?.let { activeMediaKinds[it] },
+                alarmActive = id in alarmActiveClients,
                 interactionActive = approvedInteractionSessions.containsKey(id),
                 interactionPending = pendingInteractionSessions.containsKey(id)
             )
@@ -626,7 +627,7 @@ class MainActivity : ComponentActivity() {
                 ?: setConnection("Last known location is unavailable", false)
             "flashlight_on" -> sendDeviceCommand(clientId, "flashlight", true)
             "flashlight_off" -> sendDeviceCommand(clientId, "flashlight", false)
-            "alarm_on" -> sendDeviceCommand(clientId, "alarm", true)
+            "alarm_on" -> sendDeviceCommand(clientId, "alarm", clientId !in alarmActiveClients)
             "alarm_off" -> sendDeviceCommand(clientId, "alarm", false)
             "browse_files" -> {
                 remoteFileBrowseStacks.remove(clientId)
