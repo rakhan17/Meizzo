@@ -68,7 +68,7 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**V3 BETA** · `v3.0.0-beta.1` · Signed prerelease build is being validated by the dedicated beta release workflow.</sub>
+<sub>**V3 BETA** · `v3.0.0-beta.1` · Published prerelease with signed Client/Controller APKs, update manifest, and SHA-256 checksums.</sub>
 
 | App | Purpose | Build |
 |:--|:--|:--|
