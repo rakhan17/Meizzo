@@ -19,7 +19,7 @@ Controller apps, authenticated signaling, device presence, telemetry, and
 session-scoped authorization.
 
 [Downloads](#downloads) · [Documentation](#documentation) · [Architecture](#architecture) ·
-[Security](#security-and-assurance) · [Updates & changelog](UPDATES.md) ·
+[Changelog](CHANGELOG.md) · [Beta updates](UPDATES.md) · [Security](#security-and-assurance) ·
 [Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
@@ -68,14 +68,14 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**V3 BETA CANDIDATE** · `3.0.0-beta.1` · Android debug CI builds verified; signed prerelease publication pending.</sub>
+<sub>**V3 BETA** · `v3.0.0-beta.1` · Signed prerelease build is being validated by the dedicated beta release workflow.</sub>
 
 | App | Purpose | Build |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43147136156) · `meizzo-client-debug` |
-| **MEIZZO Controller** | Install on the operator device | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43147136156) · `meizzo-controller-debug` |
+| **MEIZZO Client** | Install on the device receiving assistance | [Download Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk) |
+| **MEIZZO Controller** | Install on the operator device | [Download Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk) |
 
-These are **debug APKs**, not signed public-release packages. GitHub may require sign-in to download workflow artifacts. The signed beta release will be linked here after release validation and publication. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
+The beta release is a prerelease and is separate from Stable `v2.5.0`. Review the [beta changelog](CHANGELOG.md) before installing. If GitHub has not finished publishing the release assets, use the [beta release page](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1) and wait for both APKs and `MEIZZO-UPDATE.json` to appear. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -290,7 +290,7 @@ restart. See [architecture](docs/architecture.md) and
 ### For developers and operators
 
 - [System architecture](docs/architecture.md)
-- [Beta update log](UPDATES.md)
+- [Beta changelog](CHANGELOG.md) · [Detailed update log](UPDATES.md)
 - [Protocol and API reference](docs/api-reference.md)
 - [Android development](docs/android-guide.md)
 - [iOS development](docs/ios-guide.md)
@@ -323,9 +323,8 @@ Important boundaries remain:
   development/testing only.
 - Android background execution is subject to Android and OEM restrictions.
 - iOS platform privacy rules remain in force.
-- TURN relay is not deployed. Direct WebRTC connections may fail on restrictive
-  NATs, carrier networks, or firewalls.
-- File transfer is limited to 50 MiB per file and is not resumable yet.
+- TURN relay is optional and depends on Cloudflare Realtime TURN secrets being configured on the existing Worker. Without a working relay, direct WebRTC connections may fail on restrictive NATs, carrier networks, or firewalls.
+- File transfer is limited to 50 MiB per file. Resume is best-effort and depends on the document provider preserving access grants and supporting append semantics.
 - Android OEM permission restrictions and background-execution behavior need
   physical-device validation.
 
@@ -338,13 +337,13 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta candidate adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The current head passed Android Client and Controller debug builds, RustDesk source/license checks, signaling contract tests, and documentation validation. The iOS Simulator workflow also passed, but this UI task does not add iOS feature parity. Debug CI artifacts are not signed release APKs and do not replace physical-device, multi-network, or security acceptance.
+The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta release adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The beta candidate passed Android Client and Controller debug builds, RustDesk source/license checks, signaling contract tests, and documentation validation. The signed release workflow separately rebuilds and verifies both release APKs, package/version metadata, signing certificates, checksums, and the update manifest. The iOS Simulator workflow also passed, but this UI task does not add iOS feature parity. Debug CI artifacts are not signed release APKs and do not replace physical-device, multi-network, or security acceptance.
 
 Relevant workflow runs:
 
-- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43147136156)
+- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43144166641)
 - [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627)
-- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43147136174)
+- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568)
 - [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 - [All historical and future releases](https://github.com/rakhan17/Meizzo/releases)
 
@@ -436,10 +435,11 @@ not grant rights to the MEIZZO name or branding beyond customary reference.
 
 <div align="center">
 
-**MEIZZO** · Android Stable 2.5.0 · iOS under development
+**MEIZZO** · Android Stable 2.5.0 · Android v3 Beta 3.0.0-beta.1 · iOS under development
 
 [Stable release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0) ·
-[Documentation](docs/index.md) ·
+[Beta release](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1) ·
+[Changelog](CHANGELOG.md) · [Documentation](docs/index.md) ·
 [Contributing](CONTRIBUTING.md) ·
 [Security](SECURITY.md) ·
 [Issues](https://github.com/rakhan17/Meizzo/issues)
