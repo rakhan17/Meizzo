@@ -1717,6 +1717,12 @@ class MainActivity : Activity() {
                         }
                     }
                     try {
+                        val persistableFlags = data.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        if (persistableFlags != 0) {
+                            selected.forEach { uri ->
+                                try { contentResolver.takePersistableUriPermission(uri, persistableFlags) } catch (_: SecurityException) { }
+                            }
+                        }
                         fileTransferCoordinators[sessionId]?.sendFiles(selected)
                     } catch (error: Exception) {
                         setConnection("Could not send selected files · ${error.message ?: "storage error"}", false)
