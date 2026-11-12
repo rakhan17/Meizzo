@@ -77,6 +77,7 @@ class MainActivity : Activity() {
     private var darkMode by mutableStateOf(true)
     private var autoAlertSettings by mutableStateOf(AutoAlertManager.Settings(15, 42f, 5, true))
     private var glassDialog by mutableStateOf<ControllerGlassDialogRequest?>(null)
+    private var uiDevices by mutableStateOf<List<ControllerDeviceUi>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -181,7 +182,8 @@ class MainActivity : Activity() {
                         requestPairing()
                     },
                     connectionView = connectionLabel,
-                    managementView = managementView,
+                    devices = uiDevices,
+                    onDeviceAction = { id, action -> handleDeviceAction(id, action) },
                     onDarkModeChanged = { enabled ->
                         darkMode = enabled
                         preferences.edit().putBoolean("dark_mode", enabled).apply()
@@ -515,18 +517,71 @@ class MainActivity : Activity() {
     }
 
     private fun renderDevices() = runOnUiThread {
-        devicesLayout.removeAllViews()
         val online = devices.values.count { it.optString("status") == "online" }
         summaryLabel.text = "${devices.size} paired · $online online · ${devices.size - online} offline"
-        if (devices.isNotEmpty()) activeTab = 1
-        if (devices.isEmpty()) {
-            devicesLayout.addView(TextView(this).apply {
-                text = "No paired Clients yet.\nEnter the six-digit code shown on a Client to get started."
-                textSize = 17f; setTextColor(Color.LTGRAY); setPadding(0, 28, 0, 0)
-            })
-            return@runOnUiThread
+        uiDevices = devices.values.map { device ->
+            val id = device.optString("clientId")
+            val metadata = device.optJSONObject("metadata") ?: JSONObject()
+            val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+            ControllerDeviceUi(
+                id = id,
+                name = metadata.optString("alias").ifBlank { metadata.optString("model").ifBlank { id } },
+                online = device.optString("status") == "online",
+                platform = metadata.optString("platform").ifBlank { "Android device" },
+                battery = if (telemetry.has("batteryPercent")) "${telemetry.optInt("batteryPercent").coerceIn(0, 100)}%" else "Unavailable",
+                network = telemetry.optString("network").ifBlank { "Network unavailable" },
+                hasLocation = telemetry.optJSONObject("lastKnownLocation") != null,
+                mediaActive = pendingMediaRequests.contains(id) || activeMediaSessions.values.contains(id),
+                interactionActive = approvedInteractionSessions.containsKey(id),
+                interactionPending = pendingInteractionSessions.containsKey(id)
+            )
         }
-        devices.values.forEach { addDeviceCard(it) }
+        if (devices.isNotEmpty()) activeTab = 1
+    }
+
+    private fun handleDeviceAction(clientId: String, action: String) {
+        when (action) {
+            "details" -> devices[clientId]?.let { showDetails(it) }
+            "screen", "camera", "files" -> {
+                if (devices[clientId]?.optString("status") == "online") requestMediaSession(clientId, action)
+                else setConnection("Client is offline", false)
+            }
+            "interaction" -> {
+                val sessionId = approvedInteractionSessions[clientId]
+                when {
+                    sessionId != null -> endInteraction(clientId, sessionId)
+                    pendingInteractionSessions.containsKey(clientId) -> setConnection("Waiting for Client approval", false)
+                    else -> requestInteraction(clientId)
+                }
+            }
+            "back", "home", "recents", "notifications", "quick_settings", "power_dialog", "lock_screen",
+            "volume_up", "volume_down", "volume_mute", "volume_unmute", "camera_flip",
+            "key_backspace", "key_enter", "key_tab", "key_escape" -> sendInteractionAction(clientId, action, JSONObject())
+            "new_line" -> sendInteractionAction(clientId, "text_input", JSONObject().put("text", "\n"))
+            "location" -> devices[clientId]?.optJSONObject("metadata")?.optJSONObject("telemetry")
+                ?.optJSONObject("lastKnownLocation")?.let { openLastKnownLocation(it) }
+                ?: setConnection("Last known location is unavailable", false)
+            "flashlight_on" -> sendDeviceCommand(clientId, "flashlight", true)
+            "flashlight_off" -> sendDeviceCommand(clientId, "flashlight", false)
+            "alarm_on" -> sendDeviceCommand(clientId, "alarm", true)
+            "alarm_off" -> sendDeviceCommand(clientId, "alarm", false)
+            "browse_files" -> {
+                remoteFileBrowseStacks.remove(clientId)
+                sendClientCommand(clientId, "file_browse", JSONObject())
+            }
+            "clipboard_read" -> sendClientCommand(clientId, "clipboard_read", JSONObject())
+            "clipboard_write" -> showClipboardWriteDialog(clientId)
+            "controller_clipboard" -> sendControllerClipboard(clientId)
+            "tap" -> showTapDialog(clientId)
+            "swipe" -> showSwipeDialog(clientId)
+            "emergency" -> composeEmergencyMessage(clientId)
+            "text" -> showRemoteTextDialog(clientId)
+            "clipboard_write" -> showClipboardWriteDialog(clientId)
+            "controller_clipboard" -> sendControllerClipboard(clientId)
+            "tap" -> showTapDialog(clientId)
+            "swipe" -> showSwipeDialog(clientId)
+            else -> setConnection("Unsupported device action", false)
+        }
     }
 
     private fun addDeviceCard(device: JSONObject) {
