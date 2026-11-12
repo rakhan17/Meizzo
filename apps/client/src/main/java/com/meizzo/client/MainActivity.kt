@@ -754,6 +754,10 @@ class MainActivity : Activity() {
                 val destination = data?.data
                 if (resultCode == RESULT_OK && destination != null) {
                     try {
+                        val persistableFlags = (data?.flags ?: 0) and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        if (persistableFlags != 0) {
+                            try { contentResolver.takePersistableUriPermission(destination, persistableFlags) } catch (_: SecurityException) { }
+                        }
                         fileTransferCoordinator?.acceptIncoming(destination)
                     } catch (error: Exception) {
                         fileTransferCoordinator?.rejectIncoming()
