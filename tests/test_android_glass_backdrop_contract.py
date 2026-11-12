@@ -57,6 +57,21 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
         self.assertIn("Allow restricted settings", client)
         self.assertIn("Open MEIZZO App info", client)
 
+    def test_alarm_toggle_state_survives_controller_restart(self):
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/MainActivity.kt"
+        ).read_text()
+
+        self.assertIn(
+            'preferences.getStringSet("alarm_active_clients", emptySet())',
+            controller,
+        )
+        self.assertIn(
+            '.putStringSet("alarm_active_clients", alarmActiveClients.toSet())',
+            controller,
+        )
+
     def test_android_client_and_controller_render_wordmark_without_logo(self):
         client = (
             ROOT
