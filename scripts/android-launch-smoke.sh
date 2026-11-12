@@ -17,8 +17,12 @@ assert_running() {
     printf '%s\n' "$pid"
     echo "Matching activity records:"
     printf '%s\n' "$activities" | grep -C 4 -E "$package|topResumedActivity|mResumedActivity" || true
-    echo "Full recent logcat (last 500 lines):"
-    timeout 20s adb logcat -d -v time | tail -n 500 || true
+    echo "Android process exit history:"
+    timeout 20s adb shell dumpsys activity exit-info "$package" || true
+    echo "Package process state:"
+    timeout 20s adb shell dumpsys package "$package" | grep -E 'userId=|enabled=|stopped=|firstInstallTime|lastUpdateTime' || true
+    echo "Relevant crash and process logcat (filtered across the full buffer):"
+    timeout 20s adb logcat -d -v threadtime | grep -E "$package|AndroidRuntime|FATAL EXCEPTION|Fatal signal|SIGSEGV|F/DEBUG|backtrace|#[0-9]+ pc|lmkd|ActivityTaskManager|Process .*died|Killing|Force finishing|RenderThread|libhwui|libEGL|libGLES" | tail -n 500 || true
     return 1
   fi
   timeout 20s adb shell am force-stop "$package"
