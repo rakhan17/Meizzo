@@ -96,6 +96,7 @@ class FileTransferCoordinator(
                 retryHandler.post { if (!closed) handleMessage(raw) }
             }
         })
+        if (channel.state() == DataChannel.State.OPEN) resumeOutgoingOfferIfPresent()
     }
 
     fun isReady(): Boolean = !closed && channel.state() == DataChannel.State.OPEN
@@ -268,6 +269,7 @@ class FileTransferCoordinator(
                 ) return
                 if (encoded.length > MAX_ENCODED_CHUNK_SIZE) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    clearIncomingCheckpoint()
                     discardIncoming()
                     pendingName = ""
                     pendingSize = 0L
@@ -293,6 +295,7 @@ class FileTransferCoordinator(
                         (pendingSize >= 0L && incomingBytes + bytes.size > pendingSize)
                     ) {
                         send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                        clearIncomingCheckpoint()
                         discardIncoming()
                         pendingName = ""
                         pendingSize = 0L
@@ -312,6 +315,7 @@ class FileTransferCoordinator(
                     send(JSONObject().put("type", "file_ack").put("transferId", transferId).put("sequence", sequence))
                 } catch (error: Exception) {
                     send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    clearIncomingCheckpoint()
                     discardIncoming()
                     pendingName = ""
                     pendingSize = 0L
@@ -351,6 +355,7 @@ class FileTransferCoordinator(
                     clearIncomingCheckpoint()
                     closeIncoming()
                 } else {
+                    clearIncomingCheckpoint()
                     discardIncoming()
                 }
                 if (!hashMatches) {
@@ -462,7 +467,7 @@ class FileTransferCoordinator(
             }
             try { outgoingInput?.close() } catch (_: Exception) { }
             outgoingInput = input; outgoingDigest = digest; outgoingTransferId = transferId
-            outgoingBytes = requestedOffset; outgoingSequence = (requestedOffset / CHUNK_SIZE).toInt()
+            outgoingBytes = requestedOffset; outgoingSequence = ((requestedOffset + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt()
             lastOutgoingProgressBytes = requestedOffset; waitingForAck = false
             onStatus("Resuming file transfer · " + (requestedOffset / MEBIBYTE) + " MiB verified")
             true
@@ -485,8 +490,20 @@ class FileTransferCoordinator(
                 }
             }
             if (restored != offset) throw IllegalStateException("Saved destination checkpoint is invalid")
+            // Rewrite the acknowledged prefix to discard any bytes flushed just before a crash but not checkpointed.
+            val prefixInput = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Saved destination cannot be reopened")
+            val truncateOutput = context.contentResolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("Saved destination cannot be repaired")
+            prefixInput.use { source -> truncateOutput.use { target ->
+                var copied = 0L
+                while (copied < offset) {
+                    val count = source.read(buffer, 0, minOf(buffer.size.toLong(), offset - copied).toInt())
+                    if (count <= 0) throw IllegalStateException("Saved destination prefix changed")
+                    target.write(buffer, 0, count); copied += count
+                }
+                target.flush()
+            } }
             incomingOutput = context.contentResolver.openOutputStream(uri, "wa") ?: throw IllegalStateException("Saved destination cannot be reopened for append")
-            incomingUri = uri; incomingBytes = offset; incomingExpectedSequence = (offset / CHUNK_SIZE).toInt()
+            incomingUri = uri; incomingBytes = offset; incomingExpectedSequence = ((offset + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt()
             incomingDigest = digest; incomingTransferId = transferId; lastIncomingProgressBytes = offset
             send(JSONObject().put("type", "file_accept").put("transferId", transferId).put("offset", offset))
             onStatus("Resuming " + pendingName + " · " + (offset / MEBIBYTE) + " MiB verified")
