@@ -220,6 +220,36 @@ class ConnectionForegroundService : Service() {
                 else if (!accessibility.appendText(value)) error = "No editable non-password field is focused"
                 else result.put("charactersInserted", value.length)
             }
+            "emergency_message" -> {
+                val text = parameters.optString("message").trim()
+                if (text.isBlank() || text.length > 240) {
+                    error = "Emergency message must contain 1–240 characters"
+                } else if (Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    error = "Notification permission must be granted on the Client first"
+                } else {
+                    val channelId = "meizzo_emergency_message"
+                    if (Build.VERSION.SDK_INT >= 26) {
+                        getSystemService(NotificationManager::class.java).createNotificationChannel(
+                            NotificationChannel(channelId, "Emergency phone messages", NotificationManager.IMPORTANCE_HIGH)
+                        )
+                    }
+                    val notification = NotificationCompat.Builder(this, channelId)
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle("Emergency message")
+                        .setContentText(text)
+                        .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                        .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                        .setAutoCancel(true)
+                        .build()
+                    getSystemService(NotificationManager::class.java).notify(2601, notification)
+                    result.put("shown", true)
+                    result.put("visibility", "Android lock-screen settings apply")
+                }
+            }
             "key_backspace", "key_enter", "key_tab", "key_escape" -> {
                 val keyCode = when (command) {
                     "key_backspace" -> android.view.KeyEvent.KEYCODE_DEL
