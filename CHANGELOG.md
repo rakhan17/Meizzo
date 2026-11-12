@@ -1,42 +1,45 @@
 # MEIZZO Changelog
 
-This is the user-facing changelog for published beta and stable releases. New beta features are recorded here when a release is published, not merely when a branch or CI build exists.
+This is the user-facing release and development changelog. Published releases are kept separate from CI-validated development builds.
 
-- **Latest beta:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
-- **Stable channel:** [v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
-- **Detailed release history:** [UPDATES.md](UPDATES.md) · [Documentation update log](docs/updates.md)
-- **All builds:** [GitHub Releases](https://github.com/rakhan17/Meizzo/releases)
+- **Current development:** [develop/v3](https://github.com/rakhan17/Meizzo/tree/develop/v3).
+- **Latest validation details:** [BETA-CHANGELOG.md](BETA-CHANGELOG.md) · [Full update ledger](UPDATES.md).
+- **Stable channel:** [v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0), unchanged.
+- **Superseded beta candidate:** [v3.0.0-beta.1](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1). Its tag points to legacy main, not the current v3 development source.
+- **All published releases:** [GitHub Releases](https://github.com/rakhan17/Meizzo/releases).
 
 ---
 
-## v3.0.0-beta.1 · Android Liquid Glass and remote-assistance beta
+## Latest development update · 12 November 2026
 
-<sub>12 November 2026 · Beta prerelease</sub>
+### Fixed
+- Fixed the Android 16 native startup crash caused by a recursive RenderNode feedback loop: the background is recorded in a dedicated sibling layer, while glass surfaces that sample the backdrop render outside that layer.
+- Added a regression-contract test to guard the backdrop layering rule.
+- Added the MEIZZO logo to the Android Client and Controller in-app headers.
 
-### New in this beta
+### Validation
+- Android Client and Controller debug builds passed.
+- Android 16 emulator launch smoke tests passed for both Android apps.
+- Signaling tests, Node checks/tests, Android command/media/glass-backdrop regression contracts, and pinned RustDesk source/license checks passed.
+- iOS Client and Controller Simulator builds and smoke tests passed.
+- Evidence: [Android CI run 43162464047](https://github.com/rakhan17/Meizzo/actions/runs/43162464047) · [iOS CI run 43162464097](https://github.com/rakhan17/Meizzo/actions/runs/43162464097).
 
-- Integrates AndroidLiquidGlass / Backdrop **2.0.1** into the shared Android Compose UI module.
-- Rebuilds the Android Controller navigation around three tabs: **Link**, **Devices**, and **Settings**.
-- Automatically opens Devices after a pairing request is approved.
-- Gives Android Client a focused single-page six-digit pairing-code experience.
-- Adds shared Liquid Glass surfaces, buttons, bottom tabs, toggles, sliders, scroll effects, and app-owned dialogs.
-- Adds light/dark appearance settings and matching Android system-bar icon contrast.
-- Documents the Android remote-assistance prototype set: approved screen/camera sessions, optional two-way microphone audio, remote interaction/navigation, manual clipboard, remote file browsing, and bidirectional WebRTC file transfer.
+### Still pending before a corrected beta
+- Manual two-device acceptance of six-digit pairing, Client approval, session establishment, and actual remote-control behavior.
+- Build and validate the corrected signed Client and Controller APKs from develop/v3 before publishing a new beta tag.
+- These CI results are engineering validation only. They do not make the superseded beta.1 package current, and they do not change Stable v2.5.0.
 
-### Important boundaries
+---
 
-- Sensitive pairing and session capabilities still require explicit approval on the Client.
-- Android system permission prompts, document pickers, and Package Installer screens remain native Android UI.
-- Remote media and file transfer remain prototypes requiring physical-device and cross-network acceptance.
-- TURN relay availability depends on the existing Cloudflare Worker configuration; STUN-only paths may fail behind restrictive NATs.
-- RustDesk upstream source is pinned and license-checked, but the RustDesk engine/server is not integrated into the MEIZZO runtime.
-- iOS remains a separate development/Simulator track and does not have Android feature parity.
+## v3.0.0-beta.1 · Superseded candidate
 
-### Downloads
+<sub>12 November 2026 · Published prerelease · Superseded due to source mismatch</sub>
 
-- [MEIZZO Client beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk)
-- [MEIZZO Controller beta APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk)
-- [Release page, update manifest, and SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+- The tag was created from legacy main rather than develop/v3.
+- Its signed Client and Controller APKs do not contain the current v3 Android implementation.
+- Do not use beta.1 as the reference build for the current v3 interface.
+
+See [BETA-CHANGELOG.md](BETA-CHANGELOG.md) for the full correction notice and validation record.
 
 ---
 
@@ -53,14 +56,9 @@ Downloads: [Client APK](https://github.com/rakhan17/Meizzo/releases/download/v2.
 
 ---
 
-## Historical beta releases
-
-See [UPDATES.md](UPDATES.md#historical-beta-releases) for v0.1.0-beta.1 through v0.1.0-beta.5 and their original release links.
-
 ## Release-channel policy
-
-- `vX.Y.Z` is a stable release.
-- `vX.Y.Z-beta.N` is a prerelease and must never replace the latest stable release.
-- Every public Android release must include separately signed Client and Controller APKs, `MEIZZO-UPDATE.json`, and `SHA256SUMS.txt`.
+- Stable tags use vX.Y.Z.
+- Beta tags use vX.Y.Z-beta.N and must never replace the latest stable release.
+- Every public Android release must include separately signed Client and Controller APKs, MEIZZO-UPDATE.json, and SHA256SUMS.txt.
 - A successful debug CI build is not a published release.
-- New beta features are added to this changelog only after the GitHub prerelease and its assets are verified.
+- Corrected beta downloads are published only after signed APK validation and manual acceptance gates.
