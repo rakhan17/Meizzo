@@ -24,7 +24,7 @@ The tag resolves to commit `d8dc247` on the legacy `main` history. It does **not
 
 - The current v3 Android implementation is maintained on [`develop/v3`](https://github.com/rakhan17/Meizzo/tree/develop/v3), with [PR #9](https://github.com/rakhan17/Meizzo/pull/9) still under review.
 - The corrected beta.2 candidate has not been published.
-- Both Client and Controller compile, but Android 16 launch smoke testing exposed a native Client `RenderThread` SIGSEGV and an earlier Controller launch failure. The unstable Backdrop lens shader has been removed as a compatibility fix candidate; the revised smoke-test rerun is pending.
+- Both Client and Controller compile, but Android 16 launch smoke testing found that the Client activity returns to Home and its process disappears shortly after launch; an earlier Controller launch check also failed. The captured logs have not yet established the cause. Lens effects have been removed as a compatibility experiment, and the revised smoke test now records Android process exit history and filtered crash traces.
 - The signaling regression contracts and Node tests pass on the latest CI run; this does not replace device/runtime acceptance.
 - The next release must be built from a commit reachable from `develop/v3`, signed with the established release key, and pass launch smoke tests for both apps before assets are published.
 
