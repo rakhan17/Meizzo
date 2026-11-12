@@ -130,6 +130,7 @@ class ConnectionForegroundService : Service() {
                 if (socket !== webSocket) return
                 clientListener?.onFailure(webSocket, t, response)
                 socket = null
+                socketOpenResponse = null
                 heartbeatSocket = null
                 scheduleSocketReconnect()
             }
