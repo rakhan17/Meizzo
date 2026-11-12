@@ -33,8 +33,10 @@ The Worker exposes `GET /healthz` and WebSocket upgrades at `/` and
 8. Monitor Durable Object errors, limits, latency, and storage growth.
 
 The current beta uses a single named Durable Object for the signaling
-namespace. Review capacity, failure recovery, abuse controls, retention, and
-operational monitoring before production use.
+namespace. The latest GitHub Worker run passed validation but skipped deployment
+because the repository Cloudflare secrets were not configured at that time.
+Review capacity, failure recovery, abuse controls, retention, and operational
+monitoring before production use.
 
 ## Local Node.js development harness
 
