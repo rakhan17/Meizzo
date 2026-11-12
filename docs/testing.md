@@ -37,6 +37,10 @@ testing on a physical iPhone.
 
 - [iOS CI run](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
 
+## Cloudflare TURN configuration
+
+The existing `meizzo-signaling` Worker can issue short-lived Cloudflare TURN credentials without a VPS. Follow [the setup guide](cloudflare-turn-setup.md) to configure its two encrypted Worker secrets. Check `/healthz` for `turnConfigured`; a true value confirms presence only, not credential validity or real-world relay reachability.
+
 ## Worker validation
 
 The Cloudflare workflow runs Wrangler validation/dry-run for the Worker
