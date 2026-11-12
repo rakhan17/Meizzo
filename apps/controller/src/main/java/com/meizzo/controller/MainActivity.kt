@@ -1030,7 +1030,7 @@ class MainActivity : ComponentActivity() {
             .setPositiveButton("Mute remote audio", null)
             .create()
         mediaDialogs[sessionId] = dialog
-        val viewer = RtcMediaController(
+        val viewer = existingViewer ?: RtcMediaController(
             this,
             { signal ->
                 socket?.send(JSONObject().apply {
@@ -1045,8 +1045,7 @@ class MainActivity : ComponentActivity() {
                 runOnUiThread { setConnection("Media stream error · $reason", false) }
             },
             iceServersJson = iceServersBySession.remove(sessionId)
-        )
-        mediaViewers[sessionId] = viewer
+        ).also { mediaViewers[sessionId] = it }
         var touchStartX = 0f
         var touchStartY = 0f
         var touchStartTime = 0L
@@ -1356,8 +1355,7 @@ class MainActivity : ComponentActivity() {
                 }
             },
             iceServersJson = iceServersBySession.remove(sessionId)
-        )
-        mediaViewers[sessionId] = viewer
+        ).also { mediaViewers[sessionId] = it }
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
             if (activeFileTransferSessions[clientId] == sessionId) activeFileTransferSessions.remove(clientId)
