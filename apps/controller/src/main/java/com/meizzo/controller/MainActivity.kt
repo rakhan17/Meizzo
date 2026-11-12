@@ -357,7 +357,7 @@ class MainActivity : ComponentActivity() {
 
     private fun connect() {
         connectionLabel.text = "● Connecting to MEIZZO"
-        connectionLabel.setTextColor(Color.rgb(238, 190, 100))
+        connectionLabel.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
         socket = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
             .newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -365,7 +365,7 @@ class MainActivity : ComponentActivity() {
                     reconnectScheduled = false
                     runOnUiThread {
                         connectionLabel.text = "● Connected to MEIZZO"
-                        connectionLabel.setTextColor(Color.rgb(120, 210, 170))
+                        connectionLabel.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
                     }
                     authenticateExisting(webSocket)
                 }
@@ -461,7 +461,7 @@ class MainActivity : ComponentActivity() {
                         }
                         "error" -> runOnUiThread {
                             connectionLabel.text = "● Error · ${message.optString("message")}"
-                            connectionLabel.setTextColor(Color.rgb(240, 120, 120))
+                            connectionLabel.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
                         }
                     }
                 }
