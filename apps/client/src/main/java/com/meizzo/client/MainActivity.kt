@@ -21,6 +21,11 @@ import android.os.IBinder
 import android.graphics.Color
 import android.graphics.Typeface
 import android.view.Gravity
+import android.view.ViewGroup
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -67,6 +72,7 @@ class MainActivity : Activity() {
     private var torchEnabled = false
     private val updateManager by lazy { ClientUpdateManager(this) }
     private var pendingUpdateApk: File? = null
+    private var darkMode by mutableStateOf(true)
     private val pendingSessionDialogs = mutableMapOf<String, AlertDialog>()
     private var pendingTorchCommand: Pair<WebSocket, JSONObject>? = null
     private var pendingRemoteFileBrowse: Pair<WebSocket, JSONObject>? = null
@@ -209,10 +215,18 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(105, 105, 113))
             setPadding(0, dp(28), 0, dp(8))
         })
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            addView(content)
-            setBackgroundColor(Color.rgb(8, 8, 10))
+        (status.parent as? ViewGroup)?.removeView(status)
+        darkMode = preferences.getBoolean("dark_mode", true)
+        window.statusBarColor = if (darkMode) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
+        window.navigationBarColor = window.statusBarColor
+        setContentView(ComposeView(this).apply {
+            setContent {
+                ClientGlassScreen(
+                    pairingCode = pairingCode,
+                    statusView = status,
+                    darkMode = darkMode
+                )
+            }
         })
         ContextCompat.registerReceiver(
             this,

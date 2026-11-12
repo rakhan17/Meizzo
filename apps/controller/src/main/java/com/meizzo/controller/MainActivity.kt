@@ -8,6 +8,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.ViewGroup
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import android.widget.Button
 import android.widget.FrameLayout
 import org.webrtc.SurfaceViewRenderer
@@ -67,6 +73,8 @@ class MainActivity : Activity() {
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
+    private var activeTab by mutableIntStateOf(0)
+    private var darkMode by mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -151,10 +159,37 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(105, 105, 113))
             setPadding(0, dp(28), 0, dp(8))
         })
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            addView(content)
-            setBackgroundColor(Color.rgb(8, 8, 10))
+        // Keep the existing device-management views and command handlers, but host them
+        // inside the new Compose navigation instead of the legacy one-page layout.
+        (connectionLabel.parent as? ViewGroup)?.removeView(connectionLabel)
+        (summaryLabel.parent as? ViewGroup)?.removeView(summaryLabel)
+        (devicesLayout.parent as? ViewGroup)?.removeView(devicesLayout)
+        val managementView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(summaryLabel, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(16)
+            })
+            addView(devicesLayout, LinearLayout.LayoutParams(-1, -2))
+        }
+        darkMode = preferences.getBoolean("dark_mode", true)
+        setContentView(ComposeView(this).apply {
+            setContent {
+                ControllerGlassScreen(
+                    darkMode = darkMode,
+                    selectedTab = { activeTab },
+                    onTabSelected = { activeTab = it },
+                    onPair = { value ->
+                        codeInput.setText(value)
+                        requestPairing()
+                    },
+                    connectionView = connectionLabel,
+                    managementView = managementView,
+                    onDarkModeChanged = { enabled ->
+                        darkMode = enabled
+                        preferences.edit().putBoolean("dark_mode", enabled).apply()
+                    }
+                )
+            }
         })
         renderDevices()
         connect()
@@ -452,7 +487,10 @@ class MainActivity : Activity() {
                 put("clientId", clientId); put("authToken", token)
             }.toString())
             updateDevice(message)
-            runOnUiThread { connectionLabel.text = "● Pairing complete · Client is awaiting presence" }
+            runOnUiThread {
+                connectionLabel.text = "● Pairing complete · Client is awaiting presence"
+                activeTab = 1
+            }
             renderDevices()
         } else runOnUiThread { connectionLabel.text = "● Pairing ${message.optString("status")}: ${message.optString("reason")}" }
     }
@@ -472,6 +510,7 @@ class MainActivity : Activity() {
         devicesLayout.removeAllViews()
         val online = devices.values.count { it.optString("status") == "online" }
         summaryLabel.text = "${devices.size} paired · $online online · ${devices.size - online} offline"
+        if (devices.isNotEmpty()) activeTab = 1
         if (devices.isEmpty()) {
             devicesLayout.addView(TextView(this).apply {
                 text = "No paired Clients yet.\nEnter the six-digit code shown on a Client to get started."
