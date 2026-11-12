@@ -19,9 +19,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -43,8 +40,6 @@ import com.kyant.shapes.RoundedRectangle
 
 private val Ink = Color(0xFF111116)
 private val MutedInk = Color(0xFF777780)
-private val Paper = Color(0xFFF5F5F8)
-private val DarkPaper = Color(0xFF101014)
 private val Accent = Color(0xFF0A84FF)
 
 val LocalLiquidGlassDarkMode = staticCompositionLocalOf { true }
@@ -65,25 +60,7 @@ fun LiquidGlassBackdrop(
             Modifier
                 .fillMaxSize()
                 .layerBackdrop(backdrop)
-                .background(
-                    Brush.linearGradient(
-                        colors = if (dark) listOf(Color(0xFF08080C), Color(0xFF17171E), Color(0xFF09090D)) else listOf(Paper, Color(0xFFE9EBF2), Paper),
-                        start = Offset.Zero,
-                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                    )
-                )
-                .drawBehind {
-                    drawCircle(
-                        color = Accent.copy(alpha = if (dark) 0.13f else 0.10f),
-                        radius = size.minDimension * 0.55f,
-                        center = Offset(size.width * 0.92f, size.height * 0.12f)
-                    )
-                    drawCircle(
-                        color = Color(0xFF8E8EFF).copy(alpha = if (dark) 0.08f else 0.07f),
-                        radius = size.minDimension * 0.42f,
-                        center = Offset(size.width * 0.02f, size.height * 0.72f)
-                    )
-                }
+                .background(if (dark) Color(0xFF000000) else Color(0xFFF2F2F7))
         )
         content(backdrop)
     }
