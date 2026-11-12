@@ -7,7 +7,7 @@ The full chronological release history, including feature-level beta notes and b
 | Channel | Version | Status |
 |---|---|---|
 | Android Stable | `v2.5.0` | Published. Existing APKs and signing identity remain unchanged. |
-| Android v3 Beta | `v3.0.0-beta.1` | Current development candidate. CI debug builds passed; signed public release is pending. |
+| Android v3 Beta | `v3.0.0-beta.1` | Published prerelease with separately signed Client and Controller APKs, update manifest, and SHA-256 checksums. |
 | iOS | Development | Simulator CI only; physical-device distribution is not available. |
 
 ## Signed Android release gates
@@ -25,4 +25,10 @@ The workflow requires `MEIZZO_ANDROID_KEYSTORE_BASE64`, `MEIZZO_ANDROID_KEYSTORE
 
 ## Important release distinction
 
-CI debug APK artifacts are useful for installation and smoke testing, but they are not signed public-release packages. A green debug build does not mean that a signed GitHub Release has been published. Stable `v2.5.0` must not be overwritten or relabeled as a v3 beta.
+CI debug APK artifacts are useful for smoke testing, but they are not signed public-release packages. Stable `v2.5.0` remains unchanged; `v3.0.0-beta.1` is a prerelease and must never be presented as stable.
+
+## Published beta assets
+
+- [v3.0.0-beta.1 release page](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+- [Client APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Client-v3.0.0-beta.1.apk)
+- [Controller APK](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-Controller-v3.0.0-beta.1.apk)
