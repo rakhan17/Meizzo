@@ -217,6 +217,7 @@ class MainActivity : ComponentActivity() {
         })
         (status.parent as? ViewGroup)?.removeView(status)
         darkMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        status.setTextColor(if (darkMode) Color.rgb(210, 210, 216) else Color.rgb(92, 92, 100))
         window.statusBarColor = if (darkMode) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
         window.navigationBarColor = window.statusBarColor
         setContentView(ComposeView(this).apply {
@@ -226,6 +227,16 @@ class MainActivity : ComponentActivity() {
                     statusView = status,
                     darkMode = darkMode,
                     onCheckForUpdates = { checkForUpdate() },
+                    onOpenAccessibilitySettings = {
+                        startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    },
+                    onOpenAppSettings = {
+                        startActivity(
+                            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.parse("package:$packageName")
+                            }
+                        )
+                    },
                     dialog = glassDialog,
                     onDialogConfirm = {
                         val request = glassDialog
