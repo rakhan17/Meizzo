@@ -44,13 +44,21 @@ class ConnectionForegroundService : Service() {
     private var clientListener: WebSocketListener? = null
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
+    private val reconnectTask = Runnable {
+        reconnectScheduled = false
+        if (socket == null) connectSocket()
+    }
     private var heartbeatSocket: WebSocket? = null
     private val queuedMessages = ArrayDeque<String>()
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: android.net.Network) {
             socketHandler.post {
                 reconnectAttempt = 0
-                if (socket == null) connectSocket()
+                if (socket == null) {
+                    socketHandler.removeCallbacks(reconnectTask)
+                    reconnectScheduled = false
+                    connectSocket()
+                }
             }
         }
         override fun onLost(network: android.net.Network) {
@@ -144,10 +152,8 @@ class ConnectionForegroundService : Service() {
         if (reconnectScheduled || socketUrl.isNullOrBlank()) return
         reconnectScheduled = true
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
-        socketHandler.postDelayed({
-            reconnectScheduled = false
-            if (socket == null) connectSocket()
-        }, (1L shl reconnectAttempt) * 1000L)
+        socketHandler.removeCallbacks(reconnectTask)
+        socketHandler.postDelayed(reconnectTask, (1L shl reconnectAttempt) * 1000L)
     }
 
     override fun onCreate() {
@@ -171,6 +177,7 @@ class ConnectionForegroundService : Service() {
             socketUrl = null
             reconnectScheduled = false
             socketHandler.removeCallbacksAndMessages(null)
+            reconnectScheduled = false
             socket?.close(1000, "Connection stopped")
             socket = null
             socketOpenResponse = null
