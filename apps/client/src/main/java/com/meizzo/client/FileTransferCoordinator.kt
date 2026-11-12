@@ -179,6 +179,8 @@ class FileTransferCoordinator(
         if (closed) return
         val savedOutgoingId = resumePrefs.getString("outgoing_id", null)
         val savedIncomingId = resumePrefs.getString("incoming_id", null)
+        val savedIncomingUri = resumePrefs.getString("incoming_uri", null)?.let(Uri::parse)
+        val hadOpenIncomingUri = incomingUri != null
         if (outgoingInput == null && incomingOutput == null && pendingName.isBlank() &&
             savedOutgoingId.isNullOrBlank() && savedIncomingId.isNullOrBlank()
         ) {
@@ -192,6 +194,9 @@ class FileTransferCoordinator(
         outgoingQueue.clear()
         clearIncomingCheckpoint()
         discardIncoming()
+        if (!hadOpenIncomingUri && savedIncomingUri != null) {
+            try { context.contentResolver.delete(savedIncomingUri, null, null) } catch (_: Exception) { }
+        }
         pendingName = ""
         pendingSize = 0L
         onStatus("File transfer cancelled")
