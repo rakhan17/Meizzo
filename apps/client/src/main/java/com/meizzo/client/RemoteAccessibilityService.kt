@@ -42,9 +42,9 @@ class RemoteAccessibilityService : AccessibilityService() {
             0,
             metaState
         )
-        val downSent = connection.sendKeyEvent(down)
-        val upSent = connection.sendKeyEvent(up)
-        return downSent && upSent
+        connection.sendKeyEvent(down)
+        connection.sendKeyEvent(up)
+        return true
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
