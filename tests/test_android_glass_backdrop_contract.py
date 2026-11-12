@@ -1,4 +1,4 @@
-"""Regression checks for safe Backdrop source/surface layering on Android."""
+"""Regression checks for safe Backdrop source/surface layering and branding."""
 
 from pathlib import Path
 import unittest
@@ -20,19 +20,22 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
         self.assertEqual(source.count(".layerBackdrop(backdrop)"), 1)
         self.assertLess(root_box, source_layer)
         self.assertLess(source_layer, glass_content)
+        self.assertIn("\\n        )\\n        content(backdrop)", source)
         self.assertIn("Record only the background as the backdrop source", source)
         self.assertIn("Glass surfaces must", source)
 
-    def test_glass_content_is_not_recorded_into_its_own_backdrop(self):
-        source = (
+    def test_android_client_and_controller_render_the_brand_logo(self):
+        client = (
             ROOT
-            / "apps/glass-ui/src/main/java/com/meizzo/glass/MeizzoGlass.kt"
+            / "apps/client/src/main/java/com/meizzo/client/ClientGlassScreen.kt"
+        ).read_text()
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/ControllerGlassScreen.kt"
         ).read_text()
 
-        self.assertNotIn(
-            ".fillMaxSize()\n            .layerBackdrop(backdrop)\n            .background(",
-            source,
-        )
+        self.assertIn("painterResource(R.drawable.meizzo_logo)", client)
+        self.assertIn("painterResource(R.drawable.meizzo_logo)", controller)
 
 
 if __name__ == "__main__":
