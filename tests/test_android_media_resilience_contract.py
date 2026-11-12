@@ -88,6 +88,8 @@ class MediaResilienceContract(unittest.TestCase):
                 'put("offset", offset)',
                 'openOutputStream(uri, "wa")',
                 "pauseActiveTransfer()",
+                "A paused outgoing transfer must resume or be cancelled",
+                "A paused incoming transfer must resume or be cancelled",
                 "MessageDigest.getInstance(\"SHA-256\")",
             ):
                 self.assertIn(marker, source)
