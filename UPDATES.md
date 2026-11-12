@@ -63,11 +63,11 @@ This is the current v3 beta candidate on the `develop/v3` development line, with
 
 The candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9` passed:
 
-- [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
+- [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136156): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
 - [MEIZZO iOS](https://github.com/rakhan17/Meizzo/actions/runs/43144166627): iOS Simulator workflow passed. This is not evidence of iOS Liquid Glass parity or physical-device distribution.
-- [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568): Markdown link validation and strict MkDocs build passed.
+- [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43147136174): Markdown link validation and strict MkDocs build passed.
 
-Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakhan17/Meizzo/actions/runs/43144166641):
+Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakhan17/Meizzo/actions/runs/43147136156):
 
 - `meizzo-client-debug`
 - `meizzo-controller-debug`

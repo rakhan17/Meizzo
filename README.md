@@ -72,8 +72,8 @@ clearly marked as prerelease software.
 
 | App | Purpose | Build |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-client-debug` |
-| **MEIZZO Controller** | Install on the operator device | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-controller-debug` |
+| **MEIZZO Client** | Install on the device receiving assistance | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43147136156) · `meizzo-client-debug` |
+| **MEIZZO Controller** | Install on the operator device | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43147136156) · `meizzo-controller-debug` |
 
 These are **debug APKs**, not signed public-release packages. GitHub may require sign-in to download workflow artifacts. The signed beta release will be linked here after release validation and publication. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
@@ -342,9 +342,9 @@ The Android stable release remains `v2.5.0` with its original Client and Control
 
 Relevant workflow runs:
 
-- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43144166641)
+- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43147136156)
 - [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627)
-- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568)
+- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43147136174)
 - [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 - [All historical and future releases](https://github.com/rakhan17/Meizzo/releases)
 

@@ -91,7 +91,7 @@ signaling regression tests for pairing, multi-device isolation, revocation,
 session lifecycle, reconnect cleanup, media signaling, and Client-initiated
 media-session termination.
 
-Latest UI candidate evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166568). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
+Latest UI candidate evidence: [Android CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136156), [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627), and [documentation CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136174). Branch-wide v3 evidence remains available in [GitHub Actions](https://github.com/rakhan17/Meizzo/actions?query=branch%3Adevelop%2Fv3).
 Automated success is build and protocol evidence only. It is not a substitute
 for real Android device testing, network traversal testing, or a security audit.
 
