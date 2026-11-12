@@ -596,8 +596,16 @@ class MainActivity : ComponentActivity() {
             "details" -> devices[clientId]?.let { showDetails(it) }
             "rename" -> rename(clientId, devices[clientId]?.optJSONObject("metadata")?.optString("alias").orEmpty())
             "screen", "camera", "files" -> {
-                if (devices[clientId]?.optString("status") == "online") requestMediaSession(clientId, action)
-                else setConnection("Client is offline", false)
+                if (devices[clientId]?.optString("status") != "online") {
+                    setConnection("Client is offline", false)
+                } else {
+                    val activeEntry = activeMediaSessions.entries.firstOrNull { it.value == clientId }
+                    if (activeEntry == null) requestMediaSession(clientId, action)
+                    else if (activeMediaKinds[activeEntry.key] == action) {
+                        if (action == "files") openFileTransferDialog(clientId, activeEntry.key)
+                        else openMediaViewer(clientId, activeEntry.key, action)
+                    } else setConnection("A media session is already active for this Client", false)
+                }
             }
             "interaction" -> {
                 val sessionId = approvedInteractionSessions[clientId]
