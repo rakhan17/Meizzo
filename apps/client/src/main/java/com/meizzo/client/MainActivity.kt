@@ -53,6 +53,26 @@ class MainActivity : Activity() {
     private var heartbeatSocket: WebSocket? = null
     private var torchEnabled = false
     private val reconnectHandler = Handler(Looper.getMainLooper())
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            reconnectHandler.post {
+                if (!isFinishing && socket == null && !reconnectScheduled) {
+                    reconnectAttempt = 0
+                    connect()
+                }
+            }
+        }
+
+        override fun onLost(network: android.net.Network) {
+            reconnectHandler.post {
+                val active = socket ?: return@post
+                socket = null
+                heartbeatSocket = null
+                active.cancel()
+                scheduleReconnect()
+            }
+        }
+    }
     private var reconnectAttempt = 0
     private var reconnectScheduled = false
     private val updateManager by lazy { ClientUpdateManager(this) }
@@ -211,6 +231,10 @@ class MainActivity : Activity() {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
         startConnectionForegroundService()
+        val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            try { connectivity.registerDefaultNetworkCallback(networkCallback) } catch (_: Exception) { }
+        }
         connect()
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -309,9 +333,15 @@ class MainActivity : Activity() {
     }
 
     private fun connect() {
+        if (isFinishing || socket != null) return
+        reconnectScheduled = false
         socket = OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
             .newWebSocket(Request.Builder().url(BuildConfig.SIGNALING_URL).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    if (socket !== webSocket) {
+                        webSocket.cancel()
+                        return
+                    }
                     reconnectAttempt = 0
                     reconnectScheduled = false
                     // Re-authenticate before refreshing an offer for an already-paired Client.
@@ -420,7 +450,19 @@ class MainActivity : Activity() {
                     }
                 }
 
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (socket !== webSocket) return
+                    socket = null
+                    if (heartbeatSocket === webSocket) heartbeatSocket = null
+                    runOnUiThread {
+                        if (!isFinishing) status.text = "Connection closed · reconnecting"
+                    }
+                    scheduleReconnect()
+                }
+
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    if (socket !== webSocket) return
+                    socket = null
                     if (heartbeatSocket === webSocket) heartbeatSocket = null
                     runOnUiThread {
                         pendingSessionDialogs.values.forEach { it.dismiss() }
@@ -469,7 +511,7 @@ class MainActivity : Activity() {
     }
 
     private fun scheduleReconnect() {
-        if (reconnectScheduled) return
+        if (isFinishing || reconnectScheduled) return
         reconnectScheduled = true
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
         val delay = (1L shl reconnectAttempt) * 1000L
@@ -1702,7 +1744,13 @@ class MainActivity : Activity() {
         unregisterReceiver(alarmResultReceiver)
         pendingAlarmCommands.clear()
         reconnectHandler.removeCallbacksAndMessages(null)
+        val connectivity = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            try { connectivity.unregisterNetworkCallback(networkCallback) } catch (_: Exception) { }
+        }
         socket?.close(1000, "Client activity destroyed")
+        socket = null
+        heartbeatSocket = null
         super.onDestroy()
     }
 
