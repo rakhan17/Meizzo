@@ -692,7 +692,12 @@ class MainActivity : Activity() {
             filePickRequestCode -> {
                 if (resultCode == RESULT_OK && data?.data != null) {
                     try {
-                        fileTransferCoordinator?.sendFile(data.data!!)
+                        val selectedUri = data.data!!
+                        val persistableFlags = (data.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        if (persistableFlags != 0) {
+                            try { contentResolver.takePersistableUriPermission(selectedUri, persistableFlags) } catch (_: SecurityException) { }
+                        }
+                        fileTransferCoordinator?.sendFile(selectedUri)
                     } catch (error: Exception) {
                         status.text = "Could not send file · ${error.message ?: "storage error"}"
                     }
