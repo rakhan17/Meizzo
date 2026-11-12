@@ -195,15 +195,21 @@ fun ControllerGlassScreen(
                                         style = TextStyle(secondary, 13.sp)
                                     )
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        GlassActionButton("Screen", backdrop, darkMode, Modifier.weight(1f), device.online && !device.mediaActive) {
-                                            onDeviceAction(device.id, "screen")
-                                        }
-                                        GlassActionButton("Camera", backdrop, darkMode, Modifier.weight(1f), device.online && !device.mediaActive) {
-                                            onDeviceAction(device.id, "camera")
-                                        }
-                                        GlassActionButton("Files", backdrop, darkMode, Modifier.weight(1f), device.online && !device.mediaActive) {
-                                            onDeviceAction(device.id, "files")
-                                        }
+                                        GlassActionButton(
+                                            if (device.mediaKind == "screen") "Open screen" else "Screen",
+                                            backdrop, darkMode, Modifier.weight(1f),
+                                            device.online && (!device.mediaActive || device.mediaKind == "screen")
+                                        ) { onDeviceAction(device.id, "screen") }
+                                        GlassActionButton(
+                                            if (device.mediaKind == "camera") "Open camera" else "Camera",
+                                            backdrop, darkMode, Modifier.weight(1f),
+                                            device.online && (!device.mediaActive || device.mediaKind == "camera")
+                                        ) { onDeviceAction(device.id, "camera") }
+                                        GlassActionButton(
+                                            if (device.mediaKind == "files") "Open files" else "Files",
+                                            backdrop, darkMode, Modifier.weight(1f),
+                                            device.online && (!device.mediaActive || device.mediaKind == "files")
+                                        ) { onDeviceAction(device.id, "files") }
                                     }
                                     GlassActionButton(
                                         if (device.interactionActive) "End interaction access" else if (device.interactionPending) "Waiting for approval" else "Request interaction access",
@@ -397,6 +403,7 @@ data class ControllerDeviceUi(
     val network: String,
     val hasLocation: Boolean,
     val mediaActive: Boolean,
+    val mediaKind: String?,
     val interactionActive: Boolean,
     val interactionPending: Boolean
 )
