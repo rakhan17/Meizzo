@@ -1416,14 +1416,34 @@ class MainActivity : ComponentActivity() {
         mediaViewers[sessionId]?.onSignal(signal)
     }
 
+    private fun hideMediaViewer(sessionId: String) {
+        mediaDialogs.remove(sessionId)?.let { dialog ->
+            dialog.setOnDismissListener(null)
+            if (dialog.isShowing) dialog.dismiss()
+        }
+        mediaViewers[sessionId]?.let { viewer ->
+            if (viewer.isLocalMicrophoneEnabled()) {
+                viewer.disableLocalMicrophone()
+                ControllerVoiceForegroundService.stop(this)
+            }
+            viewer.detachRenderer()
+        }
+        activeFileTransferSessions.entries.removeAll { it.value == sessionId }
+    }
+
     private fun closeMediaViewer(sessionId: String) {
-        mediaDialogs.remove(sessionId)?.dismiss()
+        mediaDialogs.remove(sessionId)?.let { dialog ->
+            dialog.setOnDismissListener(null)
+            if (dialog.isShowing) dialog.dismiss()
+        }
         mediaViewers.remove(sessionId)?.close()
         fileTransferCoordinators.remove(sessionId)?.close()
+        activeFileTransferSessions.entries.removeAll { it.value == sessionId }
     }
 
     private fun endMediaSession(clientId: String, sessionId: String) {
         activeMediaSessions.remove(sessionId)
+        activeMediaKinds.remove(sessionId)
         closeMediaViewer(sessionId)
         socket?.send(JSONObject().apply {
             put("type", "controller.end_session")
