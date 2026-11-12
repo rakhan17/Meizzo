@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -43,12 +45,15 @@ private val Paper = Color(0xFFF5F5F8)
 private val DarkPaper = Color(0xFF101014)
 private val Accent = Color(0xFF0A84FF)
 
+val LocalLiquidGlassDarkMode = staticCompositionLocalOf { true }
+
 @Composable
 fun LiquidGlassBackdrop(
     dark: Boolean,
     content: @Composable BoxScope.(LayerBackdrop) -> Unit
 ) {
     val backdrop = rememberLayerBackdrop()
+    CompositionLocalProvider(LocalLiquidGlassDarkMode provides dark) {
     Box(
         Modifier
             .fillMaxSize()
@@ -73,6 +78,7 @@ fun LiquidGlassBackdrop(
                 )
             }
     ) { content(backdrop) }
+    }
 }
 
 @Composable
