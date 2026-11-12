@@ -19,12 +19,31 @@ Controller apps, authenticated signaling, device presence, telemetry, and
 session-scoped authorization.
 
 [Downloads](#downloads) · [Documentation](#documentation) · [Architecture](#architecture) ·
-[Changelog](CHANGELOG.md) · [Beta updates](UPDATES.md) · [Security](#security-and-assurance) ·
+[Changelog](CHANGELOG.md) · [Beta changelog](BETA-CHANGELOG.md) · [Beta updates](UPDATES.md) · [Security](#security-and-assurance) ·
 [Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
  > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** `v3.0.0-beta.1` is now published as a signed GitHub prerelease with separate Client and Controller APKs. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
+
+## Latest development update
+
+<sub>12 November 2026 · v3 development · Validation passed</sub>
+
+The latest develop/v3 changes fix the Android 16 startup crash caused by a recursive glass-backdrop RenderNode feedback loop, add the MEIZZO logo to both Android app headers, and add a regression test to prevent the backdrop-layering issue from returning.
+
+| Validation | Result |
+|:--|:--|
+| Android Client + Controller builds | **Passed** |
+| Android 16 launch smoke tests | **Passed** |
+| Signaling + regression tests | **Passed** |
+| iOS Client + Controller Simulator smoke tests | **Passed** |
+
+This is engineering validation, **not yet a corrected public beta release**. Pairing, session approval, and real remote-control behavior still need manual two-device testing. Stable v2.5.0 remains unchanged.
+
+- [Read the visible beta changelog](BETA-CHANGELOG.md)
+- [Read the full update and release log](UPDATES.md)
+- [Android CI evidence](https://github.com/rakhan17/Meizzo/actions/runs/43162464047) · [iOS CI evidence](https://github.com/rakhan17/Meizzo/actions/runs/43162464097)
 
 ## What is MEIZZO?
 
