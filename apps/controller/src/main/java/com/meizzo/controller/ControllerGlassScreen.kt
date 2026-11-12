@@ -52,7 +52,9 @@ fun ControllerGlassScreen(
     onPair: (String) -> Unit,
     connectionView: TextView,
     managementView: LinearLayout,
-    onDarkModeChanged: (Boolean) -> Unit
+    onDarkModeChanged: (Boolean) -> Unit,
+    onAutoAlertSettings: () -> Unit,
+    onCheckForUpdates: () -> Unit
 ) {
     var pairingCode by rememberSaveable { mutableStateOf("") }
     val foreground = if (darkMode) Color.White else Color(0xFF17171C)
@@ -97,18 +99,18 @@ fun ControllerGlassScreen(
                                     BasicText("Connect device", style = TextStyle(Color.White, 15.sp, FontWeight.SemiBold))
                                 }
                             }
-                            Column(
-                                Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(18.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                BasicText("CONNECTION", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.6.sp))
-                                AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
-                            }
                         }
                         1 -> {
                             BasicText("MEIZZO", style = TextStyle(foreground, 13.sp, FontWeight.Bold, letterSpacing = 3.sp))
                             BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
                             BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
+                            Column(
+                                Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                BasicText("CONNECTION", style = TextStyle(secondary, 11.sp, FontWeight.SemiBold, letterSpacing = 1.6.sp))
+                                AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                            }
                             AndroidView(factory = { managementView }, modifier = Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(14.dp))
                         }
                         else -> {
@@ -125,6 +127,22 @@ fun ControllerGlassScreen(
                                     }
                                     LiquidToggle(selected = { darkMode }, onSelect = onDarkModeChanged, backdrop = backdrop)
                                 }
+                            }
+                            LiquidButton(
+                                onClick = onAutoAlertSettings,
+                                backdrop = backdrop,
+                                modifier = Modifier.fillMaxWidth(),
+                                surfaceColor = if (darkMode) Color(0x332D2D36) else Color(0x77FFFFFF)
+                            ) {
+                                BasicText("Auto-Alert settings", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                            }
+                            LiquidButton(
+                                onClick = onCheckForUpdates,
+                                backdrop = backdrop,
+                                modifier = Modifier.fillMaxWidth(),
+                                tint = Color(0xFF0A84FF)
+                            ) {
+                                BasicText("Check for updates", style = TextStyle(Color.White, 14.sp, FontWeight.SemiBold))
                             }
                             BasicText("MEIZZO Controller · Secure device management", style = TextStyle(secondary, 12.sp))
                         }

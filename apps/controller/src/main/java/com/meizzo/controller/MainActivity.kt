@@ -187,7 +187,11 @@ class MainActivity : Activity() {
                     onDarkModeChanged = { enabled ->
                         darkMode = enabled
                         preferences.edit().putBoolean("dark_mode", enabled).apply()
-                    }
+                        window.statusBarColor = if (enabled) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
+                        window.navigationBarColor = window.statusBarColor
+                    },
+                    onAutoAlertSettings = { showAutoAlertSettings() },
+                    onCheckForUpdates = { checkForUpdate() }
                 )
             }
         })
