@@ -64,9 +64,20 @@ class MediaResilienceContract(unittest.TestCase):
             "socket = null",
             "scheduleReconnect()",
             "if (isFinishing || reconnectScheduled) return",
-            "stopService(Intent(this, ConnectionForegroundService::class.java))",
+
         ):
             self.assertIn(marker, source)
+
+
+    def test_client_service_stops_connection_state_without_killing_active_alarm(self):
+        service = (ROOT / "apps/client/src/main/java/com/meizzo/client/ConnectionForegroundService.kt").read_text()
+        activity = (ROOT / "apps/client/src/main/java/com/meizzo/client/MainActivity.kt").read_text()
+        self.assertIn("ACTION_CONNECTION_STOP", service)
+        self.assertIn("if (alarmActive)", service)
+        self.assertIn("notify(NOTIFICATION_ID, buildNotification())", service)
+        self.assertIn("stopForeground(STOP_FOREGROUND_REMOVE)", service)
+        self.assertIn("if (!isChangingConfigurations)", activity)
+        self.assertIn("setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)", activity)
 
     def test_file_transfer_rejects_oversized_and_overdeclared_chunks(self):
         for role in ("client", "controller"):
