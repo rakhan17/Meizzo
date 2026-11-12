@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        preferences.getStringSet("alarm_active_clients", emptySet())?.let { alarmActiveClients.addAll(it) }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(22), dp(24), dp(22), dp(28))
@@ -404,6 +405,9 @@ class MainActivity : ComponentActivity() {
                                 if (completedCommand == "alarm" && commandResult.has("enabled")) {
                                     if (commandResult.optBoolean("enabled")) alarmActiveClients.add(id)
                                     else alarmActiveClients.remove(id)
+                                    preferences.edit()
+                                        .putStringSet("alarm_active_clients", alarmActiveClients.toSet())
+                                        .apply()
                                     renderDevices()
                                 }
                                 if (commandResult.has("clipboardText")) {
