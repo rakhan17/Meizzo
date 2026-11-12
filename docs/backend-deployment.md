@@ -18,19 +18,19 @@ The deployment configuration is:
 - Durable Object state: stored through the Durable Object storage API.
 
 The Worker exposes `GET /healthz` and WebSocket upgrades at `/` and
-`/ws`. The Worker validation workflow performs a Wrangler dry-run. Deployment
-is handled by the configured Cloudflare workflow and credentials.
+`/ws`. The Cloudflare GitHub Actions workflow always performs a Wrangler dry-run. On pushes to `main`, it deploys the production Worker only when both repository Actions secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are present. Pull requests never deploy. Manual workflow dispatch validates only.
 
 ### Deployment checklist
 
 1. Confirm the Cloudflare account and Worker name.
 2. Confirm the Durable Object binding and migration in `wrangler.toml`.
 3. Validate with `npx wrangler@4 deploy --dry-run --config wrangler.toml`.
-4. Deploy using the authorized Cloudflare workflow/credentials.
-5. Verify `/healthz` and a WSS handshake.
-6. Run pairing, authentication, reconnect, multi-device isolation, session,
+4. Add `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit permission for the intended account) and `CLOUDFLARE_ACCOUNT_ID` as repository Actions secrets. Never commit or paste the token into source.
+5. Push the validated Worker change to `main`; the workflow deploys after dry-run succeeds. If either secret is missing, deployment is skipped and the workflow emits a notice.
+6. Verify `/healthz` and a WSS handshake.
+7. Run pairing, authentication, reconnect, multi-device isolation, session,
    and revocation smoke tests.
-7. Monitor Durable Object errors, limits, latency, and storage growth.
+8. Monitor Durable Object errors, limits, latency, and storage growth.
 
 The current beta uses a single named Durable Object for the signaling
 namespace. Review capacity, failure recovery, abuse controls, retention, and
