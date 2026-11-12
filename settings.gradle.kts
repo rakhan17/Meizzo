@@ -10,4 +10,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "Meizzo"
-include(":apps:client", ":apps:controller")
+include(":apps:client", ":apps:controller", ":apps:glass-ui")

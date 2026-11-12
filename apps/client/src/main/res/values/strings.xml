@@ -1,0 +1,3 @@
+<resources>
+    <string name="remote_accessibility_description">Allows an explicitly approved MEIZZO Controller to perform screen gestures, focused-field text and key input, system navigation, and device locking during an active interaction session.</string>
+</resources>

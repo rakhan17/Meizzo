@@ -16,6 +16,19 @@ permissions:
   contents: read
 
 jobs:
+  rustdesk-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Verify pinned RustDesk source and license
+        run: |
+          expected="95cca3f661f635b3cc85c04935fe8d96d8f432ef"
+          actual="$(git -C third_party/rustdesk rev-parse HEAD)"
+          test "$actual" = "$expected"
+          grep -q "GNU AFFERO GENERAL PUBLIC LICENSE" third_party/rustdesk/LICENCE
+          cmp -s LICENSE-AGPL-3.0-only third_party/rustdesk/LICENCE
   signaling:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: services/signaling } }
@@ -23,6 +36,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test release version derivation
         run: python3 ../../tests/test_release_version.py -v
+      - name: Test Android alarm command contract
+        run: python3 ../../tests/test_android_alarm_contract.py -v
+      - name: Test Android media resilience contract
+        run: python3 ../../tests/test_android_media_resilience_contract.py -v
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm, cache-dependency-path: services/signaling/package-lock.json }
       - run: npm ci
@@ -42,6 +59,8 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: yes | sdkmanager --licenses >/dev/null || true
+      - name: Install Android 17 preview SDK required by Backdrop 2.0.1
+        run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'wss://meizzo-signaling.rakhanatanox.workers.dev' }}" :apps:${{ matrix.module }}:assembleDebug
       - run: |
           mkdir -p dist

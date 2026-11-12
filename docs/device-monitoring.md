@@ -5,8 +5,7 @@ current Android heartbeat cadence is 15 seconds. The hosted signaling Worker
 uses a 45-second heartbeat timeout to mark a Client offline when fresh
 heartbeats stop arriving.
 
-Telemetry is a snapshot, not a continuous diagnostic stream. Values depend
-on OS APIs, permissions, hardware, and app implementation.
+Telemetry is a snapshot, not a continuous diagnostic stream. The Client currently sends battery health/temperature, RAM totals, and optional last-known location in addition to the basic fields. Not every field is surfaced in the Controller UI yet. Values depend on OS APIs, permissions, hardware, and app implementation.
 
 | Field | Android beta | Notes |
 |---|---|---|
@@ -16,13 +15,13 @@ on OS APIs, permissions, hardware, and app implementation.
 | Uptime | Implemented | Device uptime snapshot |
 | Network transport | Implemented | Active network transport category |
 | Manufacturer/model | Implemented | Android build metadata |
-| App/OS version | Partial | Depends on registration and platform metadata |
-| RAM | Not guaranteed | Show only if the current app snapshot provides it |
-| Battery health/temperature | Not guaranteed | Not a stable cross-device telemetry contract |
+| App/OS version | Implemented | Android version and Client version are included in the heartbeat snapshot |
+| RAM total/available | Implemented in Client snapshot | Controller presentation and vendor comparability still need validation |
+| Battery health/temperature | Implemented in Client snapshot | Android battery APIs may return unknown/unsupported values; Controller presentation needs validation |
 | Wi-Fi SSID/signal/IP | Not implemented as a general telemetry contract | Permission and OS restrictions apply |
 | Latency | Not implemented | Do not display a fabricated zero |
 | Thermal state | Not implemented as a verified field | Do not infer from device temperature |
-| Location | Not implemented | Requires a separate consent and permission design |
+| Last-known location | Opt-in prototype | Client exposes an explicit Find My location toggle and requests coarse/fine permission; sends cached coordinates only when available, not continuous GPS tracking. Controller display, staleness, and privacy UX need further validation |
 
 ## Presence semantics
 
@@ -34,7 +33,9 @@ on OS APIs, permissions, hardware, and app implementation.
   did not provide the field.
 
 Unavailable is not the same as zero. The Controller should show the last
-update time and avoid presenting stale values as live.
+update time and avoid presenting stale values as live. The location toggle
+must remain explicitly opt-in, and cached coordinates must be labeled with
+their capture time and accuracy rather than represented as live tracking.
 
 ## Privacy
 

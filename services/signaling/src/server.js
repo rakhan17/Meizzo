@@ -494,7 +494,32 @@ function onSessionStart(ws, message) {
   notifySession(session);
 }
 
-function onClientSessionDecision(ws, message) {
+async function getIceServers() {
+  const fallback = [{ urls: ['stun:stun.cloudflare.com:3478'] }];
+  const keyId = process.env.REALTIME_TURN_TOKEN_ID;
+  const apiToken = process.env.REALTIME_TURN_TOKEN_SECRET;
+  if (!keyId || !apiToken) return fallback;
+  try {
+    const response = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ ttl: 86400 })
+      }
+    );
+    if (!response.ok) return fallback;
+    const data = await response.json();
+    return Array.isArray(data.iceServers) && data.iceServers.length ? data.iceServers : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+async function onClientSessionDecision(ws, message) {
   const session = sessions.get(message.sessionId);
   if (!session || ws.auth?.role !== 'client' ||
       session.clientId !== ws.auth.clientId || session.clientConnection !== ws ||
@@ -507,8 +532,31 @@ function onClientSessionDecision(ws, message) {
   session.state = message.approved ? 'approved' : 'rejected';
   session.endedAtMs = message.approved ? undefined : nowMs();
   session.terminationReason = message.approved ? undefined : 'client_rejected';
+  if (message.approved && ['screen', 'camera', 'files'].includes(session.sessionType)) {
+    const icePayload = {
+      type: 'media.ice_servers',
+      sessionId: session.sessionId,
+      iceServers: await getIceServers()
+    };
+    sendJson(session.controllerConnection, icePayload);
+    sendJson(session.clientConnection, icePayload);
+  }
   notifySession(session);
   if (!message.approved) sessions.delete(session.sessionId);
+}
+
+function onClientSessionEnd(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || ws.auth?.role !== 'client' ||
+      session.clientId !== ws.auth.clientId ||
+      session.clientConnection !== ws || session.state !== 'approved') {
+    return sendError(ws, 'unauthorized', 'Invalid Client session termination');
+  }
+  session.state = 'ended';
+  session.endedAtMs = nowMs();
+  session.terminationReason = isNonEmptyString(message.reason) ? message.reason : 'client_ended';
+  notifySession(session);
+  sessions.delete(session.sessionId);
 }
 
 function onSessionEnd(ws, message) {
@@ -523,6 +571,31 @@ function onSessionEnd(ws, message) {
   session.terminationReason = isNonEmptyString(message.reason) ? message.reason : 'controller_ended';
   notifySession(session);
   sessions.delete(session.sessionId);
+}
+
+function onMediaSignal(ws, message) {
+  const session = sessions.get(message.sessionId);
+  if (!session || session.state !== 'approved' ||
+      !['screen', 'camera', 'files'].includes(session.sessionType)) {
+    return sendError(ws, 'session_required', 'An approved screen, camera, or file session is required');
+  }
+  if (!message.signal || typeof message.signal !== 'object' || Array.isArray(message.signal) ||
+      JSON.stringify(message.signal).length > 48000) {
+    return sendError(ws, 'invalid_signal', 'Invalid or oversized media signaling payload');
+  }
+  if (ws.auth?.role === 'client' && session.clientId === ws.auth.clientId &&
+      session.clientConnection === ws) {
+    return sendJson(session.controllerConnection, {
+      type: 'media.signal', sessionId: session.sessionId, fromRole: 'client', signal: message.signal
+    });
+  }
+  if (ws.auth?.role === 'controller' && session.controllerId === ws.auth.controllerId &&
+      session.controllerConnection === ws) {
+    return sendJson(session.clientConnection, {
+      type: 'media.signal', sessionId: session.sessionId, fromRole: 'controller', signal: message.signal
+    });
+  }
+  return sendError(ws, 'unauthorized', 'Not a participant in this media session');
 }
 
 function onDeviceList(ws) {
@@ -660,7 +733,7 @@ function onRevoke(ws, message) {
   }
 }
 
-function routeMessage(ws, rawPayload) {
+async function routeMessage(ws, rawPayload) {
   let message;
   try { message = JSON.parse(rawPayload.toString()); } catch { return sendError(ws, 'invalid_json', 'Payload must be JSON'); }
   if (!message || typeof message.type !== 'string') return sendError(ws, 'invalid_message', 'Message type is required');
@@ -690,7 +763,9 @@ function routeMessage(ws, rawPayload) {
     case 'heartbeat': return onHeartbeat(ws, message);
     case 'controller.start_session': return onSessionStart(ws, message);
     case 'client.session_decision': return onClientSessionDecision(ws, message);
+    case 'client.end_session': return onClientSessionEnd(ws, message);
     case 'controller.end_session': return onSessionEnd(ws, message);
+    case 'media.signal': return onMediaSignal(ws, message);
     case 'controller.list_devices': return onDeviceList(ws);
     case 'controller.request_snapshot': return onControllerSnapshot(ws, message);
     case 'controller.command': return onControllerCommand(ws, message);
@@ -715,7 +790,9 @@ const PRUNE_INTERVAL_MS = Math.max(25, Number(process.env.PRUNE_INTERVAL_MS || 1
 setInterval(prune, PRUNE_INTERVAL_MS).unref();
 
 wss.on('connection', (ws) => {
-  ws.on('message', (payload) => routeMessage(ws, payload));
+  ws.on('message', (payload) => {
+    routeMessage(ws, payload).catch(() => sendError(ws, 'internal_error', 'Unable to process signaling message'));
+  });
   ws.on('close', () => {
     if (ws.currentPairingCode) {
       const currentOffer = pairingOffersByCode.get(ws.currentPairingCode);

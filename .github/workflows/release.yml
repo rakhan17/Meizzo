@@ -3,13 +3,14 @@ name: MEIZZO Release
 on:
   push:
     tags: ["v*.*.*"]
+    branches: ["release/v3.*"]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to build (for example v2.5.0)"
+        description: "MEIZZO v3 prerelease tag (for example v3.0.0-beta.N)"
         required: true
         type: string
-        default: "v2.5.0"
+        default: ""
       publish_release:
         description: "Publish a GitHub Release after all validation gates pass"
         required: true
@@ -24,13 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Test release version derivation
         run: python3 tests/test_release_version.py -v
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0 platforms;android-37.0 build-tools;37.0.0"
       - run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
       - name: Resolve and validate release tag
@@ -38,12 +41,32 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$GITHUB_REF_NAME" != "develop/v3" ]]; then
+              echo "::error::Manual v3 releases must be dispatched from develop/v3."
+              exit 1
+            fi
             release_tag="${{ inputs.release_tag }}"
+          elif [[ "$GITHUB_REF_TYPE" == "branch" ]]; then
+            if [[ "$GITHUB_REF_NAME" != release/v3.* ]]; then
+              echo "::error::Release branches must use release/v3.x.y-beta.N."
+              exit 1
+            fi
+            release_tag="${GITHUB_REF_NAME#release/}"
+            git fetch --no-tags origin develop/v3:refs/remotes/origin/develop/v3
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop/v3; then
+              echo "::error::A v3 beta release branch must point to a commit reachable from develop/v3."
+              exit 1
+            fi
           else
             release_tag="$GITHUB_REF_NAME"
+            git fetch --no-tags origin develop/v3:refs/remotes/origin/develop/v3
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop/v3; then
+              echo "::error::A v3 prerelease tag must point to a commit reachable from develop/v3."
+              exit 1
+            fi
           fi
-          if [[ ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-((alpha|beta|rc)\.[1-9][0-9]{0,2}))?$ ]]; then
-            echo "::error::Invalid release tag: $release_tag"
+          if [[ ! "$release_tag" =~ ^v3\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[1-9][0-9]{0,2}$ ]]; then
+            echo "::error::The develop/v3 release workflow only accepts v3 prerelease tags; received: $release_tag"
             exit 1
           fi
           echo "MEIZZO_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
@@ -54,24 +77,14 @@ jobs:
           MEIZZO_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEYSTORE_PASSWORD }}
           MEIZZO_ANDROID_KEY_ALIAS: ${{ secrets.MEIZZO_ANDROID_KEY_ALIAS }}
           MEIZZO_ANDROID_KEY_PASSWORD: ${{ secrets.MEIZZO_ANDROID_KEY_PASSWORD }}
-          MEIZZO_SIGNALING_URL: ${{ secrets.MEIZZO_SIGNALING_URL }}
         run: |
-          for name in MEIZZO_ANDROID_KEYSTORE_BASE64 MEIZZO_ANDROID_KEYSTORE_PASSWORD MEIZZO_ANDROID_KEY_ALIAS MEIZZO_ANDROID_KEY_PASSWORD MEIZZO_SIGNALING_URL; do
+          for name in MEIZZO_ANDROID_KEYSTORE_BASE64 MEIZZO_ANDROID_KEYSTORE_PASSWORD MEIZZO_ANDROID_KEY_ALIAS MEIZZO_ANDROID_KEY_PASSWORD; do
             if [ -z "${!name:-}" ]; then
               echo "::error::$name must be configured before publishing an Android release."
               exit 1
             fi
           done
-          case "$MEIZZO_SIGNALING_URL" in
-            wss://*) ;;
-            *) echo "::error::MEIZZO_SIGNALING_URL must use wss:// for release builds."; exit 1 ;;
-          esac
-          case "$MEIZZO_SIGNALING_URL" in
-            *".invalid"*|wss://localhost*|wss://127.0.0.1*|wss://10.0.2.2*)
-              echo "::error::MEIZZO_SIGNALING_URL must be a reachable production endpoint."
-              exit 1
-              ;;
-          esac
+          MEIZZO_SIGNALING_URL="wss://meizzo-signaling.rakhanatanox.workers.dev"
           ./gradlew \
             -Pmeizzo.releaseSignalingUrl="$MEIZZO_SIGNALING_URL" \
             -Pmeizzo.releaseVersionName="$MEIZZO_VERSION_NAME" \

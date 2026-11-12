@@ -8,7 +8,11 @@ const SERVER_CAPABILITIES = Object.freeze([
   'presence',
   'telemetry',
   'device-commands',
-  'multi-device-routing'
+  'multi-device-routing',
+  'session-authorization',
+  'media-signaling',
+  'turn-credentials',
+  'remote-interaction'
 ]);
 
 module.exports = { PROTOCOL_VERSION, SERVER_CAPABILITIES };
