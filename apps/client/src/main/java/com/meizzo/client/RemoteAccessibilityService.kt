@@ -32,9 +32,19 @@ class RemoteAccessibilityService : AccessibilityService() {
     private fun sendKey(keyCode: Int, metaState: Int): Boolean {
         if (Build.VERSION.SDK_INT < 33) return false
         val connection = getInputMethod()?.getCurrentInputConnection() ?: return false
-        val down = KeyEvent(KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
-        val up = KeyEvent(KeyEvent.ACTION_UP, keyCode, 0, metaState)
-        return connection.sendKeyEvent(down) && connection.sendKeyEvent(up)
+        val downTime = android.os.SystemClock.uptimeMillis()
+        val down = KeyEvent(downTime, downTime, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
+        val up = KeyEvent(
+            downTime,
+            android.os.SystemClock.uptimeMillis(),
+            KeyEvent.ACTION_UP,
+            keyCode,
+            0,
+            metaState
+        )
+        val downSent = connection.sendKeyEvent(down)
+        val upSent = connection.sendKeyEvent(up)
+        return downSent && upSent
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
