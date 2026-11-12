@@ -1,5 +1,7 @@
 # MEIZZO Client guide
 
+The v3 Android beta candidate uses a focused single-screen pairing-code layout with a shared Liquid Glass presentation layer. Pairing and sensitive-operation approvals remain explicit on the Client. App-owned prompts use the shared glass dialog; Android system permission and document pickers remain native.
+
 Client shows the device identity, temporary pairing code, connection state, and
 approval prompts. It registers a pairing offer with the signaling backend and
 sends authenticated heartbeat telemetry after authorization.

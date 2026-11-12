@@ -11,22 +11,20 @@
 [![Cloudflare Worker](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/meizzo-cloudflare.yml)
 [![Documentation](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/rakhan17/Meizzo/actions/workflows/docs.yml)
 [![Android Stable](https://img.shields.io/badge/ANDROID-STABLE%20v2.5.0-111111)](https://github.com/rakhan17/Meizzo/releases)
-[![License](https://img.shields.io/badge/license-Apache--2.0-111111.svg)](LICENSE)
+[![MEIZZO source license](https://img.shields.io/badge/MEIZZO%20source-Apache--2.0-111111.svg)](LICENSE) [![RustDesk integration license](https://img.shields.io/badge/RustDesk%20upstream%20source-AGPL--3.0-555555.svg)](LICENSE-AGPL-3.0-only)
 [![GitHub issues](https://img.shields.io/github/issues/rakhan17/Meizzo)](https://github.com/rakhan17/Meizzo/issues)
 
 A consent-first device assistance platform with separate Android Client and
 Controller apps, authenticated signaling, device presence, telemetry, and
 session-scoped authorization.
 
-[Downloads](#downloads) · [Documentation](#documentation) ·
-[Architecture](#architecture) · [Security](#security-and-assurance) ·
-[Releases](https://github.com/rakhan17/Meizzo/releases)
+[Downloads](#downloads) · [Documentation](#documentation) · [Architecture](#architecture) ·
+[Security](#security-and-assurance) · [Updates & changelog](UPDATES.md) ·
+[Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
- > **Current channel: Android Stable 2.5.0.** The v2.5 foundation has been integrated into `main`. The signed `v2.5.0` release assets are pending publication by the release workflow. iOS remains under development and is not available for physical
-> device installation. Read the [implementation status](docs/implementation-status.md)
-> before relying on a capability.
+ > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** the v3 development line targets `v3.0.0-beta.1`; its Android debug builds are available from CI for evaluation, while the signed GitHub prerelease is pending release publication. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
 
 ## What is MEIZZO?
 
@@ -59,7 +57,7 @@ clearly marked as prerelease software.
 
 #### Stable release
 
-<sub>**STABLE CHANNEL** · `v2.5.0` · Published 11 November 2026 · Signed APKs verified by the release workflow.</sub>
+<sub>**STABLE CHANNEL** · `v2.5.0` · Published and available.</sub>
 
 | App | Purpose | Download |
 |:--|:--|:--|
@@ -70,15 +68,14 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**BETA CHANNEL** · `v2.5.0` · Also available in the Beta channel, as requested.</sub>
+<sub>**V3 BETA CANDIDATE** · `3.0.0-beta.1` · Android debug CI builds verified; signed prerelease publication pending.</sub>
 
-| App | Purpose | Download |
+| App | Purpose | Build |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | [![Download Client APK](https://img.shields.io/badge/DOWNLOAD-CLIENT%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Client-v2.5.0.apk) |
-| **MEIZZO Controller** | Install on the operator device | [![Download Controller APK](https://img.shields.io/badge/DOWNLOAD-CONTROLLER%20APK-111111?style=for-the-badge&logo=android&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/download/v2.5.0/MEIZZO-Controller-v2.5.0.apk) |
+| **MEIZZO Client** | Install on the device receiving assistance | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-client-debug` |
+| **MEIZZO Controller** | Install on the operator device | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-controller-debug` |
 
-[![View beta channel build](https://img.shields.io/badge/VIEW-BETA%20CHANNEL%20BUILD-555555?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
-
+These are **debug APKs**, not signed public-release packages. GitHub may require sign-in to download workflow artifacts. The signed beta release will be linked here after release validation and publication. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -104,7 +101,19 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 ## Product capabilities
 
-### Available in the Android Stable
+### Android v3 beta capabilities (not in v2.5.0 stable)
+
+#### Interface and interaction design
+
+- Android Controller uses three tabs: **Link**, **Devices**, and **Settings**. Link is dedicated to entering the six-digit pairing code; successful pairing automatically opens Devices.
+- Devices provides per-Client presence, device actions, remote-session entry points, and management controls.
+- Settings includes light/dark appearance selection and Auto-Alert configuration.
+- Android Client presents a focused single-screen pairing-code experience.
+- Both apps use upstream **AndroidLiquidGlass / Backdrop 2.0.1** effects and official upstream sample components for Liquid Glass surfaces, buttons, bottom tabs, toggles, and sliders. Shared integration lives in `apps/glass-ui`.
+- App-owned confirmations, warnings, and input prompts use the shared Liquid Glass dialog surface. Android-owned permission pickers and document/media system UI remain native OS surfaces.
+- The design is iOS-inspired, not an Apple UI clone: Android system typography and platform permission conventions are retained.
+
+#### Device and remote-assistance capabilities
 
 - Six-digit pairing codes with a short lifetime and single-use behavior.
 - Explicit approval on the Client before a Controller is paired.
@@ -115,58 +124,84 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
   network transport, and available device metadata.
 - Supported device commands such as flashlight and alarm, subject to
   permissions and hardware availability.
-- Session request, approval, rejection, and termination state.
-- Interaction commands are gated behind an approved interaction session.
+- Session request, approval, rejection, and termination state, including Client-initiated termination.
+- Live Android screen streaming prototype using MediaProjection and WebRTC.
+- Android camera streaming prototype using Camera2 and WebRTC, with Controller-triggered front/rear camera switching.
+- Optional two-way voice prototype: Client and Controller microphone audio tracks over WebRTC, each requiring runtime permission and an explicit in-session action. Controller uses a microphone foreground service and can mute either side locally.
+- Tap, swipe, and long-press from the Controller's live video surface, gated by a separate approved interaction session.
+- Remote Back, Home, Recents, notification shade, Quick Settings, power menu, and lock-screen actions through the user-enabled AccessibilityService.
+- Remote text insertion at the active cursor/selection, Backspace, Enter, Tab, Escape, arrow keys, and Ctrl+A/C/V/X/Z/Y shortcuts for supported focused text editors. Android 13+ input-connection key support is used where available.
+- Remote media volume up/down/mute/unmute controls during an approved interaction session.
+- Manual text clipboard transfer in both directions, with a separate approval dialog on the Client for every read or overwrite.
+- Save a screenshot from the active remote live-screen viewer to the Controller device.
+- Remote folder browsing through a Client-granted Storage Access Framework tree URI, showing folder contents and file metadata. Individual files can be sent to the Controller after a separate file-session approval and per-file Client confirmation; folder creation, rename, and file deletion are available only when Android grants folder write access, the storage provider supports them, and the Client approves.
+- Bidirectional single- and multi-file transfer prototype using WebRTC DataChannel, Storage Access Framework, acknowledged 12 KiB chunks, per-file transfer IDs, bounded chunk retries, sequence and size validation, SHA-256 verification, incremental progress, cancellation, and a 50 MiB transfer limit.
 - Android foreground connection services, reconnect handling, and
   Android Keystore-backed local credential encryption.
 - Release metadata, SHA-256 verification, package checks, signing-certificate
   checks, and Android Package Installer handoff for updates.
 
-### Not available yet
+### Still in development / not release-ready
 
-- Live screen or camera streaming.
-- WebRTC media transport, STUN/TURN relay, and adaptive media quality.
-- General remote touch/input control or Accessibility-based interaction.
-- Arbitrary file browsing or transfer.
-- Location tracking or sharing.
+- Production TURN secret configuration and reliable media connectivity across restrictive NATs.
+- Internal app/system audio capture, full hardware-keyboard and shortcut emulation, automatic clipboard synchronization, resumable file transfer, and large-file optimization.
+- Physical-device acceptance testing across Android vendors and networks.
+- iOS screen hosting, camera hosting, file transfer, and remote input. iOS remains a separate platform implementation.
 - Android Enterprise enrollment or Managed Mode.
-- A signed iOS build for physical devices.
-- A completed independent security audit or formal security certification.
+- Independent security audit or formal security certification.
 
-A session marked **approved** is an authorization state only. It is not proof
-that a screen, camera, file, or input channel exists. See
-[implementation status](docs/implementation-status.md) and the
+The v3 media and file-transfer paths are implemented as Android prototypes, not
+yet certified for production use. Android system consent and permissions remain
+mandatory. MEIZZO-owned code retains its Apache-2.0 licensing where applicable;
+any RustDesk-derived combined app component must comply with AGPL-3.0-only.
+See [v3 implementation status](docs/v3/README.md),
+[upstream and license notes](docs/v3/UPSTREAM_AND_LICENSES.md), and the
 [security model](docs/v2/security-model.md).
 
 ## Architecture
 
-MEIZZO separates the control plane from any future media plane. The current
-Android apps communicate with the signaling service over WebSocket Secure
-(WSS). The deployed Cloudflare Worker routes connections to a Durable Object,
-which coordinates pairing, authentication, presence, telemetry, commands, and
-authorization-only sessions.
+MEIZZO separates its control plane, media plane, and presentation layer. Pairing,
+authentication, presence, telemetry, commands, and session authorization use
+WebSocket Secure (WSS) through the existing Cloudflare Worker and Durable Object.
+After the Client approves a screen, camera, or file session, Android peers
+negotiate WebRTC using WSS for offer/answer/ICE signaling; media and file bytes
+travel over WebRTC, not through the Worker. STUN is configured. The Worker can
+issue short-lived Cloudflare TURN credentials when its secrets are configured;
+TURN availability and restrictive-network traversal still require deployment
+and real-network validation. The Android presentation layer is a shared
+Compose module (`apps/glass-ui`) built on AndroidLiquidGlass 2.0.1 Backdrop
+effects and official upstream sample components.
 
 ```mermaid
 flowchart LR
   subgraph Devices
-    C[Android Client]
-    O[Android Controller]
+    C[Android Client<br/>single pairing-code screen]
+    O[Android Controller<br/>Link · Devices · Settings]
     CS[Client foreground service]
     OS[Controller foreground service]
+    UI[Shared Compose Liquid Glass UI<br/>Backdrop 2.0.1]
     C --- CS
     O --- OS
+    UI -.-> C
+    UI -.-> O
   end
 
   subgraph ControlPlane["MEIZZO control plane"]
-    W[Cloudflare Worker<br/>WSS entry point]
+    W[Cloudflare Worker<br/>WSS signaling]
     D[Durable Object<br/>state and routing]
     W --> D
+  end
+
+  subgraph MediaPlane["Approved WebRTC media plane"]
+    C <-->|DTLS-SRTP video/audio| O
+    C <-->|DTLS data channel| O
   end
 
   CS <-->|WSS · protocol v2| W
   OS <-->|WSS · protocol v2| W
   D <--> P[Pairing · auth · presence<br/>telemetry · commands · sessions]
   D <--> S[(Durable Object storage)]
+  W -.->|Offer · answer · ICE only| MediaPlane
 ```
 
 ### Pairing and session lifecycle
@@ -191,20 +226,25 @@ sequenceDiagram
   Service-->>Controller: Session state
 ```
 
-An approved interaction session is required before supported interaction
-commands are routed. This consent state does not implement media streaming or
-unrestricted device control.
+Screen, camera, and file sessions each require explicit Client approval before
+WebRTC signaling is relayed. Android also requests the operating system's
+MediaProjection consent for screen capture and runtime camera permission for
+camera streaming. Remote taps, swipes, and lock-screen actions require the
+separately approved interaction session and user-enabled AccessibilityService.
 
 ### Technology map
 
 | Layer | Current implementation |
 |---|---|
-| Android apps | Kotlin, separate Client and Controller modules |
+| Android apps | Kotlin, Jetpack Compose, separate Client and Controller modules |
+| Android UI system | Shared `apps/glass-ui` module, AndroidLiquidGlass / Backdrop 2.0.1, upstream LiquidBottomTabs / LiquidButton / LiquidToggle / LiquidSlider examples |
 | Android connection lifecycle | Foreground services, reconnect backoff, boot receivers |
 | Android credential storage | AES-GCM protected values using Android Keystore keys |
 | iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
-| Signaling protocol | JSON messages over WebSocket, protocol version 2 |
+| Signaling protocol | JSON messages over WSS, protocol version 2 |
 | Hosted signaling | Cloudflare Workers + Durable Objects |
+| Android media | WebRTC video and optional two-way microphone audio, STUN/TURN, adaptive bitrate, bounded ICE recovery, MediaProjection, Camera2 |
+| Android file transfer | Ordered WebRTC DataChannel, SAF folder browser, transfer IDs, acknowledged 12 KiB chunks, SHA-256 |
 | Local signaling harness | Node.js + `ws`, in-memory process state |
 | Release distribution | GitHub Actions and GitHub Releases |
 | Android updates | Release manifest, checksum/package/signature checks, Package Installer |
@@ -220,7 +260,8 @@ restart. See [architecture](docs/architecture.md) and
 | Path | Responsibility |
 |---|---|
 | `apps/client` | Android Client app, pairing approval, telemetry, commands |
-| `apps/controller` | Android Controller app, device list, session controls |
+| `apps/controller` | Android Controller app, three-tab navigation, device management and session controls |
+| `apps/glass-ui` | Shared Liquid Glass surfaces, dialogs, theme integration and upstream Backdrop components |
 | `ios/Client` | SwiftUI iOS Client target |
 | `ios/Controller` | SwiftUI iOS Controller target |
 | `ios/Shared` | Shared iOS networking and secure-storage code |
@@ -249,6 +290,7 @@ restart. See [architecture](docs/architecture.md) and
 ### For developers and operators
 
 - [System architecture](docs/architecture.md)
+- [Beta update log](UPDATES.md)
 - [Protocol and API reference](docs/api-reference.md)
 - [Android development](docs/android-guide.md)
 - [iOS development](docs/ios-guide.md)
@@ -269,8 +311,8 @@ MkDocs site can be built locally with `mkdocs build --strict`.
 Security is a product requirement, not a badge. The current beta includes
 short-lived single-use pairing offers, explicit Client approval, rate-limited
 pairing attempts, random authentication tokens, per-device authorization,
-WSS transport, Android Keystore-backed local credentials, and session-scoped
-approval for supported interaction commands.
+WSS signaling, DTLS-protected WebRTC media/data channels, Android Keystore-backed
+local credentials, and session-scoped approval for sensitive operations.
 
 Important boundaries remain:
 
@@ -281,8 +323,11 @@ Important boundaries remain:
   development/testing only.
 - Android background execution is subject to Android and OEM restrictions.
 - iOS platform privacy rules remain in force.
-- Screen capture, camera, files, location, and general remote input are not
-  implemented capabilities.
+- TURN relay is not deployed. Direct WebRTC connections may fail on restrictive
+  NATs, carrier networks, or firewalls.
+- File transfer is limited to 50 MiB per file and is not resumable yet.
+- Android OEM permission restrictions and background-execution behavior need
+  physical-device validation.
 
 **Certification status:** MEIZZO has not been independently security-audited
 and does not claim ISO/IEC 27001, SOC 2, GDPR certification, or any other
@@ -293,13 +338,15 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The previous v2.5.0 Android release workflow completed successfully and published both signed APKs. The v2.5.0 release pipeline validates the version, requires release secrets and a WSS endpoint, builds Client and Controller independently, signs the APKs, verifies their signatures and package/version metadata, and creates checksums plus the updater manifest.
+The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta candidate adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The current head passed Android Client and Controller debug builds, RustDesk source/license checks, signaling contract tests, and documentation validation. The iOS Simulator workflow also passed, but this UI task does not add iOS feature parity. Debug CI artifacts are not signed release APKs and do not replace physical-device, multi-network, or security acceptance.
 
 Relevant workflow runs:
 
-- [Android and signaling CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246894)
-- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
-- [Android Stable.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
+- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43144166641)
+- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627)
+- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568)
+- [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
+- [All historical and future releases](https://github.com/rakhan17/Meizzo/releases)
 
 **Release provenance note:** beta.5 was built by workflow run `42948592178`
 from source commit `8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, while the
@@ -316,7 +363,7 @@ Automated success does not replace real-device acceptance testing. See
 ### Requirements
 
 - JDK 17
-- Android SDK 35 or newer compatible SDK packages
+- Android SDK Platform 37 and Build Tools 37.0.0 for the current Backdrop 2.0.1 UI integration (CI also installs Android 35 packages)
 - Node.js 22 for signaling tests and local backend
 - Xcode and XcodeGen for iOS Simulator development
 - Python 3.12 for documentation checks
@@ -340,7 +387,7 @@ PORT=8080 npm start
 
 The local Node.js server is an in-memory development harness. Configure debug
 builds with the appropriate local WebSocket URL; do not point a release build
-at an emulator-only address. The published Android Stable uses the configured
+at an emulator-only address. The published Android beta uses the configured
 WSS endpoint.
 
 ### Documentation
@@ -359,13 +406,21 @@ See [development setup](docs/development.md) for complete instructions.
 - [x] Consent-based pairing and token authentication
 - [x] Multi-device presence, telemetry, and isolated routing
 - [x] Hosted WSS signaling with Durable Object state
-- [x] Authorization-only session lifecycle
+- [x] Consent-scoped session lifecycle and Client-initiated session termination
+- [x] Android MediaProjection screen-stream publisher and Controller video viewer
+- [x] Android Camera2 stream publisher and Controller camera viewer
+- [x] Tap/swipe control mapped to the live video surface
+- [x] Remote lock-screen action through AccessibilityService
+- [x] Bidirectional WebRTC DataChannel file-transfer prototype
 - [x] Android background connection services and reconnect handling
-- [x] Signed Android Stable release pipeline and in-app update verification
+- [x] Signed Android beta release pipeline and in-app update verification
+- [x] Shared Android Liquid Glass UI integration (Backdrop 2.0.1) and three-tab Controller navigation
 - [ ] Full Android physical-device and multi-instance runtime acceptance
 - [ ] Durable token hardening, rotation, audit events, and independent security review
-- [ ] WebRTC screen/camera media with explicit OS consent and STUN/TURN
-- [ ] Scoped file, location, and interaction capabilities
+- [ ] Configure Cloudflare Realtime TURN secrets and validate relay fallback, bitrate adaptation, and ICE recovery across physical networks
+- [ ] Physical-device testing across Android OEMs and mobile networks
+- [ ] Resumable and optimized file transfer
+- [ ] iOS media hosting and remote interaction
 - [ ] iOS physical-device signing, testing, and distribution
 - [ ] Enterprise enrollment and policy management, if pursued
 
