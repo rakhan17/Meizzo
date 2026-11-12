@@ -334,7 +334,7 @@ class FileTransferCoordinator(
                     incomingOutput?.write(bytes)
                     incomingOutput?.flush()
                     incomingExpectedSequence += 1
-                    resumePrefs.edit().putLong("incoming_offset", incomingBytes).apply()
+                    resumePrefs.edit().putLong("incoming_offset", incomingBytes).commit()
                     if (incomingBytes - lastIncomingProgressBytes >= PROGRESS_INTERVAL_BYTES) {
                         lastIncomingProgressBytes = incomingBytes
                         onStatus("Receiving file · ${incomingBytes / MEBIBYTE} MiB received")
