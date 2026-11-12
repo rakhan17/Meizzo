@@ -1,6 +1,6 @@
 package com.meizzo.client
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -46,7 +46,7 @@ import java.util.concurrent.ConcurrentHashMap
 import android.os.Handler
 import android.os.Looper
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private val preferences by lazy { getPreferences(MODE_PRIVATE) }
     private val secureStore by lazy { SecureStore(this) }
     private val clientId by lazy {
