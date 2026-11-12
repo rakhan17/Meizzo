@@ -1,9 +1,7 @@
 # Android developer guide
 
 Android modules are `apps/client` and `apps/controller`, with package IDs
-`com.meizzo.client` and `com.meizzo.controller`. Both use Kotlin, Gradle,
-JDK 17, compile/target SDK 35, OkHttp WebSocket, and Android Keystore-backed
-credential storage.
+`com.meizzo.client` and `com.meizzo.controller`. Both use Kotlin, Gradle, JDK 17, compile SDK 37 / target SDK 35, OkHttp WebSocket, and Android Keystore-backed credential storage.
 
 ## Endpoint configuration
 
@@ -26,6 +24,10 @@ deny cleartext traffic. Release builds must be built with a real TLS endpoint:
 
 The release workflow refuses to publish unless the endpoint and stable
 keystore secrets are configured.
+
+## Beta release
+
+The current v3 beta is `v3.0.0-beta.1`. Install separate signed Client and Controller packages from the [GitHub prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1). Stable `v2.5.0` remains a separate channel.
 
 ## Updates
 
