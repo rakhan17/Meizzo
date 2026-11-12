@@ -31,6 +31,8 @@ class RtcMediaController(
     private val factory: PeerConnectionFactory
     private var peer: PeerConnection? = null
     private var renderer: SurfaceViewRenderer? = null
+    private var remoteVideoTrack: VideoTrack? = null
+    private var closed = false
     private var remoteDescriptionSet = false
     private val queuedCandidates = mutableListOf<IceCandidate>()
     private val recoveryHandler = Handler(Looper.getMainLooper())
@@ -67,11 +69,11 @@ class RtcMediaController(
     }
 
     fun start(view: SurfaceViewRenderer) {
-        renderer = view
-        view.init(egl.eglBaseContext, null)
-        view.setEnableHardwareScaler(true)
-        view.setMirror(false)
-        view.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+        if (closed) {
+            onFailure("The media viewer has already been closed")
+            return
+        }
+        attachRenderer(view)
 
         val configuration = PeerConnection.RTCConfiguration(
             createIceServers()
@@ -161,6 +163,34 @@ class RtcMediaController(
             }
             override fun onCreateFailure(error: String?) = onFailure(error ?: "Unable to create WebRTC offer")
         }, MediaConstraints())
+    }
+
+    fun attachRenderer(view: SurfaceViewRenderer) {
+        if (closed) return
+        if (renderer === view) return
+        detachRenderer()
+        try {
+            view.init(egl.eglBaseContext, null)
+            view.setEnableHardwareScaler(true)
+            view.setMirror(false)
+            view.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+            renderer = view
+            remoteVideoTrack?.let { track ->
+                view.post {
+                    if (!closed && renderer === view) track.addSink(view)
+                }
+            }
+        } catch (error: Exception) {
+            try { view.release() } catch (_: Exception) { }
+            onFailure(error.message ?: "Unable to initialize the video renderer")
+        }
+    }
+
+    fun detachRenderer() {
+        val view = renderer ?: return
+        renderer = null
+        try { remoteVideoTrack?.removeSink(view) } catch (_: Exception) { }
+        try { view.release() } catch (_: Exception) { }
     }
 
     fun enableLocalMicrophone(): Boolean {
@@ -397,6 +427,8 @@ class RtcMediaController(
     }
 
     fun close() {
+        if (closed) return
+        closed = true
         recoveryHandler.removeCallbacks(iceRestartTask)
         iceRestartInProgress = false
         remoteAudioTrack?.setEnabled(false)
@@ -412,8 +444,8 @@ class RtcMediaController(
         peer?.close()
         peer?.dispose()
         peer = null
-        renderer?.release()
-        renderer = null
+        detachRenderer()
+        remoteVideoTrack = null
         factory.dispose()
         egl.release()
     }
@@ -421,9 +453,12 @@ class RtcMediaController(
     private fun attachTrack(track: VideoTrack) {
         if (attachedTrackId == track.id()) return
         attachedTrackId = track.id()
+        remoteVideoTrack = track
         track.setEnabled(true)
         val target = renderer ?: return
-        target.post { track.addSink(target) }
+        target.post {
+            if (!closed && renderer === target) track.addSink(target)
+        }
     }
 
     private fun createIceServers(): List<PeerConnection.IceServer> {
