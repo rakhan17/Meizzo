@@ -1,7 +1,6 @@
 package com.meizzo.glass
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,6 +34,7 @@ import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.Shadow
+import com.kyant.backdrop.catalog.components.LiquidButton
 import com.kyant.shapes.RoundedRectangle
 
 private val Ink = Color(0xFF111116)
@@ -112,23 +111,24 @@ fun GlassDialogOverlay(
             BasicText(message, style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassActionText(dismissLabel, dark, false, Modifier.weight(1f), onDismiss)
-                GlassActionText(confirmLabel, dark, true, Modifier.weight(1f), onConfirm)
+                LiquidButton(
+                    onClick = onDismiss,
+                    backdrop = backdrop,
+                    modifier = Modifier.weight(1f),
+                    surfaceColor = if (dark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
+                ) {
+                    BasicText(dismissLabel, style = TextStyle(text, 14.sp, FontWeight.Medium, fontFamily = FontFamily.SansSerif))
+                }
+                LiquidButton(
+                    onClick = onConfirm,
+                    backdrop = backdrop,
+                    modifier = Modifier.weight(1f),
+                    tint = Accent
+                ) {
+                    BasicText(confirmLabel, style = TextStyle(Color.White, 14.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
+                }
             }
         }
     }
 }
 
-@Composable
-private fun GlassActionText(label: String, dark: Boolean, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val color = if (primary) Color.White else if (dark) Color.White else Ink
-    Box(
-        modifier.clickable(onClick = onClick).height(48.dp).background(
-            if (primary) Accent else if (dark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f),
-            RoundedCornerShape(24.dp)
-        ),
-        contentAlignment = Alignment.Center
-    ) {
-        BasicText(label, style = TextStyle(color, 15.sp, FontWeight.Medium, fontFamily = FontFamily.SansSerif))
-    }
-}
