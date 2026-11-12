@@ -2,6 +2,7 @@ package com.meizzo.controller
 
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,6 +84,7 @@ fun ControllerGlassScreen(
     onDialogDismiss: () -> Unit
 ) {
     var pairingCode by rememberSaveable { mutableStateOf("") }
+    var selectedDeviceId by rememberSaveable { mutableStateOf<String?>(null) }
     var batteryThreshold by rememberSaveable(alertSettings.batteryPercent) { mutableIntStateOf(alertSettings.batteryPercent) }
     var temperatureThreshold by rememberSaveable(alertSettings.temperatureC) { mutableFloatStateOf(alertSettings.temperatureC) }
     var offlineMinutes by rememberSaveable(alertSettings.offlineMinutes) { mutableIntStateOf(alertSettings.offlineMinutes) }
@@ -136,62 +138,47 @@ fun ControllerGlassScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     tint = Color(0xFF007AFF)
                                 ) {
-                                    BasicText("Connect device", style = TextStyle(Color.White, 15.sp, FontWeight.SemiBold))
-                                }
-                            }
-                        }
-                        1 -> {
-                            BrandHeader(foreground)
-                            BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
-                            BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
-                            if (devices.isEmpty()) {
-                                Column(
-                                    Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(22.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    BasicText("No paired devices", style = TextStyle(foreground, 18.sp, FontWeight.SemiBold))
-                                    BasicText("Enter a Client's six-digit pairing code in the Link tab to get started.", style = TextStyle(secondary, 14.sp, lineHeight = 20.sp))
-                                }
-                            }
-                            devices.forEach { device ->
-                                Column(
-                                    Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(18.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            BasicText(device.name, style = TextStyle(foreground, 19.sp, FontWeight.SemiBold))
-                                            BasicText(
-                                                "${if (device.online) "Online" else "Offline"} · ${device.platform}",
-                                                style = TextStyle(secondary, 12.sp, FontWeight.Medium)
-                                            )
-                                        }
-                                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            LiquidButton(
-                                                onClick = { onDeviceAction(device.id, "details") },
-                                                backdrop = backdrop,
-                                                modifier = Modifier.width(88.dp).height(34.dp),
-                                                surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
-                                            ) {
-                                                BasicText("Details", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
-                                            }
-                                            LiquidButton(
-                                                onClick = { onDeviceAction(device.id, "rename") },
-                                                backdrop = backdrop,
-                                                modifier = Modifier.width(88.dp).height(34.dp),
-                                                surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
-                                            ) {
-                                                BasicText("Rename", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
-                                            }
-                                        }
+                                    BasicText("Connect device", style = TextStyle(Color.Wh                        1 -> {
+                            val selectedDevice = devices.firstOrNull { it.id == selectedDeviceId }
+                            if (selectedDeviceId == null || selectedDevice == null) {
+                                selectedDeviceId = null
+                                BrandHeader(foreground)
+                                BasicText("Your devices", style = TextStyle(foreground, 32.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
+                                BasicText("Manage paired devices and start secure sessions.", style = TextStyle(secondary, 15.sp, fontFamily = FontFamily.SansSerif, lineHeight = 21.sp))
+                                if (devices.isEmpty()) {
+                                    Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 24.dp).padding(22.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        BasicText("No paired devices", style = TextStyle(foreground, 18.sp, FontWeight.SemiBold))
+                                        BasicText("Enter a Client's six-digit pairing code in the Link tab to get started.", style = TextStyle(secondary, 14.sp, lineHeight = 20.sp))
                                     }
-                                    if (device.id == devices.firstOrNull()?.id) {
-                                        AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                                }
+                                devices.forEach { device ->
+                                    Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).clickable { selectedDeviceId = device.id }.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                BasicText(device.name, style = TextStyle(foreground, 19.sp, FontWeight.SemiBold))
+                                                BasicText((if (device.online) "Online" else "Offline") + " · " + device.platform, style = TextStyle(secondary, 12.sp, FontWeight.Medium))
+                                            }
+                                            BasicText("›", style = TextStyle(secondary, 28.sp, FontWeight.Light))
+                                        }
+                                        if (device.id == devices.firstOrNull()?.id) AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                                        BasicText(device.battery + " battery · " + device.network, style = TextStyle(secondary, 13.sp))
                                     }
-                                    BasicText(
-                                        "${device.battery} battery · ${device.network}",
-                                        style = TextStyle(secondary, 13.sp)
-                                    )
+                                }
+                            } else {
+                                LiquidButton(onClick = { selectedDeviceId = null }, backdrop = backdrop, modifier = Modifier.width(116.dp).height(40.dp), surfaceColor = if (darkMode) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)) {
+                                    BasicText("‹ Devices", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
+                                }
+                                BrandHeader(foreground)
+                                BasicText(selectedDevice.name, style = TextStyle(foreground, 30.sp, FontWeight.SemiBold, fontFamily = FontFamily.SansSerif))
+                                BasicText((if (selectedDevice.online) "Online" else "Offline") + " · " + selectedDevice.platform, style = TextStyle(secondary, 13.sp, FontWeight.Medium))
+                                Column(Modifier.fillMaxWidth().glassPanel(backdrop, darkMode, 22.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (selectedDevice.id == devices.firstOrNull()?.id) AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
+                                    BasicText(selectedDevice.battery + " battery · " + selectedDevice.network, style = TextStyle(secondary, 13.sp))
+                                }
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    GlassActionButton("Rename device", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "rename") }
+                                    GlassActionButton("Device details", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(selectedDevice.id, "details") }
+                                }
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         GlassActionButton(
                                             if (device.mediaKind == "screen") "Open screen" else "Screen",
@@ -267,6 +254,9 @@ fun ControllerGlassScreen(
                                             GlassActionButton("New line", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "new_line") }
                                         }
                                     }
+                            }
+                        }
+                                }
                                 }
                             }
                         }
