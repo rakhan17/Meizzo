@@ -12,23 +12,142 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
+import android.net.ConnectivityManager
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 import androidx.core.app.NotificationCompat
 
 /**
  * Raises the Client process importance while its device connection is active.
  *
- * The WebSocket is still owned by the existing Client connection layer. Moving
- * that owner into this service is a separate step; this service is not a claim
- * that Android can guarantee survival after force-stop or OEM process eviction.
+ * Owns the Client WebSocket, reconnect policy, and heartbeat independently of
+ * the Activity. Android may still stop it after force-stop or OEM process eviction.
  */
 class ConnectionForegroundService : Service() {
     private var alarmTrack: AudioTrack? = null
     private var alarmActive = false
     private var connectionActive = true
+    private val socketHandler = Handler(Looper.getMainLooper())
+    private val httpClient by lazy {
+        OkHttpClient.Builder().readTimeout(0, TimeUnit.MILLISECONDS).build()
+    }
+    private var socket: WebSocket? = null
+    private var socketUrl: String? = null
+    private var clientListener: WebSocketListener? = null
+    private var reconnectAttempt = 0
+    private var reconnectScheduled = false
+    private var heartbeatSocket: WebSocket? = null
+    private val queuedMessages = ArrayDeque<String>()
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            socketHandler.post {
+                reconnectAttempt = 0
+                if (socket == null) connectSocket()
+            }
+        }
+        override fun onLost(network: android.net.Network) {
+            socketHandler.post {
+                socket?.cancel()
+                socket = null
+                heartbeatSocket = null
+                scheduleSocketReconnect()
+            }
+        }
+    }
+
+    inner class LocalBinder : android.os.Binder() {
+        fun service(): ConnectionForegroundService = this@ConnectionForegroundService
+    }
+    private val binder = LocalBinder()
+
+    fun attachSocketListener(url: String, listener: WebSocketListener) {
+        clientListener = listener
+        socketUrl = url
+        while (queuedMessages.isNotEmpty()) {
+            val message = queuedMessages.removeFirst()
+            socket?.let { listener.onMessage(it, message) }
+        }
+        if (socket == null) connectSocket()
+    }
+
+    fun detachSocketListener() {
+        clientListener = null
+    }
+
+    fun currentSocket(): WebSocket? = socket
+
+    private fun connectSocket() {
+        val url = socketUrl ?: return
+        if (socket != null || reconnectScheduled) return
+        reconnectScheduled = false
+        socket = httpClient.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (socket !== webSocket) { webSocket.cancel(); return }
+                reconnectAttempt = 0
+                reconnectScheduled = false
+                clientListener?.onOpen(webSocket, response)
+                startSocketHeartbeat(webSocket)
+            }
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (socket !== webSocket) return
+                val listener = clientListener
+                if (listener != null) listener.onMessage(webSocket, text)
+                else {
+                    if (queuedMessages.size >= MAX_QUEUED_MESSAGES) queuedMessages.removeFirst()
+                    queuedMessages.addLast(text)
+                }
+            }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (socket !== webSocket) return
+                clientListener?.onClosed(webSocket, code, reason)
+                socket = null
+                heartbeatSocket = null
+                scheduleSocketReconnect()
+            }
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (socket !== webSocket) return
+                clientListener?.onFailure(webSocket, t, response)
+                socket = null
+                heartbeatSocket = null
+                scheduleSocketReconnect()
+            }
+        })
+    }
+
+    private fun startSocketHeartbeat(webSocket: WebSocket) {
+        if (heartbeatSocket === webSocket) return
+        heartbeatSocket = webSocket
+        socketHandler.postDelayed(object : Runnable {
+            override fun run() {
+                if (socket !== webSocket || heartbeatSocket !== webSocket) return
+                webSocket.send(JSONObject().put("type", "heartbeat").toString())
+                socketHandler.postDelayed(this, SOCKET_HEARTBEAT_MS)
+            }
+        }, SOCKET_HEARTBEAT_MS)
+    }
+
+    private fun scheduleSocketReconnect() {
+        if (reconnectScheduled || socketUrl.isNullOrBlank()) return
+        reconnectScheduled = true
+        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(6)
+        socketHandler.postDelayed({
+            reconnectScheduled = false
+            if (socket == null) connectSocket()
+        }, (1L shl reconnectAttempt) * 1000L)
+    }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        try { connectivity.registerDefaultNetworkCallback(networkCallback) } catch (_: Exception) { }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -42,6 +161,13 @@ class ConnectionForegroundService : Service() {
 
         if (intent.action == ACTION_CONNECTION_STOP) {
             connectionActive = false
+            socketUrl = null
+            reconnectScheduled = false
+            socketHandler.removeCallbacksAndMessages(null)
+            socket?.close(1000, "Connection stopped")
+            socket = null
+            heartbeatSocket = null
+            queuedMessages.clear()
             if (alarmActive) {
                 getSystemService(NotificationManager::class.java)
                     .notify(NOTIFICATION_ID, buildNotification())
@@ -94,9 +220,14 @@ class ConnectionForegroundService : Service() {
         return START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onDestroy() {
+        socketHandler.removeCallbacksAndMessages(null)
+        socket?.close(1000, "Connection service destroyed")
+        socket = null
+        heartbeatSocket = null
+        try { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(networkCallback) } catch (_: Exception) { }
         stopAlarm()
         super.onDestroy()
     }
@@ -220,5 +351,7 @@ class ConnectionForegroundService : Service() {
         const val EXTRA_ALARM_ERROR = "alarm_error"
         private const val CHANNEL_ID = "meizzo_device_connection"
         private const val NOTIFICATION_ID = 2501
+        private const val SOCKET_HEARTBEAT_MS = 15_000L
+        private const val MAX_QUEUED_MESSAGES = 100
     }
 }
