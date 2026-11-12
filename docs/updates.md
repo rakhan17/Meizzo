@@ -207,4 +207,4 @@ Beta builds can contain incomplete or device-dependent functionality. A passing 
 - iOS physical-device distribution and Android/iOS feature parity are not claimed.
 - MEIZZO has not undergone an independent security audit and does not claim formal security certification.
 
-See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [testing](docs/testing.md), and [security and privacy](docs/security-and-privacy.md) for the detailed acceptance criteria.
+See [implementation status](implementation-status.md), [architecture](architecture.md), [testing](testing.md), and [security and privacy](security-and-privacy.md) for the detailed acceptance criteria.
