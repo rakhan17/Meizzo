@@ -64,6 +64,7 @@ fun ControllerGlassScreen(
     onDarkModeChanged: (Boolean) -> Unit,
     alertSettings: AutoAlertManager.Settings,
     onSaveAutoAlertSettings: (AutoAlertManager.Settings) -> Unit,
+    updateStatus: String,
     onCheckForUpdates: () -> Unit,
     dialog: ControllerGlassDialogRequest?,
     onDialogConfirm: () -> Unit,
@@ -314,6 +315,7 @@ fun ControllerGlassScreen(
                             ) {
                                 BasicText("Check for updates", style = TextStyle(foreground, 14.sp, FontWeight.Medium))
                             }
+                            BasicText(updateStatus, style = TextStyle(secondary, 12.sp, lineHeight = 18.sp))
                             BasicText("MEIZZO Controller · Secure device management", style = TextStyle(secondary, 12.sp))
                         }
                     }
