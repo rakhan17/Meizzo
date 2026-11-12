@@ -3,7 +3,7 @@
 > This is the detailed project update ledger. It records published releases separately from development candidates so that a CI build is never mistaken for a downloadable, signed release.
 >
 > **Stable channel:** `v2.5.0` (published, unchanged).  
-> **Current beta line:** `v3.0.0-beta.1` (beta prerelease; signed APK publication is handled by the dedicated release workflow).
+> **Current beta line:** `v3.0.0-beta.1` (published signed prerelease; Client and Controller APKs, update manifest, and checksums are available).
 
 - [Latest beta release](#v300-beta1--liquid-glass-ui-beta)
 - [Stable release](#v250--stable)
@@ -61,8 +61,9 @@ This is the current v3 beta release from the `develop/v3` development line, incl
 
 ### Build and verification evidence
 
-The Liquid Glass implementation was first validated at candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9`. The beta release pipeline then rebuilds both apps as signed release APKs and validates package IDs, version metadata, signing certificates, SHA-256 hashes, and the updater manifest.
+The Liquid Glass implementation was first validated at candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9`. The beta release workflow [completed successfully](https://github.com/rakhan17/Meizzo/actions/runs/43152105482), rebuilding both apps as signed release APKs and validating package IDs, version metadata, signing certificates, SHA-256 hashes, and the updater manifest.
 
+- [Signed beta release workflow](https://github.com/rakhan17/Meizzo/actions/runs/43152105482): Client and Controller release APK signing, package/version/signing checks, checksums, manifest generation, and GitHub prerelease publication passed.
 - [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
 - [MEIZZO iOS](https://github.com/rakhan17/Meizzo/actions/runs/43144166627): iOS Simulator workflow passed. This is not evidence of iOS Liquid Glass parity or physical-device distribution.
 - [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568): Markdown link validation and strict MkDocs build passed.
@@ -72,7 +73,9 @@ Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakha
 - `meizzo-client-debug`
 - `meizzo-controller-debug`
 
-The debug artifacts above are build evidence only. Public beta downloads are the separately signed APK assets attached to the [v3.0.0-beta.1 prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), together with the update manifest and SHA-256 checksums.
+The debug artifacts above are build evidence only. Public beta downloads are the separately signed APK assets attached to the [v3.0.0-beta.1 prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), together with the [update manifest](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/MEIZZO-UPDATE.json) and [SHA-256 checksums](https://github.com/rakhan17/Meizzo/releases/download/v3.0.0-beta.1/SHA256SUMS.txt).
+
+The [Cloudflare Worker workflow](https://github.com/rakhan17/Meizzo/actions/runs/43153365784) passed Wrangler validation. Its production deploy step was skipped because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are not configured in repository Actions secrets; the Worker code is therefore not claimed as newly deployed by this run.
 
 ### Not included / not claimed
 
@@ -204,4 +207,4 @@ Beta builds can contain incomplete or device-dependent functionality. A passing 
 - iOS physical-device distribution and Android/iOS feature parity are not claimed.
 - MEIZZO has not undergone an independent security audit and does not claim formal security certification.
 
-See [implementation status](implementation-status.md), [architecture](architecture.md), [testing](testing.md), and [security and privacy](security-and-privacy.md) for the detailed acceptance criteria.
+See [implementation status](docs/implementation-status.md), [architecture](docs/architecture.md), [testing](docs/testing.md), and [security and privacy](docs/security-and-privacy.md) for the detailed acceptance criteria.
