@@ -77,6 +77,7 @@ class MainActivity : Activity() {
     private var activeTab by mutableIntStateOf(0)
     private var darkMode by mutableStateOf(true)
     private var autoAlertSettings by mutableStateOf(AutoAlertManager.Settings(15, 42f, 5, true))
+    private var updateStatusText by mutableStateOf("Installed version · ${BuildConfig.VERSION_NAME}")
     private var glassDialog by mutableStateOf<ControllerGlassDialogRequest?>(null)
     private var uiDevices by mutableStateOf<List<ControllerDeviceUi>>(emptyList())
 
@@ -198,6 +199,7 @@ class MainActivity : Activity() {
                         connectionLabel.text = "● Auto-Alert settings saved"
                         connectionLabel.setTextColor(Color.rgb(120, 210, 170))
                     },
+                    updateStatus = updateStatusText,
                     onCheckForUpdates = { checkForUpdate() },
                     dialog = glassDialog,
                     onDialogConfirm = { glassDialog?.onConfirm?.invoke() },
@@ -1887,7 +1889,10 @@ class MainActivity : Activity() {
         else -> "$bytes B"
     }
 
-    private fun setUpdateStatus(message: String) { setConnection(message, false) }
+    private fun setUpdateStatus(message: String) {
+        updateStatusText = message
+        setConnection(message, false)
+    }
 
     private fun checkForUpdate() {
         setUpdateStatus("Checking for updates…")
