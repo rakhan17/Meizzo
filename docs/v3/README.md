@@ -44,6 +44,10 @@ MEIZZO v3 uses the existing shared Worker endpoint:
 
 Do not create a second Worker or a separate Workers Builds project. The existing Cloudflare Workers Builds project remains connected to `main` and deploys the root `wrangler.toml`. The v3 branch uses this endpoint for debug and release builds. Worker-side v3 changes deploy through the existing main-branch deployment after merging them into `main`.
 
+## Cloudflare TURN setup
+
+Use the existing Worker and follow [the TURN setup guide](../cloudflare-turn-setup.md). No VPS or second signaling service is required. The Worker falls back to STUN when TURN secrets are absent or the credential API is unavailable; cross-network reliability is not guaranteed until TURN is configured and physically tested.
+
 ## Upstream engine integration
 
 RustDesk is now tracked as a pinned source submodule. This is source acquisition and provenance, not feature integration. RustDesk's Android app uses Flutter, a Rust `cdylib` built for Android ABIs, generated Flutter-Rust bridge code, Android native services, and its own rendezvous/relay protocol. MEIZZO currently uses native Kotlin apps and a Cloudflare Worker/Durable Object for control signaling. These paths must be deliberately integrated rather than assumed to be drop-in replacements.
