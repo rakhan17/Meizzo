@@ -45,6 +45,7 @@ android {
 kotlin { jvmToolchain(17) }
 dependencies {
     implementation(project(":apps:glass-ui"))
+    implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core:1.15.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
