@@ -1,7 +1,6 @@
 # MEIZZO architecture
 
-**Scope:** Android v3 development branch and hosted signaling implementation.
-This document distinguishes code implementation from production readiness.
+**Scope:** Android v3 beta implementation and hosted signaling. Stable `v2.5.0` remains a separate release line. This document distinguishes code implementation from production readiness.
 
 ## 1. System overview
 
