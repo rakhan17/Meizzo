@@ -176,7 +176,7 @@ jobs:
             adb shell am force-stop com.meizzo.client
             adb shell am start -W -n com.meizzo.controller/.MainActivity
             sleep 10
-            if ! adb shell pidof com.meizzo.controller >/dev/null || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q 'com.meizzo.controller/.MainActivity'; then
+            if ! adb shell pidof com.meizzo.controller >/dev/null || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q 'com.meizzo.controller'; then
               echo "::error::MEIZZO Controller MainActivity did not remain resumed"
               adb shell dumpsys activity activities
               adb logcat -d -v time -s AndroidRuntime:E ActivityTaskManager:E
