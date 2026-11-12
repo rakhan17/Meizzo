@@ -1751,7 +1751,12 @@ class MainActivity : Activity() {
         socket?.close(1000, "Client activity destroyed")
         socket = null
         heartbeatSocket = null
-        stopService(Intent(this, ConnectionForegroundService::class.java))
+        if (!isChangingConfigurations) {
+            startService(
+                Intent(this, ConnectionForegroundService::class.java)
+                    .setAction(ConnectionForegroundService.ACTION_CONNECTION_STOP)
+            )
+        }
         super.onDestroy()
     }
 
