@@ -26,6 +26,21 @@ The Worker uses the secrets server-side to request credentials with a
 24-hour TTL. The long-lived API token and TURN key never go into either APK,
 the repository, or the Worker health response.
 
+## Cost and free usage
+
+Cloudflare Realtime TURN currently includes **1,000 GB of monthly egress at
+no charge**. Usage above the included allowance is billed at **US$0.05 per
+GB**. The allowance is shared with Cloudflare Realtime SFU, not a separate
+1,000 GB pool for each service. MEIZZO uses point-to-point TURN only and does
+not require SFU. Cloudflare's STUN service remains free and unlimited.
+
+Keep an eye on Realtime usage in the Cloudflare dashboard. If staying strictly
+within a zero-cost budget is mandatory, leave TURN secrets unset and use the
+free STUN-only mode; direct connectivity then depends on both networks' NAT
+and firewall behavior.
+
+Pricing is subject to change. See [Cloudflare Realtime TURN FAQ](https://developers.cloudflare.com/realtime/turn/faq/) and [Realtime pricing](https://developers.cloudflare.com/realtime/sfu/platform/pricing/).
+
 ## Verify
 
 Open:
