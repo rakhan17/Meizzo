@@ -10,6 +10,9 @@ import org.json.JSONObject
 import org.webrtc.DataChannel
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.ArrayDeque
 import java.nio.ByteBuffer
 import java.security.MessageDigest
@@ -490,18 +493,21 @@ class FileTransferCoordinator(
                 }
             }
             if (restored != offset) throw IllegalStateException("Saved destination checkpoint is invalid")
-            // Rewrite the acknowledged prefix to discard any bytes flushed just before a crash but not checkpointed.
+            // Stage the acknowledged prefix before truncating so providers never read and write the same document concurrently.
+            val prefixFile = File(context.cacheDir, "meizzo-resume-" + transferId.hashCode() + ".part")
             val prefixInput = context.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Saved destination cannot be reopened")
-            val truncateOutput = context.contentResolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("Saved destination cannot be repaired")
-            prefixInput.use { source -> truncateOutput.use { target ->
+            prefixInput.use { source -> FileOutputStream(prefixFile).use { target ->
                 var copied = 0L
                 while (copied < offset) {
                     val count = source.read(buffer, 0, minOf(buffer.size.toLong(), offset - copied).toInt())
                     if (count <= 0) throw IllegalStateException("Saved destination prefix changed")
                     target.write(buffer, 0, count); copied += count
                 }
-                target.flush()
+                target.fd.sync()
             } }
+            val truncateOutput = context.contentResolver.openOutputStream(uri, "wt") ?: throw IllegalStateException("Saved destination cannot be repaired")
+            truncateOutput.use { target -> FileInputStream(prefixFile).use { it.copyTo(target) }; target.flush() }
+            prefixFile.delete()
             incomingOutput = context.contentResolver.openOutputStream(uri, "wa") ?: throw IllegalStateException("Saved destination cannot be reopened for append")
             incomingUri = uri; incomingBytes = offset; incomingExpectedSequence = ((offset + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt()
             incomingDigest = digest; incomingTransferId = transferId; lastIncomingProgressBytes = offset
