@@ -319,7 +319,7 @@ class MainActivity : Activity() {
                                 if (commandResult.has("clipboardText")) {
                                     val clipboardText = commandResult.optString("clipboardText")
                                     runOnUiThread {
-                                        AlertDialog.Builder(this)
+                                        AlertDialog.Builder(this@MainActivity)
                                             .setTitle("Client clipboard")
                                             .setMessage(if (clipboardText.isBlank()) "(The Client clipboard is empty or contains no text.)" else clipboardText)
                                             .setNegativeButton("Close", null)
