@@ -72,6 +72,35 @@ class AndroidGlassBackdropContractTests(unittest.TestCase):
             controller,
         )
 
+    def test_media_viewer_can_close_and_reopen_without_ending_approved_session(self):
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/MainActivity.kt"
+        ).read_text()
+
+        self.assertIn("dialog.setOnDismissListener {\n            mediaDialogs.remove(sessionId)\n            hideMediaViewer(sessionId)", controller)
+        self.assertIn("if (existingViewer == null) viewer.start(video) else viewer.attachRenderer(video)", controller)
+        hide_start = controller.index("private fun hideMediaViewer(sessionId: String)")
+        close_start = controller.index("private fun closeMediaViewer(sessionId: String)")
+        hide_body = controller[hide_start:close_start]
+        self.assertIn("viewer.detachRenderer()", hide_body)
+        self.assertNotIn("viewer.close()", hide_body)
+        close_body = controller[close_start:controller.index("private fun ", close_start + 1)]
+        self.assertIn("mediaViewers.remove(sessionId)?.close()", close_body)
+
+    def test_file_viewer_dismissal_keeps_approved_peer_session_alive(self):
+        controller = (
+            ROOT
+            / "apps/controller/src/main/java/com/meizzo/controller/MainActivity.kt"
+        ).read_text()
+
+        start = controller.index("private fun openFileTransferDialog(")
+        end = controller.index("private fun requestControllerMicrophone(", start)
+        file_dialog = controller[start:end]
+        self.assertIn("dialog.setOnDismissListener", file_dialog)
+        self.assertNotIn("endMediaSession(clientId, sessionId)", file_dialog)
+        self.assertIn("if (existingViewer == null) viewer.startFiles()", file_dialog)
+
     def test_android_client_and_controller_render_wordmark_without_logo(self):
         client = (
             ROOT
