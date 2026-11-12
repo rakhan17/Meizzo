@@ -1314,7 +1314,7 @@ class MainActivity : ComponentActivity() {
             .create()
         mediaDialogs[sessionId] = dialog
         activeFileTransferSessions[clientId] = sessionId
-        val viewer = RtcMediaController(
+        val viewer = existingViewer ?: RtcMediaController(
             this,
             { signal ->
                 socket?.send(JSONObject().apply {
