@@ -3,7 +3,7 @@
 > This is the detailed project update ledger. It records published releases separately from development candidates so that a CI build is never mistaken for a downloadable, signed release.
 >
 > **Stable channel:** `v2.5.0` (published, unchanged).  
-> **Current beta line:** `v3.0.0-beta.1` (development candidate; Android debug artifacts have passed CI, signed prerelease publication is pending).
+> **Current beta line:** `v3.0.0-beta.1` (beta prerelease; signed APK publication is handled by the dedicated release workflow).
 
 - [Latest beta candidate](#v300-beta1--liquid-glass-ui-candidate)
 - [Stable release](#v250--stable)
@@ -13,11 +13,11 @@
 
 ---
 
-## v3.0.0-beta.1 · Liquid Glass UI candidate
+## v3.0.0-beta.1 · Liquid Glass UI beta
 
-<sub>12 November 2026 · Development candidate · Not yet a signed GitHub Release</sub>
+<sub>12 November 2026 · Beta prerelease · Published after release validation</sub>
 
-This is the current v3 beta candidate on the `develop/v3` development line, with the Android UI work proposed in [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
+This is the current v3 beta candidate on the `develop/v3` development line, including the Android UI work merged through [PR #10](https://github.com/rakhan17/Meizzo/pull/10). It is based on the v3 Android remote-assistance foundation and adds a shared Liquid Glass presentation system.
 
 ### Android Controller
 
@@ -61,18 +61,18 @@ This is the current v3 beta candidate on the `develop/v3` development line, with
 
 ### Build and verification evidence
 
-The candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9` passed:
+The Liquid Glass implementation was first validated at candidate head `2fefef82b2b7c4b9d70823a86a5330c416402da9`. The beta release pipeline then rebuilds both apps as signed release APKs and validates package IDs, version metadata, signing certificates, SHA-256 hashes, and the updater manifest.
 
-- [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43147136156): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
+- [MEIZZO CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166641): Android Client debug APK, Android Controller debug APK, signaling tests/contracts, and pinned RustDesk source/license verification.
 - [MEIZZO iOS](https://github.com/rakhan17/Meizzo/actions/runs/43144166627): iOS Simulator workflow passed. This is not evidence of iOS Liquid Glass parity or physical-device distribution.
-- [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43147136174): Markdown link validation and strict MkDocs build passed.
+- [Documentation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568): Markdown link validation and strict MkDocs build passed.
 
-Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakhan17/Meizzo/actions/runs/43147136156):
+Debug APK artifacts are attached to the [MEIZZO CI run](https://github.com/rakhan17/Meizzo/actions/runs/43144166641):
 
 - `meizzo-client-debug`
 - `meizzo-controller-debug`
 
-These are CI debug artifacts, not signed public release APKs. The signed `v3.0.0-beta.1` release must still pass the release workflow, package/version/signing-certificate checks, SHA-256 generation, and release asset publication before the README can link direct release downloads.
+The debug artifacts above are build evidence only. Public beta downloads are the separately signed APK assets attached to the [v3.0.0-beta.1 prerelease](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1), together with the update manifest and SHA-256 checksums.
 
 ### Not included / not claimed
 
