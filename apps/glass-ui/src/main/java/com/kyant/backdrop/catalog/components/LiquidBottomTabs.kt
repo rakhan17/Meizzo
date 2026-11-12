@@ -1,5 +1,6 @@
 package com.kyant.backdrop.catalog.components
 
+// MEIZZO adaptation: theme colors follow LocalLiquidGlassDarkMode instead of system appearance.
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring

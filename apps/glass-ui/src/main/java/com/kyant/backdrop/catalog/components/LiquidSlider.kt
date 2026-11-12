@@ -1,5 +1,6 @@
 package com.kyant.backdrop.catalog.components
 
+// MEIZZO adaptation: theme colors follow LocalLiquidGlassDarkMode instead of system appearance.
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
