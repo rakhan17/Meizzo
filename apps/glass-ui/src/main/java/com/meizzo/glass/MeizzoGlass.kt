@@ -56,30 +56,37 @@ fun LiquidGlassBackdrop(
 ) {
     val backdrop = rememberLayerBackdrop()
     CompositionLocalProvider(LocalLiquidGlassDarkMode provides dark) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .layerBackdrop(backdrop)
-            .background(
-                Brush.linearGradient(
-                    colors = if (dark) listOf(Color(0xFF08080C), Color(0xFF17171E), Color(0xFF09090D)) else listOf(Paper, Color(0xFFE9EBF2), Paper),
-                    start = Offset.Zero,
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+    // Record only the background as the backdrop source. Glass surfaces must
+    // be siblings of this source, never descendants of the layer they sample.
+    // Capturing the glass surfaces inside the source creates a RenderNode
+    // feedback loop that can crash Android's RenderThread (SIGSEGV).
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .layerBackdrop(backdrop)
+                .background(
+                    Brush.linearGradient(
+                        colors = if (dark) listOf(Color(0xFF08080C), Color(0xFF17171E), Color(0xFF09090D)) else listOf(Paper, Color(0xFFE9EBF2), Paper),
+                        start = Offset.Zero,
+                        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                    )
                 )
-            )
-            .drawBehind {
-                drawCircle(
-                    color = Accent.copy(alpha = if (dark) 0.13f else 0.10f),
-                    radius = size.minDimension * 0.55f,
-                    center = Offset(size.width * 0.92f, size.height * 0.12f)
-                )
-                drawCircle(
-                    color = Color(0xFF8E8EFF).copy(alpha = if (dark) 0.08f else 0.07f),
-                    radius = size.minDimension * 0.42f,
-                    center = Offset(size.width * 0.02f, size.height * 0.72f)
-                )
-            }
-    ) { content(backdrop) }
+                .drawBehind {
+                    drawCircle(
+                        color = Accent.copy(alpha = if (dark) 0.13f else 0.10f),
+                        radius = size.minDimension * 0.55f,
+                        center = Offset(size.width * 0.92f, size.height * 0.12f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF8E8EFF).copy(alpha = if (dark) 0.08f else 0.07f),
+                        radius = size.minDimension * 0.42f,
+                        center = Offset(size.width * 0.02f, size.height * 0.72f)
+                    )
+                }
+        )
+        content(backdrop)
+    }
     }
 }
 
