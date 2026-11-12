@@ -3,6 +3,7 @@ name: MEIZZO Release
 on:
   push:
     tags: ["v*.*.*"]
+    branches: ["release/v3.*"]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -32,7 +33,7 @@ jobs:
         with: { distribution: temurin, java-version: "17" }
       - uses: android-actions/setup-android@v3
         with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0 platforms;android-37.0 build-tools;37.0.0"
       - run: yes | sdkmanager --licenses >/dev/null || true
       - uses: gradle/actions/setup-gradle@v4
       - name: Resolve and validate release tag
@@ -45,6 +46,17 @@ jobs:
               exit 1
             fi
             release_tag="${{ inputs.release_tag }}"
+          elif [[ "$GITHUB_REF_TYPE" == "branch" ]]; then
+            if [[ "$GITHUB_REF_NAME" != release/v3.* ]]; then
+              echo "::error::Release branches must use release/v3.x.y-beta.N."
+              exit 1
+            fi
+            release_tag="${GITHUB_REF_NAME#release/}"
+            git fetch --no-tags origin develop/v3:refs/remotes/origin/develop/v3
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/develop/v3; then
+              echo "::error::A v3 beta release branch must point to a commit reachable from develop/v3."
+              exit 1
+            fi
           else
             release_tag="$GITHUB_REF_NAME"
             git fetch --no-tags origin develop/v3:refs/remotes/origin/develop/v3
