@@ -265,11 +265,21 @@ class ConnectionForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
         if (!alarmRequestId.isNullOrBlank()) {
-            sendBroadcast(Intent(ACTION_ALARM_RESULT).setPackage(packageName).apply {
-                putExtra(EXTRA_REQUEST_ID, alarmRequestId)
-                putExtra(EXTRA_ALARM_ENABLED, alarmActive)
-                putExtra(EXTRA_ALARM_ERROR, alarmError)
-            })
+            val activeSocket = socket
+            if (clientListener == null && activeSocket != null) {
+                activeSocket.send(JSONObject().apply {
+                    put("type", "client.result")
+                    put("requestId", alarmRequestId)
+                    put("result", JSONObject().put("enabled", alarmActive))
+                    if (!alarmError.isNullOrBlank()) put("error", alarmError)
+                }.toString())
+            } else {
+                sendBroadcast(Intent(ACTION_ALARM_RESULT).setPackage(packageName).apply {
+                    putExtra(EXTRA_REQUEST_ID, alarmRequestId)
+                    putExtra(EXTRA_ALARM_ENABLED, alarmActive)
+                    putExtra(EXTRA_ALARM_ERROR, alarmError)
+                })
+            }
         }
         return START_NOT_STICKY
     }
