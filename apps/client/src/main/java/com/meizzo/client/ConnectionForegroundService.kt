@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 class ConnectionForegroundService : Service() {
     private var alarmTrack: AudioTrack? = null
     private var alarmActive = false
+    private var connectionActive = true
 
     override fun onCreate() {
         super.onCreate()
@@ -39,6 +40,24 @@ class ConnectionForegroundService : Service() {
             return START_NOT_STICKY
         }
 
+        if (intent.action == ACTION_CONNECTION_STOP) {
+            connectionActive = false
+            if (alarmActive) {
+                getSystemService(NotificationManager::class.java)
+                    .notify(NOTIFICATION_ID, buildNotification())
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(true)
+                }
+                stopSelf(startId)
+            }
+            return START_NOT_STICKY
+        }
+
+        connectionActive = true
         var alarmRequestId: String? = null
         var alarmError: String? = null
         when (intent.action) {
@@ -160,8 +179,20 @@ class ConnectionForegroundService : Service() {
         )
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(if (alarmActive) android.R.drawable.ic_lock_idle_alarm else android.R.drawable.stat_notify_sync)
-            .setContentTitle(if (alarmActive) "MEIZZO remote alarm is ringing" else "MEIZZO Client is active")
-            .setContentText(if (alarmActive) "Alarm is playing · tap Stop alarm to silence this device" else "MEIZZO is active in the background")
+            .setContentTitle(
+                when {
+                    alarmActive -> "MEIZZO remote alarm is ringing"
+                    connectionActive -> "MEIZZO Client is active"
+                    else -> "MEIZZO alarm is active"
+                }
+            )
+            .setContentText(
+                when {
+                    alarmActive && connectionActive -> "Alarm is playing · tap Stop alarm to silence this device"
+                    alarmActive -> "Alarm continues until stopped locally or by the Controller"
+                    else -> "MEIZZO is active in the background"
+                }
+            )
             .setContentIntent(openApp)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -180,6 +211,7 @@ class ConnectionForegroundService : Service() {
     }
 
     companion object {
+        const val ACTION_CONNECTION_STOP = "com.meizzo.client.action.CONNECTION_STOP"
         const val ACTION_ALARM_ON = "com.meizzo.client.action.ALARM_ON"
         const val ACTION_ALARM_OFF = "com.meizzo.client.action.ALARM_OFF"
         const val ACTION_ALARM_RESULT = "com.meizzo.client.action.ALARM_RESULT"
