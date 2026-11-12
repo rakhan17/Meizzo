@@ -45,9 +45,11 @@ build does not prove runtime behavior on every Android vendor or network.
   - Bidirectional single- and multi-file send/receive over an ordered WebRTC DataChannel.
   - 12 KiB stop-and-wait chunks, unique transfer IDs, bounded retries, duplicate completion handling, sequence validation, and SHA-256 verification.
   - Incremental progress and explicit cancellation; 50 MiB maximum per file.
-  - Worker-provided STUN/TURN configuration and bounded ICE-restart recovery; transfer resume and large-file optimization are not implemented.
+  - Durable sender/receiver checkpoints with acknowledged-offset resume after a files session is re-established; source and destination SAF grants are persisted where Android permits.
+  - Worker-provided STUN/TURN configuration and bounded ICE-restart recovery; parallel chunks and large-file optimization are not implemented.
 - Android Keystore-backed AES-GCM credential storage, foreground connection
-  services, reconnect backoff, and updater verification.
+  service-owned WSS lifecycle, queued signaling delivery while the Activity is
+  detached, network-aware reconnect backoff, and updater verification.
 - RustDesk upstream source pinned as a Git submodule at
   `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`).
   The source is available for integration work, but its engine is not yet
