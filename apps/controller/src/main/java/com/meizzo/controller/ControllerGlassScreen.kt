@@ -233,7 +233,7 @@ fun ControllerGlassScreen(
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             GlassActionButton("Torch on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "flashlight_on") }
                                             GlassActionButton("Torch off", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "flashlight_off") }
-                                            GlassActionButton("Alarm", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "alarm_on") }
+                                            GlassActionButton(if (device.alarmActive) "Alarm off" else "Alarm on", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "alarm_on") }
                                         }
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             GlassActionButton("Browse files", backdrop, darkMode, Modifier.weight(1f)) { onDeviceAction(device.id, "browse_files") }
@@ -404,6 +404,7 @@ data class ControllerDeviceUi(
     val hasLocation: Boolean,
     val mediaActive: Boolean,
     val mediaKind: String?,
+    val alarmActive: Boolean,
     val interactionActive: Boolean,
     val interactionPending: Boolean
 )
