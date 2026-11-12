@@ -48,10 +48,7 @@ The existing `meizzo-signaling` Worker can issue short-lived Cloudflare TURN cre
 
 ## Worker validation
 
-The Cloudflare workflow runs Wrangler validation/dry-run for the Worker
-configuration. A dry-run does not deploy the Worker or prove live service
-availability. Follow it with health, WSS, pairing, reconnect, and authorization
-smoke tests against the deployed endpoint.
+The Cloudflare workflow runs a Wrangler dry-run on pull requests and deploys the production Worker after a successful validation on pushes to `main`, provided both `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets are configured. The latest run [passed validation but skipped deployment](https://github.com/rakhan17/Meizzo/actions/runs/43153365784) because those secrets are not configured. A dry-run alone does not deploy the Worker or prove live service availability. After adding the secrets, push a Worker change to `main`, then verify health, WSS, pairing, reconnect, and authorization against the deployed endpoint.
 
 ## Manual Android acceptance matrix
 
