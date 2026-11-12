@@ -1170,12 +1170,7 @@ class MainActivity : ComponentActivity() {
         }
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
-            val closingViewer = mediaViewers.remove(sessionId)
-            if (closingViewer?.isLocalMicrophoneEnabled() == true) {
-                ControllerVoiceForegroundService.stop(this)
-            }
-            closingViewer?.close()
-            if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
+            hideMediaViewer(sessionId)
         }
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
@@ -1189,7 +1184,7 @@ class MainActivity : ComponentActivity() {
             (resources.displayMetrics.widthPixels * 0.94).toInt(),
             (resources.displayMetrics.heightPixels * 0.82).toInt()
         )
-        viewer.start(video)
+        if (existingViewer == null) viewer.start(video) else viewer.attachRenderer(video)
         if (!approvedInteractionSessions.containsKey(clientId) &&
             !pendingInteractionSessions.containsKey(clientId)) {
             requestInteraction(clientId)
@@ -1359,12 +1354,9 @@ class MainActivity : ComponentActivity() {
         dialog.setOnDismissListener {
             mediaDialogs.remove(sessionId)
             if (activeFileTransferSessions[clientId] == sessionId) activeFileTransferSessions.remove(clientId)
-            mediaViewers.remove(sessionId)?.close()
-            fileTransferCoordinators.remove(sessionId)?.close()
-            if (activeMediaSessions.containsKey(sessionId)) endMediaSession(clientId, sessionId)
         }
         dialog.show()
-        viewer.startFiles()
+        if (existingViewer == null) viewer.startFiles()
     }
 
     private fun requestControllerMicrophone(sessionId: String) {
