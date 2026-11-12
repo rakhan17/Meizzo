@@ -70,8 +70,9 @@ remote gestures and lock-screen actions can run.
 The Client foreground service owns the WSS socket, heartbeat, network callback,
 and bounded reconnect backoff independently of the Activity. The Activity
 binds to the service for authenticated message handling and detaches its listener
-when destroyed. Incoming signaling messages are queued (bounded to 100) while
-no Activity is attached and replayed when it returns. The service continues
+when destroyed. The service handles remote alarm commands itself while detached;
+other incoming signaling messages are queued (bounded to 100) and replayed when
+the Activity returns. The service continues
 running after the Activity is removed from the task; Android may still stop it
 because of force-stop, battery policy, OEM process management, revoked
 permissions, or network availability.
