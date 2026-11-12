@@ -436,6 +436,7 @@ class FileTransferCoordinator(
             if (outgoingBytes > MAX_FILE_SIZE) {
                 val transferId = outgoingTransferId
                 closeOutgoing()
+                clearOutgoingCheckpoint()
                 outgoingQueue.clear()
                 send(JSONObject().put("type", "file_reject").put("transferId", transferId))
                 onStatus("File exceeds the 50 MiB transfer limit")
@@ -454,6 +455,7 @@ class FileTransferCoordinator(
         } catch (error: Exception) {
             val transferId = outgoingTransferId
             closeOutgoing()
+            clearOutgoingCheckpoint()
             outgoingQueue.clear()
             send(JSONObject().put("type", "file_reject").put("transferId", transferId))
             onStatus("File read failed: ${error.message ?: "storage error"}")
