@@ -962,12 +962,14 @@ class MainActivity : ComponentActivity() {
                 "approved" -> {
                     pendingMediaRequests.remove(clientId)
                     activeMediaSessions[sessionId] = clientId
+                    activeMediaKinds[sessionId] = sessionType
                     if (sessionType == "files") openFileTransferDialog(clientId, sessionId)
                     else openMediaViewer(clientId, sessionId, sessionType)
                 }
                 "failed", "rejected", "ended" -> {
                     pendingMediaRequests.remove(clientId)
                     activeMediaSessions.remove(sessionId)
+                    activeMediaKinds.remove(sessionId)
                     iceServersBySession.remove(sessionId)
                     closeMediaViewer(sessionId)
                     setConnection("$sessionType session $state", false)
