@@ -252,9 +252,16 @@ class FileTransferCoordinator(
                 val encoded = message.optString("data")
                 val transferId = message.optString("transferId")
                 if (transferId.isBlank() || transferId != incomingTransferId ||
-                    sequence < 0 || encoded.isBlank() || encoded.length > MAX_ENCODED_CHUNK_SIZE ||
-                    incomingOutput == null
+                    sequence < 0 || encoded.isBlank() || incomingOutput == null
                 ) return
+                if (encoded.length > MAX_ENCODED_CHUNK_SIZE) {
+                    send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+                    discardIncoming()
+                    pendingName = ""
+                    pendingSize = 0L
+                    onStatus("File transfer stopped · incoming chunk is oversized")
+                    return
+                }
                 if (sequence == incomingExpectedSequence - 1) {
                     send(JSONObject().put("type", "file_ack").put("transferId", transferId).put("sequence", sequence))
                     return
