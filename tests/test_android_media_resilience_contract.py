@@ -71,6 +71,9 @@ class MediaResilienceContract(unittest.TestCase):
         self.assertIn("connectionService?.attachSocketListener", activity)
         self.assertIn("connectionService?.detachSocketListener()", activity)
         self.assertNotIn("socket?.close(1000, \"Client activity destroyed\")", activity)
+        self.assertIn("handleDetachedAlarmCommand(webSocket, text)", service)
+        self.assertIn('message.optString("command") != "alarm"', service)
+        self.assertIn('put("type", "client.result")', service)
 
     def test_file_transfer_persists_and_resumes_acknowledged_offsets(self):
         for role in ("client", "controller"):
