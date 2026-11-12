@@ -12,9 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -138,7 +136,7 @@ fun ControllerGlassScreen(
                                     onClick = { onPair(pairingCode) },
                                     backdrop = backdrop,
                                     modifier = Modifier.fillMaxWidth(),
-                                    tint = Color(0xFF0A84FF)
+                                    tint = Color(0xFF007AFF)
                                 ) {
                                     BasicText("Connect device", style = TextStyle(Color.White, 15.sp, FontWeight.SemiBold))
                                 }
@@ -167,7 +165,7 @@ fun ControllerGlassScreen(
                                             BasicText(device.name, style = TextStyle(foreground, 19.sp, FontWeight.SemiBold))
                                             BasicText(
                                                 "${if (device.online) "Online" else "Offline"} · ${device.platform}",
-                                                style = TextStyle(if (device.online) Color(0xFF30C887) else secondary, 12.sp, FontWeight.Medium)
+                                                style = TextStyle(secondary, 12.sp, FontWeight.Medium)
                                             )
                                         }
                                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -188,6 +186,9 @@ fun ControllerGlassScreen(
                                                 BasicText("Rename", style = TextStyle(foreground, 12.sp, FontWeight.Medium))
                                             }
                                         }
+                                    }
+                                    if (device.id == devices.firstOrNull()?.id) {
+                                        AndroidView(factory = { connectionView }, modifier = Modifier.fillMaxWidth())
                                     }
                                     BasicText(
                                         "${device.battery} battery · ${device.network}",
