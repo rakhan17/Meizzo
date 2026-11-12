@@ -187,8 +187,9 @@ class FileTransferCoordinator(
             onStatus("No active file transfer to cancel")
             return
         }
-        val transferId = outgoingTransferId ?: incomingTransferId ?: savedOutgoingId ?: savedIncomingId
-        send(JSONObject().put("type", "file_reject").put("transferId", transferId))
+        listOfNotNull(outgoingTransferId, incomingTransferId, savedOutgoingId, savedIncomingId)
+            .distinct()
+            .forEach { transferId -> send(JSONObject().put("type", "file_reject").put("transferId", transferId)) }
         closeOutgoing()
         clearOutgoingCheckpoint()
         outgoingQueue.clear()
