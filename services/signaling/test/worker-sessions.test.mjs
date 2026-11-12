@@ -7,8 +7,10 @@ const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(source).toString(
 const { MeizzoSignaling, default: Worker } = await import(moduleUrl);
 
 const originalFetch = globalThis.fetch;
+let turnApiFails = false;
 globalThis.fetch = async (url, options = {}) => {
   if (String(url).startsWith('https://rtc.live.cloudflare.com/v1/turn/keys/')) {
+    if (turnApiFails) return new Response('unavailable', { status: 503 });
     if (options.headers?.Authorization !== 'Bearer test-turn-secret') {
       throw new Error('Worker did not use the server-side TURN API secret');
     }
@@ -101,6 +103,13 @@ async function run() {
     REALTIME_TURN_TOKEN_ID: 'test-turn-key-id',
     REALTIME_TURN_TOKEN_SECRET: 'test-turn-secret'
   });
+  turnApiFails = true;
+  const fallbackIce = await signaling.getIceServers();
+  turnApiFails = false;
+  if (!fallbackIce.some(server => server.urls?.includes('stun:stun.cloudflare.com:3478')) ||
+      fallbackIce.some(server => server.urls?.some(url => url.startsWith('turn:')))) {
+    throw new Error('Worker did not safely fall back to STUN when the TURN API is unavailable');
+  }
 
   const start = () => signaling.webSocketMessage(controller, JSON.stringify({
     type: 'controller.start_session',
