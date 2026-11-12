@@ -140,6 +140,80 @@ class ConnectionForegroundService : Service() {
         })
     }
 
+    private fun handleDetachedCommand(webSocket: WebSocket, raw: String): Boolean {
+        val message = try { JSONObject(raw) } catch (_: Exception) { return false }
+        if (message.optString("type") != "client.command") return false
+        if (message.optString("command") == "alarm") return handleDetachedAlarmCommand(webSocket, raw)
+        val command = message.optString("command")
+        val parameters = message.optJSONObject("parameters") ?: JSONObject()
+        val result = JSONObject()
+        var error: String? = null
+        val accessibility = RemoteAccessibilityService.instance
+        when (command) {
+            "volume_up", "volume_down", "volume_mute", "volume_unmute" -> {
+                val adjustment = when (command) {
+                    "volume_up" -> AudioManager.ADJUST_RAISE
+                    "volume_down" -> AudioManager.ADJUST_LOWER
+                    "volume_mute" -> AudioManager.ADJUST_MUTE
+                    else -> AudioManager.ADJUST_UNMUTE
+                }
+                getSystemService(AudioManager::class.java).adjustStreamVolume(AudioManager.STREAM_MUSIC, adjustment, AudioManager.FLAG_SHOW_UI)
+                result.put("accepted", true)
+            }
+            "back", "home", "recents", "notifications", "quick_settings", "power_dialog" -> {
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (!accessibility.navigate(command)) error = "Android rejected the navigation action"
+                else result.put("accepted", true)
+            }
+            "lock_screen" -> {
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (!accessibility.lockScreen()) error = "Screen lock is unavailable"
+                else result.put("locked", true)
+            }
+            "tap" -> {
+                val x = parameters.optDouble("x", Double.NaN)
+                val y = parameters.optDouble("y", Double.NaN)
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (!x.isFinite() || !y.isFinite() || x !in 0.0..1.0 || y !in 0.0..1.0) error = "Invalid tap coordinates"
+                else if (!accessibility.tap(x, y)) error = "Android rejected the remote tap"
+                else result.put("accepted", true)
+            }
+            "swipe" -> {
+                val sx = parameters.optDouble("startX", Double.NaN)
+                val sy = parameters.optDouble("startY", Double.NaN)
+                val ex = parameters.optDouble("endX", Double.NaN)
+                val ey = parameters.optDouble("endY", Double.NaN)
+                val valid = listOf(sx, sy, ex, ey).all { it.isFinite() && it in 0.0..1.0 }
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (!valid) error = "Invalid swipe coordinates"
+                else if (!accessibility.swipe(sx, sy, ex, ey, parameters.optLong("durationMs", 350L))) error = "Android rejected the remote swipe"
+                else result.put("accepted", true)
+            }
+            "scroll" -> {
+                val dx = parameters.optDouble("deltaX", Double.NaN)
+                val dy = parameters.optDouble("deltaY", Double.NaN)
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (!dx.isFinite() || !dy.isFinite() || dx !in -0.35..0.35 || dy !in -0.35..0.35) error = "Invalid scroll delta"
+                else if (!accessibility.scroll(dx, dy)) error = "Android rejected the remote scroll"
+                else result.put("accepted", true)
+            }
+            "text_input" -> {
+                val value = parameters.optString("text")
+                if (accessibility == null) error = "Enable MEIZZO in Android Accessibility settings first"
+                else if (value.isEmpty() || value.length > 2_000) error = "Text input must contain 1–2,000 characters"
+                else if (!accessibility.appendText(value)) error = "No editable non-password field is focused"
+                else result.put("charactersInserted", value.length)
+            }
+            else -> return false
+        }
+        webSocket.send(JSONObject().apply {
+            put("type", "client.result")
+            put("requestId", message.optString("requestId"))
+            put("result", result)
+            if (!error.isNullOrBlank()) put("error", error)
+        }.toString())
+        return true
+    }
     private fun handleDetachedAlarmCommand(webSocket: WebSocket, raw: String): Boolean {
         val message = try { JSONObject(raw) } catch (_: Exception) { return false }
         if (message.optString("type") != "client.command" || message.optString("command") != "alarm") return false
