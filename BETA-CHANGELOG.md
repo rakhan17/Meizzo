@@ -17,6 +17,14 @@ This page tracks the Android v3 beta independently from the stable v2.5.0 channe
 - The tag resolves to the legacy `main` application source, so the published packages do not represent the current v3 interface.
 - The beta.1 package should not be used as the reference build for the v3 Liquid Glass experience.
 
+### Latest validation findings · 12 November 2026
+
+- Both Android apps compile successfully in the current debug CI pipeline.
+- Android 16 emulator launch smoke testing exposed a native `SIGSEGV` on the Client `RenderThread`; an earlier Controller launch check also failed.
+- The crash is consistent with an unstable Backdrop lens shader path. Lens effects have been removed from the Client, Controller, and shared dialog surfaces as a compatibility fix candidate.
+- The revised smoke test now retains full logcat output so any remaining native backtrace is available for diagnosis.
+- The revised build is being re-tested. Neither app is considered launch-validated until both emulator smoke tests pass.
+
 ## Next corrected v3 beta
 
 **Status:** In development on `develop/v3`, not yet published.
