@@ -1734,6 +1734,10 @@ class MainActivity : Activity() {
                 val sessionId = incomingFileSessionId
                 if (resultCode == RESULT_OK && data?.data != null && sessionId != null) {
                     try {
+                        val persistableFlags = (data?.flags ?: 0) and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        if (persistableFlags != 0) {
+                            try { contentResolver.takePersistableUriPermission(destination, persistableFlags) } catch (_: SecurityException) { }
+                        }
                         fileTransferCoordinators[sessionId]?.acceptIncoming(data.data!!)
                     } catch (error: Exception) {
                         fileTransferCoordinators[sessionId]?.rejectIncoming()
