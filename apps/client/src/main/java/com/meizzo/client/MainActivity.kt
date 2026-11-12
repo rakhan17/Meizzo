@@ -225,6 +225,7 @@ class MainActivity : Activity() {
                     pairingCode = pairingCode,
                     statusView = status,
                     darkMode = darkMode,
+                    onCheckForUpdates = { checkForUpdate() },
                     dialog = glassDialog,
                     onDialogConfirm = {
                         val request = glassDialog
