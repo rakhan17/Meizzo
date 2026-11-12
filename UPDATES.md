@@ -6,8 +6,8 @@
 > **Published beta candidate:** `v3.0.0-beta.1` (superseded; built from `main`, not `develop/v3`).  
 > **Corrected beta:** in development on `develop/v3`; no corrected download is published yet.
 
-- [Latest beta release](#v300-beta1--liquid-glass-ui-beta)
-- [Stable release](#v250--stable)
+- [Superseded beta candidate](https://github.com/rakhan17/Meizzo/releases/tag/v3.0.0-beta.1)
+- [Stable release](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
 - [Historical beta releases](#historical-beta-releases)
 - [Architecture and release policy](#architecture-and-release-policy)
 - [Known limitations and test status](#known-limitations-and-test-status)
