@@ -6,25 +6,29 @@ module="${2:-}"
 
 assert_running() {
   local package="$1"
+  local pid=""
+  local activities=""
   sleep 12
-  if ! adb shell pidof "$package" >/dev/null 2>&1 || ! adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | grep -q "$package"; then
+  pid="$(timeout 20s adb shell pidof "$package" 2>/dev/null | tr -d '\r' || true)"
+  activities="$(timeout 20s adb shell dumpsys activity activities 2>/dev/null || true)"
+  if [[ -z "$pid" ]] || ! printf '%s\n' "$activities" | grep -E 'topResumedActivity|mResumedActivity' | grep -F "$package" >/dev/null; then
     echo "::error::${package} MainActivity did not remain resumed after launch"
     echo "Process ID:"
-    adb shell pidof "$package" || true
+    printf '%s\n' "$pid"
     echo "Matching activity records:"
-    adb shell dumpsys activity activities | grep -C 4 -E "$package|topResumedActivity|mResumedActivity" || true
+    printf '%s\n' "$activities" | grep -C 4 -E "$package|topResumedActivity|mResumedActivity" || true
     echo "Full recent logcat (last 500 lines):"
-    adb logcat -d -v time | tail -n 500 || true
+    timeout 20s adb logcat -d -v time | tail -n 500 || true
     return 1
   fi
-  adb shell am force-stop "$package"
+  timeout 20s adb shell am force-stop "$package"
 }
 
 launch_app() {
   local package="$1"
-  adb logcat -c
-  adb shell pm grant "$package" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
-  adb shell am start -W -n "$package/.MainActivity"
+  timeout 15s adb logcat -c
+  timeout 20s adb shell pm grant "$package" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
+  timeout 30s adb shell am start -W -n "$package/.MainActivity"
   assert_running "$package"
 }
 
@@ -44,13 +48,13 @@ case "$mode" in
         exit 2
         ;;
     esac
-    adb install -r "$apk"
+    timeout 60s adb install -r "$apk"
     launch_app "$package"
     ;;
   release)
     tag="${MEIZZO_RELEASE_TAG:?MEIZZO_RELEASE_TAG is required for release smoke tests}"
-    adb install -r "dist/MEIZZO-Client-$tag.apk"
-    adb install -r "dist/MEIZZO-Controller-$tag.apk"
+    timeout 60s adb install -r "dist/MEIZZO-Client-$tag.apk"
+    timeout 60s adb install -r "dist/MEIZZO-Controller-$tag.apk"
     launch_app "com.meizzo.client"
     launch_app "com.meizzo.controller"
     ;;
