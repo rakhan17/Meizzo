@@ -36,6 +36,10 @@ This branch is the isolated development line for MEIZZO 3.x. The v2.5.0 stable l
 | File transfer | Android bidirectional single- and multi-file transfer over an ordered WebRTC DataChannel, with 12 KiB acknowledged chunks, bounded retries, duplicate handling, strict sequence and size validation, final SHA-256 verification, a 50 MiB per-file limit, SAF source/destination grants, progress, and cancellation. Sender and receiver persist checkpoints synchronously before acknowledging each received chunk and resume from the last acknowledged byte offset after a new approved files session. Resume depends on document providers preserving persistable read/write access and supporting append mode; physical-device and cross-network acceptance remain outstanding. |
 | RustDesk engine | Upstream source is pinned at `third_party/rustdesk` (`95cca3f661f635b3cc85c04935fe8d96d8f432ef`) and verified in CI. Native Rust engine, Flutter bridge, and RustDesk server are not yet integrated into MEIZZO runtime. |
 
+## Android Liquid Glass interface (current beta candidate)
+
+The current UI candidate integrates AndroidLiquidGlass / Backdrop 2.0.1 in the shared `apps/glass-ui` Compose module. Controller has Link, Devices, and Settings tabs; successful pairing switches to Devices. Client uses a single pairing-code screen. Shared Liquid Glass surfaces, buttons, toggles, sliders, scroll effects, and app-owned dialogs are used where the upstream library provides implementations. Android system-owned permission/document/install surfaces remain native. The UI candidate's Android Client and Controller debug builds passed CI; signed public release is still a separate gate.
+
 ## Cloudflare signaling deployment
 
 MEIZZO v3 uses the existing shared Worker endpoint:

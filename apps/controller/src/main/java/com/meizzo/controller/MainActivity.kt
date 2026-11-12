@@ -8,6 +8,13 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.ViewGroup
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.core.view.WindowInsetsControllerCompat
 import android.widget.Button
 import android.widget.FrameLayout
 import org.webrtc.SurfaceViewRenderer
@@ -67,6 +74,11 @@ class MainActivity : Activity() {
     private val updateManager by lazy { ControllerUpdateManager(this) }
     private val autoAlertManager by lazy { AutoAlertManager(this) }
     private var pendingUpdateApk: File? = null
+    private var activeTab by mutableIntStateOf(0)
+    private var darkMode by mutableStateOf(true)
+    private var autoAlertSettings by mutableStateOf(AutoAlertManager.Settings(15, 42f, 5, true))
+    private var glassDialog by mutableStateOf<ControllerGlassDialogRequest?>(null)
+    private var uiDevices by mutableStateOf<List<ControllerDeviceUi>>(emptyList())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -133,11 +145,6 @@ class MainActivity : Activity() {
         pairing.addView(uiActionButton("Add device", true) { requestPairing() },
             LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
         content.addView(pairing, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-        content.addView(uiActionButton("Check for updates", false) { checkForUpdate() },
-            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
-        content.addView(uiActionButton("Auto-Alert settings", false) { showAutoAlertSettings() },
-            LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
-
         content.addView(uiEyebrow("YOUR DEVICES").apply {
             setPadding(dp(2), dp(28), 0, dp(8))
         })
@@ -151,10 +158,52 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(105, 105, 113))
             setPadding(0, dp(28), 0, dp(8))
         })
-        setContentView(android.widget.ScrollView(this).apply {
-            isFillViewport = true
-            addView(content)
-            setBackgroundColor(Color.rgb(8, 8, 10))
+        // Keep the existing device-management views and command handlers, but host them
+        // inside the new Compose navigation instead of the legacy one-page layout.
+        (connectionLabel.parent as? ViewGroup)?.removeView(connectionLabel)
+        (summaryLabel.parent as? ViewGroup)?.removeView(summaryLabel)
+        (devicesLayout.parent as? ViewGroup)?.removeView(devicesLayout)
+        val managementView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(summaryLabel, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(16)
+            })
+            addView(devicesLayout, LinearLayout.LayoutParams(-1, -2))
+        }
+        darkMode = preferences.getBoolean("dark_mode", true)
+        applySystemBarAppearance()
+        autoAlertSettings = autoAlertManager.settings()
+        setContentView(ComposeView(this).apply {
+            setContent {
+                ControllerGlassScreen(
+                    darkMode = darkMode,
+                    selectedTab = { activeTab },
+                    onTabSelected = { activeTab = it },
+                    onPair = { value ->
+                        codeInput.setText(value)
+                        requestPairing()
+                    },
+                    connectionView = connectionLabel,
+                    devices = uiDevices,
+                    onDeviceAction = { id, action -> handleDeviceAction(id, action) },
+                    onDarkModeChanged = { enabled ->
+                        darkMode = enabled
+                        preferences.edit().putBoolean("dark_mode", enabled).apply()
+                        applySystemBarAppearance()
+                    },
+                    alertSettings = autoAlertSettings,
+                    onSaveAutoAlertSettings = { settings ->
+                        autoAlertManager.updateSettings(settings)
+                        autoAlertSettings = settings
+                        connectionLabel.text = "● Auto-Alert settings saved"
+                        connectionLabel.setTextColor(Color.rgb(120, 210, 170))
+                    },
+                    onCheckForUpdates = { checkForUpdate() },
+                    dialog = glassDialog,
+                    onDialogConfirm = { glassDialog?.onConfirm?.invoke() },
+                    onDialogDismiss = { glassDialog?.onDismiss?.invoke() }
+                )
+            }
         })
         renderDevices()
         connect()
@@ -166,50 +215,78 @@ class MainActivity : Activity() {
     }
 
 
-    private fun showAutoAlertSettings() {
-        val current = autoAlertManager.settings()
-        val form = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(8), dp(22), 0)
+    private fun applySystemBarAppearance() {
+        val barColor = if (darkMode) Color.rgb(8, 8, 12) else Color.rgb(245, 245, 248)
+        window.statusBarColor = barColor
+        window.navigationBarColor = barColor
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !darkMode
+            isAppearanceLightNavigationBars = !darkMode
         }
-        fun field(label: String, value: String, inputType: Int): EditText {
-            form.addView(TextView(this).apply {
-                text = label; textSize = 13f; setTextColor(Color.LTGRAY)
-                setPadding(0, dp(10), 0, dp(4))
-            })
-            return EditText(this).apply {
-                setSingleLine(true); this.inputType = inputType; setText(value)
-                setTextColor(Color.WHITE); setHintTextColor(Color.GRAY)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.GRAY)
-                form.addView(this)
-            }
-        }
-        val battery = field("Low battery threshold (%)", current.batteryPercent.toString(), 2)
-        val temperature = field("High temperature threshold (°C)", current.temperatureC.toString(), 8194)
-        val offline = field("Offline duration before alert (minutes)", current.offlineMinutes.toString(), 2)
-        val unplugged = android.widget.CheckBox(this).apply {
-            text = "Alert when charger is disconnected"; isChecked = current.chargerUnplugged
-            setTextColor(Color.WHITE); buttonTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
-            form.addView(this)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Auto-Alert thresholds")
-            .setMessage("Alerts are generated on this Controller while MEIZZO is running and receiving device status.")
-            .setView(form)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Save") { _, _ ->
-                val b = battery.text.toString().toIntOrNull()
-                val t = temperature.text.toString().toFloatOrNull()
-                val o = offline.text.toString().toIntOrNull()
-                if (b == null || t == null || o == null || b !in 1..100 || t !in 25f..80f || o !in 1..1440) {
-                    AlertDialog.Builder(this).setTitle("Invalid thresholds")
-                        .setMessage("Use battery 1–100%, temperature 25–80°C, and offline duration 1–1440 minutes.")
-                        .setPositiveButton("OK", null).show()
-                    return@setPositiveButton
+    }
+
+    private fun showGlassPrompt(
+        title: String,
+        message: String,
+        dismissLabel: String = "Cancel",
+        confirmLabel: String = "Continue",
+        onDismiss: () -> Unit = {},
+        onConfirm: () -> Unit
+    ) {
+        runOnUiThread {
+            val id = UUID.randomUUID().toString()
+            glassDialog = ControllerGlassDialogRequest(
+                id = id,
+                title = title,
+                message = message,
+                confirmLabel = confirmLabel,
+                dismissLabel = dismissLabel,
+                onConfirm = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onConfirm()
+                },
+                onDismiss = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onDismiss()
                 }
-                autoAlertManager.updateSettings(AutoAlertManager.Settings(b, t, o, unplugged.isChecked))
-            }
-            .show()
+            )
+        }
+    }
+
+    private fun showGlassInputPrompt(
+        title: String,
+        message: String,
+        initialValue: String = "",
+        inputHint: String,
+        maxLength: Int = 10_000,
+        dismissLabel: String = "Cancel",
+        confirmLabel: String = "Continue",
+        onConfirm: (String) -> Unit
+    ) {
+        runOnUiThread {
+            var currentValue = initialValue
+            val id = UUID.randomUUID().toString()
+            glassDialog = ControllerGlassDialogRequest(
+                id = id,
+                title = title,
+                message = message,
+                confirmLabel = confirmLabel,
+                dismissLabel = dismissLabel,
+                inputValue = currentValue,
+                inputHint = inputHint,
+                onInputChanged = { value ->
+                    currentValue = value.take(maxLength)
+                    if (glassDialog?.id == id) glassDialog = glassDialog?.copy(inputValue = currentValue)
+                },
+                onConfirm = {
+                    if (glassDialog?.id == id) glassDialog = null
+                    onConfirm(currentValue)
+                },
+                onDismiss = {
+                    if (glassDialog?.id == id) glassDialog = null
+                }
+            )
+        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -251,23 +328,25 @@ class MainActivity : Activity() {
         super.onResume()
         val pending = pendingUpdateApk ?: return
         if (updateManager.canInstallPackages()) {
-            AlertDialog.Builder(this)
-                .setTitle("Update ready to install")
-                .setMessage("MEIZZO has permission to start the Android installer. Confirm installation to continue.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Install") { _, _ ->
+            showGlassPrompt(
+                title = "Update ready to install",
+                message = "MEIZZO has permission to start the Android installer. Confirm installation to continue.",
+                dismissLabel = "Later",
+                confirmLabel = "Install",
+                onConfirm = {
                     pendingUpdateApk = null
                     updateManager.install(pending)
                 }
-                .show()
+            )
         } else {
             setConnection("Install permission is required to continue.", false)
-            AlertDialog.Builder(this)
-                .setTitle("Allow app updates")
-                .setMessage("Enable 'Allow from this source' for MEIZZO in Android settings, then return here.")
-                .setNegativeButton("Later", null)
-                .setPositiveButton("Open settings") { _, _ -> updateManager.requestInstallPermission() }
-                .show()
+            showGlassPrompt(
+                title = "Allow app updates",
+                message = "Enable 'Allow from this source' for MEIZZO in Android settings, then return here.",
+                dismissLabel = "Later",
+                confirmLabel = "Open settings",
+                onConfirm = { updateManager.requestInstallPermission() }
+            )
         }
     }
 
@@ -319,16 +398,17 @@ class MainActivity : Activity() {
                                 if (commandResult.has("clipboardText")) {
                                     val clipboardText = commandResult.optString("clipboardText")
                                     runOnUiThread {
-                                        AlertDialog.Builder(this@MainActivity)
-                                            .setTitle("Client clipboard")
-                                            .setMessage(if (clipboardText.isBlank()) "(The Client clipboard is empty or contains no text.)" else clipboardText)
-                                            .setNegativeButton("Close", null)
-                                            .setPositiveButton("Copy here") { _, _ ->
+                                        showGlassPrompt(
+                                            title = "Client clipboard",
+                                            message = if (clipboardText.isBlank()) "(The Client clipboard is empty or contains no text.)" else clipboardText,
+                                            dismissLabel = "Close",
+                                            confirmLabel = "Copy here",
+                                            onConfirm = {
                                                 getSystemService(android.content.ClipboardManager::class.java)
                                                     .setPrimaryClip(android.content.ClipData.newPlainText("MEIZZO Client", clipboardText))
                                                 setConnection("Client clipboard copied to Controller", true)
                                             }
-                                            .show()
+                                        )
                                     }
                                 } else if (commandResult.has("files")) {
                                     runOnUiThread { showRemoteFileBrowser(id, commandResult) }
@@ -433,7 +513,14 @@ class MainActivity : Activity() {
     private fun requestPairing() {
         val code = codeInput.text.toString()
         if (!Regex("\\d{6}").matches(code)) {
-            connectionLabel.text = "● Enter exactly six digits"; return
+            showGlassPrompt(
+                title = "Invalid pairing code",
+                message = "Enter the six-digit code shown on the MEIZZO Client.",
+                dismissLabel = "Got it",
+                confirmLabel = "Okay",
+                onConfirm = {}
+            )
+            return
         }
         socket?.send(JSONObject().apply {
             put("type", "controller.request_pairing"); put("controllerId", controllerId); put("pairingCode", code)
@@ -452,9 +539,18 @@ class MainActivity : Activity() {
                 put("clientId", clientId); put("authToken", token)
             }.toString())
             updateDevice(message)
-            runOnUiThread { connectionLabel.text = "● Pairing complete · Client is awaiting presence" }
+            runOnUiThread {
+                connectionLabel.text = "● Pairing complete · Client is awaiting presence"
+                activeTab = 1
+            }
             renderDevices()
-        } else runOnUiThread { connectionLabel.text = "● Pairing ${message.optString("status")}: ${message.optString("reason")}" }
+        } else showGlassPrompt(
+            title = "Pairing unsuccessful",
+            message = message.optString("reason").ifBlank { "Pairing could not be completed. Check the code and try again." },
+            dismissLabel = "Close",
+            confirmLabel = "Try again",
+            onConfirm = { activeTab = 0 }
+        )
     }
 
     private fun updateDevice(message: JSONObject) {
@@ -469,17 +565,72 @@ class MainActivity : Activity() {
     }
 
     private fun renderDevices() = runOnUiThread {
-        devicesLayout.removeAllViews()
         val online = devices.values.count { it.optString("status") == "online" }
         summaryLabel.text = "${devices.size} paired · $online online · ${devices.size - online} offline"
-        if (devices.isEmpty()) {
-            devicesLayout.addView(TextView(this).apply {
-                text = "No paired Clients yet.\nEnter the six-digit code shown on a Client to get started."
-                textSize = 17f; setTextColor(Color.LTGRAY); setPadding(0, 28, 0, 0)
-            })
-            return@runOnUiThread
+        uiDevices = devices.values.map { device ->
+            val id = device.optString("clientId")
+            val metadata = device.optJSONObject("metadata") ?: JSONObject()
+            val telemetry = metadata.optJSONObject("telemetry") ?: JSONObject()
+            ControllerDeviceUi(
+                id = id,
+                name = metadata.optString("alias").ifBlank { metadata.optString("model").ifBlank { id } },
+                online = device.optString("status") == "online",
+                platform = metadata.optString("platform").ifBlank { "Android device" },
+                battery = if (telemetry.has("batteryPercent")) "${telemetry.optInt("batteryPercent").coerceIn(0, 100)}%" else "Unavailable",
+                network = telemetry.optString("network").ifBlank { "Network unavailable" },
+                hasLocation = telemetry.optJSONObject("lastKnownLocation") != null,
+                mediaActive = pendingMediaRequests.contains(id) || activeMediaSessions.values.contains(id),
+                interactionActive = approvedInteractionSessions.containsKey(id),
+                interactionPending = pendingInteractionSessions.containsKey(id)
+            )
         }
-        devices.values.forEach { addDeviceCard(it) }
+        if (devices.isNotEmpty()) activeTab = 1
+    }
+
+    private fun handleDeviceAction(clientId: String, action: String) {
+        when (action) {
+            "details" -> devices[clientId]?.let { showDetails(it) }
+            "rename" -> rename(clientId, devices[clientId]?.optJSONObject("metadata")?.optString("alias").orEmpty())
+            "screen", "camera", "files" -> {
+                if (devices[clientId]?.optString("status") == "online") requestMediaSession(clientId, action)
+                else setConnection("Client is offline", false)
+            }
+            "interaction" -> {
+                val sessionId = approvedInteractionSessions[clientId]
+                when {
+                    sessionId != null -> endInteraction(clientId, sessionId)
+                    pendingInteractionSessions.containsKey(clientId) -> setConnection("Waiting for Client approval", false)
+                    else -> requestInteraction(clientId)
+                }
+            }
+            "back", "home", "recents", "notifications", "quick_settings", "power_dialog", "lock_screen",
+            "volume_up", "volume_down", "volume_mute", "volume_unmute", "camera_flip",
+            "key_backspace", "key_enter", "key_tab", "key_escape" -> sendInteractionAction(clientId, action, JSONObject())
+            "new_line" -> sendInteractionAction(clientId, "text_input", JSONObject().put("text", "\n"))
+            "location" -> devices[clientId]?.optJSONObject("metadata")?.optJSONObject("telemetry")
+                ?.optJSONObject("lastKnownLocation")?.let { openLastKnownLocation(it) }
+                ?: setConnection("Last known location is unavailable", false)
+            "flashlight_on" -> sendDeviceCommand(clientId, "flashlight", true)
+            "flashlight_off" -> sendDeviceCommand(clientId, "flashlight", false)
+            "alarm_on" -> sendDeviceCommand(clientId, "alarm", true)
+            "alarm_off" -> sendDeviceCommand(clientId, "alarm", false)
+            "browse_files" -> {
+                remoteFileBrowseStacks.remove(clientId)
+                sendClientCommand(clientId, "file_browse", JSONObject())
+            }
+            "clipboard_read" -> sendClientCommand(clientId, "clipboard_read", JSONObject())
+            "clipboard_write" -> showClipboardWriteDialog(clientId)
+            "controller_clipboard" -> sendControllerClipboard(clientId)
+            "tap" -> showTapDialog(clientId)
+            "swipe" -> showSwipeDialog(clientId)
+            "emergency" -> composeEmergencyMessage(clientId)
+            "text" -> showRemoteTextDialog(clientId)
+            "clipboard_write" -> showClipboardWriteDialog(clientId)
+            "controller_clipboard" -> sendControllerClipboard(clientId)
+            "tap" -> showTapDialog(clientId)
+            "swipe" -> showSwipeDialog(clientId)
+            else -> setConnection("Unsupported device action", false)
+        }
     }
 
     private fun addDeviceCard(device: JSONObject) {
@@ -695,10 +846,13 @@ class MainActivity : Activity() {
                 append("No location shared. Enable Find My location on the Client first.")
             }
         }
-        AlertDialog.Builder(this).setTitle(metadata.optString("alias").ifBlank { id }).setMessage(text)
-            .setPositiveButton("Refresh telemetry") { _, _ -> sendSnapshot(id) }
-            .setNeutralButton("Rename") { _, _ -> rename(id, metadata.optString("alias")) }
-            .setNegativeButton("Close", null).show()
+        showGlassPrompt(
+            title = metadata.optString("alias").ifBlank { id },
+            message = text,
+            dismissLabel = "Close",
+            confirmLabel = "Refresh telemetry",
+            onConfirm = { sendSnapshot(id) }
+        )
     }
 
     private fun formatBytes(bytes: Long): String {
@@ -743,14 +897,24 @@ class MainActivity : Activity() {
     }
 
     private fun rename(clientId: String, current: String) {
-        val input = EditText(this).apply { setText(current); hint = "Device name" }
-        AlertDialog.Builder(this).setTitle("Rename device").setView(input)
-            .setNegativeButton("Cancel", null).setPositiveButton("Save") { _, _ ->
+        showGlassInputPrompt(
+            title = "Rename device",
+            message = "Choose a name for this paired Client.",
+            initialValue = current,
+            inputHint = "Device name",
+            maxLength = 64,
+            confirmLabel = "Save"
+        ) { value ->
+            if (value.isBlank()) {
+                setConnection("Device name cannot be empty", false)
+            } else {
                 socket?.send(JSONObject().apply {
-                    put("type", "controller.rename_device"); put("clientId", clientId)
-                    put("alias", input.text.toString().trim())
+                    put("type", "controller.rename_device")
+                    put("clientId", clientId)
+                    put("alias", value.trim())
                 }.toString())
-            }.show()
+            }
+        }
     }
 
     private fun handleSessionStatus(message: JSONObject) = runOnUiThread {
@@ -1146,13 +1310,13 @@ class MainActivity : Activity() {
                                 incomingFileSessionId = sessionId
                                 incomingFileName = name
                                 incomingFileMime = mime
-                                AlertDialog.Builder(this)
-                                    .setTitle("Receive file?")
-                                    .setMessage("$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to the Controller?")
-                                    .setNegativeButton("Decline") { _, _ ->
-                                        fileTransferCoordinators[sessionId]?.rejectIncoming()
-                                    }
-                                    .setPositiveButton("Choose destination") { _, _ ->
+                                showGlassPrompt(
+                                    title = "Receive file?",
+                                    message = "$name · ${if (size >= 0) "${size / 1024} KB" else "size unknown"}\nSave this file to the Controller?",
+                                    dismissLabel = "Decline",
+                                    confirmLabel = "Choose destination",
+                                    onDismiss = { fileTransferCoordinators[sessionId]?.rejectIncoming() },
+                                    onConfirm = {
                                         startActivityForResult(
                                             android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
                                                 addCategory(android.content.Intent.CATEGORY_OPENABLE)
@@ -1162,7 +1326,7 @@ class MainActivity : Activity() {
                                             fileSaveRequestCode
                                         )
                                     }
-                                    .show()
+                                )
                             }
                         },
                         { message -> runOnUiThread { setConnection(message, true) } }
@@ -1280,100 +1444,86 @@ class MainActivity : Activity() {
     }
 
     private fun composeEmergencyMessage(clientId: String) {
-        val input = EditText(this).apply {
-            hint = "This phone is lost. Please call…"
-            minLines = 2
-            maxLines = 4
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            filters = arrayOf(android.text.InputFilter.LengthFilter(240))
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Send emergency message")
-            .setMessage("MEIZZO will post this as a notification on the Client. Lock-screen visibility depends on that device's Android notification settings.")
-            .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Send") { _, _ ->
-                val message = input.text.toString().trim()
-                if (message.isBlank()) {
-                    setConnection("Emergency message cannot be empty", false)
-                    return@setPositiveButton
-                }
+        showGlassInputPrompt(
+            title = "Send emergency message",
+            message = "MEIZZO will post this as a notification on the Client. Lock-screen visibility depends on that device's Android notification settings.",
+            inputHint = "This phone is lost. Please call…",
+            maxLength = 240,
+            confirmLabel = "Send"
+        ) { message ->
+            if (message.isBlank()) {
+                setConnection("Emergency message cannot be empty", false)
+            } else {
                 socket?.send(JSONObject().apply {
                     put("type", "controller.command")
                     put("clientId", clientId)
                     put("command", "emergency_message")
-                    put("parameters", JSONObject().put("message", message))
+                    put("parameters", JSONObject().put("message", message.trim()))
                 }.toString())
                 setConnection("Emergency message sent to Client", true)
             }
-            .show()
+        }
     }
 
     private fun showRemoteCreateFolderDialog(clientId: String, parentDocumentId: String) {
-        val input = EditText(this).apply {
-            hint = "Folder name"
-            filters = arrayOf(android.text.InputFilter.LengthFilter(128))
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Create remote folder")
-            .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Create") { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isBlank() || name.contains('/') || name.contains('\\')) {
-                    setConnection("Enter a valid folder name without path separators", false)
-                } else {
-                    sendClientCommand(
-                        clientId,
-                        "file_create_directory",
-                        JSONObject().put("parentDocumentId", parentDocumentId).put("newName", name)
-                    )
-                }
+        showGlassInputPrompt(
+            title = "Create remote folder",
+            message = "Create a folder inside the shared directory on the Client.",
+            inputHint = "Folder name",
+            maxLength = 128,
+            confirmLabel = "Create"
+        ) { name ->
+            val value = name.trim()
+            if (value.isBlank() || value.contains('/') || value.contains('\\')) {
+                setConnection("Enter a valid folder name without path separators", false)
+            } else {
+                sendClientCommand(
+                    clientId,
+                    "file_create_directory",
+                    JSONObject().put("parentDocumentId", parentDocumentId).put("newName", value)
+                )
             }
-            .show()
+        }
     }
 
     private fun showRemoteRenameDialog(clientId: String, item: JSONObject) {
         val currentName = item.optString("name")
-        val input = EditText(this).apply {
-            setText(currentName)
-            selectAll()
-            hint = "New file or folder name"
-            filters = arrayOf(android.text.InputFilter.LengthFilter(128))
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Rename remote item")
-            .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Rename") { _, _ ->
-                val newName = input.text.toString().trim()
-                if (newName.isBlank() || newName.contains('/') || newName.contains('\\')) {
-                    setConnection("Enter a valid name without path separators", false)
-                } else {
-                    sendClientCommand(
-                        clientId,
-                        "file_rename",
-                        JSONObject().put("documentId", item.optString("documentId")).put("newName", newName)
-                    )
-                }
+        showGlassInputPrompt(
+            title = "Rename remote item",
+            message = "Enter a new name for this file or folder.",
+            initialValue = currentName,
+            inputHint = "New file or folder name",
+            maxLength = 128,
+            confirmLabel = "Rename"
+        ) { newName ->
+            val value = newName.trim()
+            if (value.isBlank() || value.contains('/') || value.contains('\\')) {
+                setConnection("Enter a valid name without path separators", false)
+            } else {
+                sendClientCommand(
+                    clientId,
+                    "file_rename",
+                    JSONObject().put("documentId", item.optString("documentId")).put("newName", value)
+                )
             }
-            .show()
+        }
     }
 
     private fun confirmRemoteDelete(clientId: String, item: JSONObject) {
         val name = item.optString("name", "this file")
-        AlertDialog.Builder(this)
-            .setTitle("Delete remote file?")
-            .setMessage("Delete $name permanently? The Client must approve this operation too.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Continue") { _, _ ->
+        showGlassPrompt(
+            title = "Delete remote file?",
+            message = "Delete $name permanently? The Client must approve this operation too.",
+            dismissLabel = "Cancel",
+            confirmLabel = "Continue",
+            onConfirm = {
                 sendClientCommand(
                     clientId,
                     "file_delete",
                     JSONObject().put("documentId", item.optString("documentId"))
                 )
             }
-            .show()
+        )
     }
 
     private fun showRemoteFileBrowser(clientId: String, result: JSONObject) {
@@ -1507,24 +1657,16 @@ class MainActivity : Activity() {
     }
 
     private fun showClipboardWriteDialog(clientId: String) {
-        val input = EditText(this).apply {
-            hint = "Text to place on the Client clipboard"
-            minLines = 3
-            maxLines = 6
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            filters = arrayOf(android.text.InputFilter.LengthFilter(10_000))
+        showGlassInputPrompt(
+            title = "Send text to Client clipboard",
+            message = "The Client must approve this request before its clipboard is replaced.",
+            inputHint = "Text to place on the Client clipboard",
+            maxLength = 10_000,
+            confirmLabel = "Send"
+        ) { value ->
+            if (value.isBlank()) setConnection("Clipboard text cannot be empty", false)
+            else sendClientCommand(clientId, "clipboard_write", JSONObject().put("text", value))
         }
-        AlertDialog.Builder(this)
-            .setTitle("Send text to Client clipboard")
-            .setMessage("The Client must approve this request before its clipboard is replaced.")
-            .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Send") { _, _ ->
-                val value = input.text.toString()
-                if (value.isBlank()) setConnection("Clipboard text cannot be empty", false)
-                else sendClientCommand(clientId, "clipboard_write", JSONObject().put("text", value))
-            }
-            .show()
     }
 
     private fun sendClientCommand(clientId: String, command: String, parameters: JSONObject) {
@@ -1554,27 +1696,16 @@ class MainActivity : Activity() {
     }
 
     private fun showRemoteTextDialog(clientId: String) {
-        val input = EditText(this).apply {
-            hint = "Text to insert on the Client"
-            minLines = 3
-            maxLines = 6
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            filters = arrayOf(android.text.InputFilter.LengthFilter(2_000))
+        showGlassInputPrompt(
+            title = "Remote keyboard · text input",
+            message = "Place the cursor in a text field on the Client first. MEIZZO appends the text there. Password fields are blocked, and Android may reject unsupported custom editors.",
+            inputHint = "Text to insert on the Client",
+            maxLength = 2_000,
+            confirmLabel = "Insert"
+        ) { value ->
+            if (value.isBlank()) setConnection("Text input cannot be empty", false)
+            else sendInteractionAction(clientId, "text_input", JSONObject().put("text", value))
         }
-        AlertDialog.Builder(this)
-            .setTitle("Remote keyboard · text input")
-            .setMessage("Place the cursor in a text field on the Client first. MEIZZO appends the text there. Password fields are blocked, and Android may reject unsupported custom editors.")
-            .setView(input)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Insert") { _, _ ->
-                val value = input.text.toString()
-                if (value.isBlank()) {
-                    setConnection("Text input cannot be empty", false)
-                } else {
-                    sendInteractionAction(clientId, "text_input", JSONObject().put("text", value))
-                }
-            }
-            .show()
     }
 
     private fun sendDeviceCommand(clientId: String, command: String, enabled: Boolean) {
@@ -1615,64 +1746,47 @@ class MainActivity : Activity() {
     }
 
     private fun showTapDialog(clientId: String) {
-        val x = coordinateField("X position (0.0 to 1.0)")
-        val y = coordinateField("Y position (0.0 to 1.0)")
-        val fields = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(x)
-            addView(y)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Tap Client screen")
-            .setMessage("Coordinates are normalized: (0,0) is top-left and (1,1) is bottom-right.")
-            .setView(fields)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Send tap") { _, _ ->
-                val nx = x.text.toString().toDoubleOrNull()
-                val ny = y.text.toString().toDoubleOrNull()
-                if (nx == null || ny == null || nx !in 0.0..1.0 || ny !in 0.0..1.0) {
-                    setConnection("Enter valid X and Y values from 0 to 1", false)
-                } else {
-                    sendInteractionAction(clientId, "tap", JSONObject().put("x", nx).put("y", ny))
-                }
+        showGlassInputPrompt(
+            title = "Tap Client screen",
+            message = "Enter normalized coordinates. (0,0) is top-left and (1,1) is bottom-right.",
+            initialValue = "0.5, 0.5",
+            inputHint = "X, Y (0.0 to 1.0)",
+            maxLength = 40,
+            confirmLabel = "Send tap"
+        ) { value ->
+            val coordinates = value.split(',').map { it.trim().toDoubleOrNull() }
+            val x = coordinates.getOrNull(0)
+            val y = coordinates.getOrNull(1)
+            if (x == null || y == null || x !in 0.0..1.0 || y !in 0.0..1.0) {
+                setConnection("Enter valid X and Y values from 0 to 1", false)
+            } else {
+                sendInteractionAction(clientId, "tap", JSONObject().put("x", x).put("y", y))
             }
-            .show()
+        }
     }
 
     private fun showSwipeDialog(clientId: String) {
-        val startX = coordinateField("Start X (0.0 to 1.0)")
-        val startY = coordinateField("Start Y (0.0 to 1.0)")
-        val endX = coordinateField("End X (0.0 to 1.0)")
-        val endY = coordinateField("End Y (0.0 to 1.0)")
-        val fields = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(startX)
-            addView(startY)
-            addView(endX)
-            addView(endY)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Swipe Client screen")
-            .setMessage("Coordinates are normalized from 0 to 1 across the Client display.")
-            .setView(fields)
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Send swipe") { _, _ ->
-                val values = listOf(startX, startY, endX, endY).map { it.text.toString().toDoubleOrNull() }
-                if (values.any { it == null || it !in 0.0..1.0 }) {
-                    setConnection("Enter four valid coordinate values from 0 to 1", false)
-                } else {
-                    sendInteractionAction(clientId, "swipe", JSONObject().apply {
-                        put("startX", values[0])
-                        put("startY", values[1])
-                        put("endX", values[2])
-                        put("endY", values[3])
-                        put("durationMs", 350)
-                    })
-                }
+        showGlassInputPrompt(
+            title = "Swipe Client screen",
+            message = "Enter start X, start Y, end X, end Y as normalized coordinates from 0 to 1.",
+            initialValue = "0.2, 0.5, 0.8, 0.5",
+            inputHint = "Start X, Start Y, End X, End Y",
+            maxLength = 80,
+            confirmLabel = "Send swipe"
+        ) { value ->
+            val points = value.split(',').map { it.trim().toDoubleOrNull() }
+            if (points.size != 4 || points.any { it == null || it !in 0.0..1.0 }) {
+                setConnection("Enter four valid coordinate values from 0 to 1", false)
+            } else {
+                sendInteractionAction(clientId, "swipe", JSONObject().apply {
+                    put("startX", points[0])
+                    put("startY", points[1])
+                    put("endX", points[2])
+                    put("endY", points[3])
+                    put("durationMs", 350)
+                })
             }
-            .show()
+        }
     }
 
     private fun sendInteractionAction(clientId: String, command: String, parameters: JSONObject) {
@@ -1792,14 +1906,14 @@ class MainActivity : Activity() {
                         "APK size: ${formatUpdateSize(available.assetSize)}\n" +
                         "Published: ${updateManager.formatDate(available.publishedAt)}\n\n" +
                         available.notes
-                    AlertDialog.Builder(this)
-                        .setTitle("MEIZZO update · ${available.tag}")
-                        .setMessage(details)
-                        .setNegativeButton("Later") { _, _ ->
-                            setUpdateStatus("Update available · ${available.versionName}")
-                        }
-                        .setPositiveButton("Download") { _, _ -> downloadUpdate(available) }
-                        .show()
+                    showGlassPrompt(
+                        title = "MEIZZO update · ${available.tag}",
+                        message = details,
+                        dismissLabel = "Later",
+                        confirmLabel = "Download",
+                        onDismiss = { setUpdateStatus("Update available · ${available.versionName}") },
+                        onConfirm = { downloadUpdate(available) }
+                    )
                 }
             }
         }
@@ -1815,19 +1929,17 @@ class MainActivity : Activity() {
                     setUpdateStatus("Update failed · ${error.message ?: "verification error"}")
                 }.onSuccess { apk ->
                     setUpdateStatus("Update verified · awaiting installation")
-                    AlertDialog.Builder(this)
-                        .setTitle("Install ${release.versionName}?")
-                        .setMessage(
-                            "Package ID, version, file size, SHA-256, and signing certificate were verified. " +
-                                "Android will show the final installation confirmation."
-                        )
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Install") { _, _ ->
+                    showGlassPrompt(
+                        title = "Install ${release.versionName}?",
+                        message = "Package ID, version, file size, SHA-256, and signing certificate were verified. Android will show the final installation confirmation.",
+                        dismissLabel = "Cancel",
+                        confirmLabel = "Install",
+                        onConfirm = {
                             pendingUpdateApk = apk
                             updateManager.install(apk)
                             if (updateManager.canInstallPackages()) pendingUpdateApk = null
                         }
-                        .show()
+                    )
                 }
             }
         }

@@ -59,6 +59,8 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: yes | sdkmanager --licenses >/dev/null || true
+      - name: Install Android 17 preview SDK required by Backdrop 2.0.1
+        run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - run: ./gradlew -Pmeizzo.debugSignalingUrl="${{ inputs.debug_signaling_url || 'wss://meizzo-signaling.rakhanatanox.workers.dev' }}" :apps:${{ matrix.module }}:assembleDebug
       - run: |
           mkdir -p dist

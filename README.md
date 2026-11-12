@@ -18,13 +18,13 @@ A consent-first device assistance platform with separate Android Client and
 Controller apps, authenticated signaling, device presence, telemetry, and
 session-scoped authorization.
 
-[Downloads](#downloads) · [Documentation](#documentation) ·
-[Architecture](#architecture) · [Security](#security-and-assurance) ·
+[Downloads](#downloads) · [Documentation](#documentation) · [Architecture](#architecture) ·
+[Security](#security-and-assurance) · [Updates & changelog](UPDATES.md) ·
 [Licensing](THIRD_PARTY_NOTICES.md) · [Releases](https://github.com/rakhan17/Meizzo/releases)
 
 </div>
 
- > **Current stable channel: Android v2.5.0.** The release is published. MEIZZO v3 is being developed separately on `develop/v3`, beginning at `v3.0.0-beta.1`. v3 media features are Android prototypes and still require physical-device and cross-network acceptance testing. iOS remains under development.
+ > **Stable:** Android `v2.5.0` remains the supported stable baseline. **Beta:** the v3 development line targets `v3.0.0-beta.1`; its Android debug builds are available from CI for evaluation, while the signed GitHub prerelease is pending release publication. Beta builds are experimental and require physical-device and cross-network acceptance testing. iOS remains a separate development/Simulator track.
 
 ## What is MEIZZO?
 
@@ -68,14 +68,14 @@ clearly marked as prerelease software.
 
 #### Beta
 
-<sub>**V3 BETA LINE** · `v3.0.0-beta.1` · Development channel; not yet published.</sub>
+<sub>**V3 BETA CANDIDATE** · `3.0.0-beta.1` · Android debug CI builds verified; signed prerelease publication pending.</sub>
 
-| App | Purpose | Download |
+| App | Purpose | Build |
 |:--|:--|:--|
-| **MEIZZO Client** | Install on the device receiving assistance | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
-| **MEIZZO Controller** | Install on the operator device | ![Coming soon](https://img.shields.io/badge/NEXT%20BETA-UNDER%20DEVELOPMENT-777777?style=for-the-badge&logo=android&logoColor=white) |
+| **MEIZZO Client** | Install on the device receiving assistance | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-client-debug` |
+| **MEIZZO Controller** | Install on the operator device | [Download CI artifact](https://github.com/rakhan17/Meizzo/actions/runs/43144166641) · `meizzo-controller-debug` |
 
-> The v3 beta will be published only after remote media and file transfer pass physical-device, cross-network, security, and release verification.
+These are **debug APKs**, not signed public-release packages. GitHub may require sign-in to download workflow artifacts. The signed beta release will be linked here after release validation and publication. Do not install a debug APK over a stable build if Android reports a signing-certificate mismatch.
 ### iOS
 
 iOS is still in development. Simulator builds are useful for engineering
@@ -101,7 +101,19 @@ or represented as IPA files. See the [iOS guide](docs/ios-guide.md).
 
 ## Product capabilities
 
-### Android v3 development capabilities (not in v2.5.0 stable)
+### Android v3 beta capabilities (not in v2.5.0 stable)
+
+#### Interface and interaction design
+
+- Android Controller uses three tabs: **Link**, **Devices**, and **Settings**. Link is dedicated to entering the six-digit pairing code; successful pairing automatically opens Devices.
+- Devices provides per-Client presence, device actions, remote-session entry points, and management controls.
+- Settings includes light/dark appearance selection and Auto-Alert configuration.
+- Android Client presents a focused single-screen pairing-code experience.
+- Both apps use upstream **AndroidLiquidGlass / Backdrop 2.0.1** effects and official upstream sample components for Liquid Glass surfaces, buttons, bottom tabs, toggles, and sliders. Shared integration lives in `apps/glass-ui`.
+- App-owned confirmations, warnings, and input prompts use the shared Liquid Glass dialog surface. Android-owned permission pickers and document/media system UI remain native OS surfaces.
+- The design is iOS-inspired, not an Apple UI clone: Android system typography and platform permission conventions are retained.
+
+#### Device and remote-assistance capabilities
 
 - Six-digit pairing codes with a short lifetime and single-use behavior.
 - Explicit approval on the Client before a Controller is paired.
@@ -148,21 +160,30 @@ See [v3 implementation status](docs/v3/README.md),
 
 ## Architecture
 
-MEIZZO separates its control plane from its peer-to-peer media plane. Pairing,
+MEIZZO separates its control plane, media plane, and presentation layer. Pairing,
 authentication, presence, telemetry, commands, and session authorization use
-WebSocket Secure (WSS) through the Cloudflare Worker and Durable Object. After
-the Client approves a screen, camera, or file session, the Android apps
-negotiate a direct WebRTC connection using the signaling channel. STUN is the fallback. The Worker can issue short-lived Cloudflare TURN credentials when its secrets are configured; production TURN setup remains outstanding.
+WebSocket Secure (WSS) through the existing Cloudflare Worker and Durable Object.
+After the Client approves a screen, camera, or file session, Android peers
+negotiate WebRTC using WSS for offer/answer/ICE signaling; media and file bytes
+travel over WebRTC, not through the Worker. STUN is configured. The Worker can
+issue short-lived Cloudflare TURN credentials when its secrets are configured;
+TURN availability and restrictive-network traversal still require deployment
+and real-network validation. The Android presentation layer is a shared
+Compose module (`apps/glass-ui`) built on AndroidLiquidGlass 2.0.1 Backdrop
+effects and official upstream sample components.
 
 ```mermaid
 flowchart LR
   subgraph Devices
-    C[Android Client]
-    O[Android Controller]
+    C[Android Client<br/>single pairing-code screen]
+    O[Android Controller<br/>Link · Devices · Settings]
     CS[Client foreground service]
     OS[Controller foreground service]
+    UI[Shared Compose Liquid Glass UI<br/>Backdrop 2.0.1]
     C --- CS
     O --- OS
+    UI -.-> C
+    UI -.-> O
   end
 
   subgraph ControlPlane["MEIZZO control plane"]
@@ -215,7 +236,8 @@ separately approved interaction session and user-enabled AccessibilityService.
 
 | Layer | Current implementation |
 |---|---|
-| Android apps | Kotlin, separate Client and Controller modules |
+| Android apps | Kotlin, Jetpack Compose, separate Client and Controller modules |
+| Android UI system | Shared `apps/glass-ui` module, AndroidLiquidGlass / Backdrop 2.0.1, upstream LiquidBottomTabs / LiquidButton / LiquidToggle / LiquidSlider examples |
 | Android connection lifecycle | Foreground services, reconnect backoff, boot receivers |
 | Android credential storage | AES-GCM protected values using Android Keystore keys |
 | iOS apps | SwiftUI Client and Controller targets; development/Simulator track |
@@ -238,7 +260,8 @@ restart. See [architecture](docs/architecture.md) and
 | Path | Responsibility |
 |---|---|
 | `apps/client` | Android Client app, pairing approval, telemetry, commands |
-| `apps/controller` | Android Controller app, device list, session controls |
+| `apps/controller` | Android Controller app, three-tab navigation, device management and session controls |
+| `apps/glass-ui` | Shared Liquid Glass surfaces, dialogs, theme integration and upstream Backdrop components |
 | `ios/Client` | SwiftUI iOS Client target |
 | `ios/Controller` | SwiftUI iOS Controller target |
 | `ios/Shared` | Shared iOS networking and secure-storage code |
@@ -267,6 +290,7 @@ restart. See [architecture](docs/architecture.md) and
 ### For developers and operators
 
 - [System architecture](docs/architecture.md)
+- [Beta update log](UPDATES.md)
 - [Protocol and API reference](docs/api-reference.md)
 - [Android development](docs/android-guide.md)
 - [iOS development](docs/ios-guide.md)
@@ -314,13 +338,15 @@ remain release-readiness work. Report vulnerabilities privately using
 
 ## Testing and release evidence
 
-The v2.5.0 Android stable release is published with separate Client and Controller APKs. The v3 development branch now adds WebRTC screen/camera streaming, optional two-way voice, remote input and system navigation, manual clipboard transfer, remote folder management, and bidirectional multi-file transfer. CI builds both Android apps and runs signaling regression tests; automated builds do not replace real-device and cross-network validation.
+The Android stable release remains `v2.5.0` with its original Client and Controller APKs. The v3 beta candidate adds the Android remote-assistance prototype set (screen/camera streaming, optional two-way microphone audio, remote interaction and navigation, manual clipboard, remote file management and bidirectional file transfer) plus the new Liquid Glass UI. The current head passed Android Client and Controller debug builds, RustDesk source/license checks, signaling contract tests, and documentation validation. The iOS Simulator workflow also passed, but this UI task does not add iOS feature parity. Debug CI artifacts are not signed release APKs and do not replace physical-device, multi-network, or security acceptance.
 
 Relevant workflow runs:
 
-- [Android and signaling CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246894)
-- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/42946246991)
-- [Android beta.5 release](https://github.com/rakhan17/Meizzo/actions/runs/42948592178)
+- [Android Client + Controller CI, Liquid Glass beta candidate](https://github.com/rakhan17/Meizzo/actions/runs/43144166641)
+- [iOS Simulator CI](https://github.com/rakhan17/Meizzo/actions/runs/43144166627)
+- [Documentation validation](https://github.com/rakhan17/Meizzo/actions/runs/43144166568)
+- [Published stable v2.5.0](https://github.com/rakhan17/Meizzo/releases/tag/v2.5.0)
+- [All historical and future releases](https://github.com/rakhan17/Meizzo/releases)
 
 **Release provenance note:** beta.5 was built by workflow run `42948592178`
 from source commit `8ddb147c4af628a5166f455c6b58b4d4fbe3dc66`, while the
@@ -337,7 +363,7 @@ Automated success does not replace real-device acceptance testing. See
 ### Requirements
 
 - JDK 17
-- Android SDK 35 or newer compatible SDK packages
+- Android SDK Platform 37 and Build Tools 37.0.0 for the current Backdrop 2.0.1 UI integration (CI also installs Android 35 packages)
 - Node.js 22 for signaling tests and local backend
 - Xcode and XcodeGen for iOS Simulator development
 - Python 3.12 for documentation checks
@@ -388,6 +414,7 @@ See [development setup](docs/development.md) for complete instructions.
 - [x] Bidirectional WebRTC DataChannel file-transfer prototype
 - [x] Android background connection services and reconnect handling
 - [x] Signed Android beta release pipeline and in-app update verification
+- [x] Shared Android Liquid Glass UI integration (Backdrop 2.0.1) and three-tab Controller navigation
 - [ ] Full Android physical-device and multi-instance runtime acceptance
 - [ ] Durable token hardening, rotation, audit events, and independent security review
 - [ ] Configure Cloudflare Realtime TURN secrets and validate relay fallback, bitrate adaptation, and ICE recovery across physical networks
